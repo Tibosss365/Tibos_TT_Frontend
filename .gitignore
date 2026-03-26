@@ -1,0 +1,57 @@
+# Node.js
+node_modules/
+dist/
+build/
+.npm
+patches/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv
+venv/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+.claude/
+.tempmediaStorage/
+
+# Vite
+*.local
+
+# System
+Thumbs.db
+desktop.ini
