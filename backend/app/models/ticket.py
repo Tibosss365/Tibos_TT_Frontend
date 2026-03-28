@@ -18,13 +18,18 @@ from app.database import Base
 
 
 class TicketCategory(str, enum.Enum):
+    """
+    Kept for backward-compat filtering constants.
+    The DB column is now a plain VARCHAR(80) referencing Category.slug,
+    so any custom slug added by admin also works.
+    """
     hardware = "hardware"
     software = "software"
-    network = "network"
-    access = "access"
-    email = "email"
+    network  = "network"
+    access   = "access"
+    email    = "email"
     security = "security"
-    other = "other"
+    other    = "other"
 
 
 class TicketPriority(str, enum.Enum):
@@ -69,9 +74,8 @@ class Ticket(Base):
         index=True,
     )
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
-    category: Mapped[TicketCategory] = mapped_column(
-        SAEnum(TicketCategory, name="ticketcategory"), nullable=False
-    )
+    # Plain varchar slug — references Category.slug; supports any admin-created category
+    category: Mapped[str] = mapped_column(String(80), nullable=False, default="other", index=True)
     priority: Mapped[TicketPriority] = mapped_column(
         SAEnum(TicketPriority, name="ticketpriority"), nullable=False, default=TicketPriority.medium
     )

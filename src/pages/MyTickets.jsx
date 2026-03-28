@@ -4,11 +4,13 @@ import { useUserStore } from '../stores/userStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
-import { categoryLabel, timeAgo } from '../utils/ticketUtils'
+import { timeAgo } from '../utils/ticketUtils'
+import { useAdminStore } from '../stores/adminStore'
 
 export default function MyTickets() {
   const { tickets, loading } = useTicketStore()
   const { currentUser } = useUserStore()
+  const { getCategoryName } = useAdminStore()
   const [selectedTicket, setSelectedTicket] = useState(null)
 
   const myTickets = [...tickets]
@@ -48,7 +50,7 @@ export default function MyTickets() {
                   </td>
                   <td className="py-3 px-4"><PriorityBadge priority={ticket.priority} /></td>
                   <td className="py-3 px-4"><StatusBadge status={ticket.status} /></td>
-                  <td className="py-3 px-4 text-xs t-muted">{categoryLabel(ticket.category)}</td>
+                  <td className="py-3 px-4 text-xs t-muted">{getCategoryName(ticket.category)}</td>
                   <td className="py-3 px-4 text-xs t-sub">{timeAgo(ticket.updated)}</td>
                 </tr>
               ))}

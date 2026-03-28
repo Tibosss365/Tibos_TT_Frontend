@@ -1,15 +1,32 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { useAdminStore } from '../stores/adminStore'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { CATEGORIES, PRIORITIES } from '../utils/ticketUtils'
+import { PRIORITIES } from '../utils/ticketUtils'
 
-const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: 'software', priority: 'medium', description: '', asset: '' }
+const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: 'software', priority: 'medium', description: '', asset: '', group: '', type: 'request' }
+
+const TICKET_TYPE_CONFIG = {
+  request:  {
+    icon: ClipboardList,
+    label: 'Request',
+    desc: 'Service request, access, installation, or general help',
+    active: 'bg-blue-500/15 border-blue-500/50 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/40',
+    inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
+  },
+  incident: {
+    icon: AlertOctagon,
+    label: 'Incident',
+    desc: 'Something is broken or causing disruption right now',
+    active: 'bg-rose-500/15 border-rose-500/50 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/40',
+    inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
+  },
+}
 
 const PRIORITY_UI = {
   critical: { border: 'border-rose-500/40',   text: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   ring: 'ring-rose-500/50' },
@@ -22,7 +39,7 @@ export default function NewTicket() {
   const { addTicket } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
-  const { slaSettings } = useAdminStore()
+  const { slaSettings, categories, groups } = useAdminStore()
   const navigate = useNavigate()
 
   const [form, setForm] = useState({ ...EMPTY, contactName: currentUser?.name || '', company: 'Acme Corp' })
@@ -73,6 +90,31 @@ export default function NewTicket() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {/* Main form */}
         <form onSubmit={handleSubmit} className="xl:col-span-2 space-y-4">
+          {/* Ticket Type */}
+          <Card>
+            <CardHeader title="Ticket Type" />
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(TICKET_TYPE_CONFIG).map(([key, cfg]) => {
+                const Icon = cfg.icon
+                const active = form.type === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => set('type', key)}
+                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${active ? cfg.active : cfg.inactive}`}
+                  >
+                    <Icon size={18} className={`mt-0.5 flex-shrink-0 ${active ? '' : 't-sub'}`} />
+                    <div>
+                      <div className="text-sm font-bold">{cfg.label}</div>
+                      <div className={`text-xs mt-0.5 leading-snug ${active ? 'opacity-80' : 't-muted'}`}>{cfg.desc}</div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
+
           {/* Contact info */}
           <Card>
             <CardHeader title="Contact Information" />
@@ -113,13 +155,20 @@ export default function NewTicket() {
                 <div>
                   <label className={labelCls}>Category</label>
                   <select className="glass-input w-full text-sm" value={form.category} onChange={e => set('category', e.target.value)}>
-                    {Object.entries(CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    {[...categories].sort((a, b) => a.sortOrder - b.sortOrder).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Asset / Device</label>
-                  <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
+                  <label className={labelCls}>Group / Team</label>
+                  <select className="glass-input w-full text-sm" value={form.group} onChange={e => set('group', e.target.value)}>
+                    <option value="">— Select Group —</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
                 </div>
+              </div>
+              <div>
+                <label className={labelCls}>Asset / Device</label>
+                <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
               </div>
 
               {/* Priority selector */}

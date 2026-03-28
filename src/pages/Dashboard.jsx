@@ -7,16 +7,13 @@ import { useAdminStore } from '../stores/adminStore'
 import { StatsCard } from '../components/ui/StatsCard'
 import { Card, CardHeader } from '../components/ui/Card'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
-import { timeAgo, categoryLabel, PRIORITY_COLORS, STATUS_COLORS } from '../utils/ticketUtils'
+import { timeAgo, PRIORITY_COLORS, STATUS_COLORS } from '../utils/ticketUtils'
 
-const CHART_COLORS = {
-  hardware: '#6366f1', software: '#8b5cf6', network: '#06b6d4',
-  access: '#10b981', email: '#f59e0b', security: '#ef4444', other: '#64748b'
-}
+const DEFAULT_CHART_COLORS = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
 
 export default function Dashboard() {
-  const { tickets, loading } = useTicketStore()
-  const { getAgentName } = useAdminStore()
+  const { tickets } = useTicketStore()
+  const { getAgentName, getCategoryName, categories } = useAdminStore()
   const navigate = useNavigate()
 
   const stats = useMemo(() => {
@@ -28,12 +25,13 @@ export default function Dashboard() {
   }, [tickets])
 
   const categoryData = useMemo(() => {
+    const catColorMap = Object.fromEntries(categories.map((c, i) => [c.id, c.color || DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length]]))
     const counts = {}
     tickets.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
     return Object.entries(counts).map(([cat, count]) => ({
-      name: categoryLabel(cat), count, fill: CHART_COLORS[cat] || '#6366f1'
+      name: getCategoryName(cat), count, fill: catColorMap[cat] || '#6366f1'
     })).sort((a, b) => b.count - a.count)
-  }, [tickets])
+  }, [tickets, categories, getCategoryName])
 
   const statusData = useMemo(() => {
     const counts = {}

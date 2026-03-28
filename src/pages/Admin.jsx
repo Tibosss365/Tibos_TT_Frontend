@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2 } from 'lucide-react'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUiStore } from '../stores/uiStore'
@@ -11,16 +11,1197 @@ import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { PRIORITIES } from '../utils/ticketUtils'
 
 const TABS = [
-  { id: 'overview', icon: LayoutGrid, label: 'Overview' },
-  { id: 'agents',   icon: Users,      label: 'Agents' },
-  { id: 'sla',      icon: SlidersHorizontal, label: 'SLA' },
-  { id: 'email',    icon: Mail,       label: 'Email' },
+  { id: 'overview',  icon: LayoutGrid,        label: 'Overview' },
+  { id: 'company',   icon: Building2,         label: 'Company' },
+  { id: 'tickets',   icon: Ticket,            label: 'Tickets' },
+  { id: 'groups',    icon: Users2,            label: 'Groups' },
+  { id: 'agents',    icon: Users,             label: 'Agents' },
+  { id: 'sla',       icon: SlidersHorizontal, label: 'SLA' },
+  { id: 'email',     icon: Mail,              label: 'Email' },
 ]
+
+const GROUP_COLORS = [
+  '#EF4444','#F97316','#F59E0B','#84CC16','#10B981',
+  '#06B6D4','#3B82F6','#8B5CF6','#EC4899','#6B7280',
+]
+
+const TEMPLATE_VARS = [
+  { tag: '{ticket_id}',       desc: 'Ticket number' },
+  { tag: '{ticket_subject}',  desc: 'Ticket subject' },
+  { tag: '{ticket_priority}', desc: 'Priority level' },
+  { tag: '{ticket_status}',   desc: 'Current status' },
+  { tag: '{contact_name}',    desc: 'Requester name' },
+  { tag: '{agent_name}',      desc: 'Assigned agent' },
+  { tag: '{closed_date}',     desc: 'Date closed' },
+  { tag: '{company_name}',    desc: 'Your company name' },
+]
+
+// ─── OAuth Provider presets ──────────────────────────────────────────────────
+const OAUTH_PROVIDERS = {
+  google: {
+    label: 'Google / Gmail',
+    icon: '🔵',
+    authEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    scopes: 'https://mail.google.com/',
+    hint: 'Use Google Cloud Console → OAuth 2.0 credentials',
+  },
+  microsoft: {
+    label: 'Microsoft / Outlook',
+    icon: '🟦',
+    authEndpoint: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenEndpoint: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    scopes: 'https://outlook.office.com/SMTP.Send offline_access',
+    hint: 'Use Azure Portal → App registrations',
+  },
+  custom: {
+    label: 'Custom / Generic',
+    icon: '⚙️',
+    authEndpoint: '',
+    tokenEndpoint: '',
+    scopes: '',
+    hint: 'Enter your own OAuth 2.0 authorization server endpoints',
+  },
+}
+
+// ─── Categories Tab ───────────────────────────────────────────────────────────
+const PRESET_COLORS = [
+  '#EF4444','#F97316','#F59E0B','#84CC16','#10B981',
+  '#06B6D4','#3B82F6','#8B5CF6','#EC4899','#6B7280',
+]
+
+function CategoriesTab({ categories, onAdd, onUpdate, onDelete, inputCls }) {
+  const [form, setForm] = useState({ name: '', color: '#3B82F6', description: '' })
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [error, setError] = useState('')
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    if (!form.name.trim()) { setError('Category name is required'); return }
+    const slug = form.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    if (categories.some(c => c.id === slug)) { setError('Category already exists'); return }
+    onAdd(form)
+    setForm({ name: '', color: '#3B82F6', description: '' })
+    setError('')
+  }
+
+  const startEdit = (cat) => {
+    setEditingId(cat.id)
+    setEditForm({ name: cat.name, color: cat.color, description: cat.description || '' })
+  }
+
+  const saveEdit = (id) => {
+    if (!editForm.name.trim()) return
+    onUpdate(id, editForm)
+    setEditingId(null)
+  }
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      {/* Left — Add new category */}
+      <Card>
+        <CardHeader title="Add Category" subtitle="Create a custom ticket category" />
+        <form onSubmit={handleAdd} className="space-y-3">
+          <div>
+            <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Category Name</label>
+            <input className={inputCls} value={form.name} placeholder="e.g. Microsoft 365"
+              onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setError('') }} />
+            {error && <p className="text-[11px] text-rose-500 mt-1">{error}</p>}
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Description <span className="font-normal t-muted">(optional)</span></label>
+            <input className={inputCls} value={form.description} placeholder="Short description of this category"
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Color</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {PRESET_COLORS.map(c => (
+                <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
+                  style={{ backgroundColor: c }}
+                  className={`w-6 h-6 rounded-full transition-all border-2 ${form.color === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`} />
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex-shrink-0 border border-glass" style={{ backgroundColor: form.color }} />
+              <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+                className="w-8 h-7 cursor-pointer rounded border border-glass bg-transparent" />
+              <input className="glass-input text-xs flex-1 font-mono" value={form.color}
+                onChange={e => setForm(f => ({ ...f, color: e.target.value }))} placeholder="#3B82F6" />
+            </div>
+          </div>
+          <Button type="submit" variant="primary" size="sm" className="w-full"><Plus size={13}/> Add Category</Button>
+        </form>
+
+        {/* Preview badge */}
+        {form.name && (
+          <div className="mt-3 pt-3 border-t border-glass">
+            <div className="text-[10px] t-muted mb-1.5">Preview</div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border"
+              style={{ backgroundColor: form.color + '20', color: form.color, borderColor: form.color + '40' }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: form.color }} />
+              {form.name}
+            </span>
+          </div>
+        )}
+      </Card>
+
+      {/* Right — Category list */}
+      <Card>
+        <CardHeader title="All Categories" subtitle={`${categories.length} total · ${categories.filter(c => !c.isBuiltin).length} custom`} />
+        <div className="space-y-1.5 max-h-[440px] overflow-y-auto">
+          {categories
+            .slice().sort((a, b) => a.sortOrder - b.sortOrder)
+            .map(cat => (
+            <div key={cat.id}
+              className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/3 group transition-all border border-transparent hover:border-glass">
+
+              {/* Color swatch — updates live during edit */}
+              <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center shadow-sm"
+                style={{
+                  backgroundColor: (editingId === cat.id ? editForm.color : cat.color) + '25',
+                  border: `1.5px solid ${(editingId === cat.id ? editForm.color : cat.color)}55`
+                }}>
+                <span className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: editingId === cat.id ? editForm.color : cat.color }} />
+              </div>
+
+              {editingId === cat.id ? (
+                /* ── Inline edit mode ── */
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <input autoFocus className="glass-input text-sm flex-1"
+                      placeholder="Category name"
+                      value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                    <input type="color" value={editForm.color}
+                      onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
+                      className="w-7 h-7 cursor-pointer rounded border border-glass bg-transparent flex-shrink-0" />
+                    <button onClick={() => saveEdit(cat.id)}
+                      className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-indigo-600/20 border border-indigo-500/30 text-indigo-500 hover:bg-indigo-600/30 transition-all flex-shrink-0">Save</button>
+                    <button onClick={() => setEditingId(null)}
+                      className="p-1 rounded-lg t-muted hover:t-main transition-colors flex-shrink-0"><XCircle size={13}/></button>
+                  </div>
+                  <input className="glass-input text-xs"
+                    placeholder="Description (optional)"
+                    value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} />
+                </div>
+              ) : (
+                /* ── Display mode ── */
+                <>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium t-main">{cat.name}</span>
+                      {cat.isBuiltin && (
+                        <span className="flex items-center gap-0.5 text-[9px] font-semibold t-muted bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded-full border border-glass">
+                          <Lock size={8}/> Built-in
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] t-muted font-mono">{cat.id}</div>
+                    {cat.description && <div className="text-[11px] t-muted mt-0.5 truncate">{cat.description}</div>}
+                  </div>
+
+                  {/* Actions — always visible */}
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => startEdit(cat)}
+                      className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-500 hover:border-indigo-500/20 border border-transparent transition-all">
+                      <Pencil size={12}/>
+                    </button>
+                    {!cat.isBuiltin && (
+                      <button onClick={() => onDelete(cat.id)}
+                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-500 hover:border-rose-500/20 border border-transparent transition-all">
+                        <Trash2 size={12}/>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ─── Inbound Email Section ────────────────────────────────────────────────────
+const PRIORITIES_LIST = ['critical','high','medium','low']
+
+const STATUS_META = {
+  processed: { label: 'Converted',  cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  duplicate:  { label: 'Duplicate', cls: 'bg-amber-500/10  text-amber-600  dark:text-amber-400  border-amber-500/20'  },
+  error:      { label: 'Error',     cls: 'bg-rose-500/10   text-rose-600   dark:text-rose-400   border-rose-500/20'   },
+}
+
+function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, categories = [], onSaveInbound, onPollNow, onClearLog, addToast, inputCls }) {
+  const [showPass, setShowPass] = useState(false)
+  const [polling, setPolling] = useState(false)
+  const set = (k, v) => setInboundEdits(p => ({ ...p, [k]: v }))
+
+  const authType = inboundEdits.authType || 'basic'
+
+  const AUTH_TYPES = [
+    { id: 'basic',  label: 'IMAP + Password', icon: Mail },
+    { id: 'oauth',  label: 'IMAP + OAuth',    icon: ShieldCheck },
+    { id: 'graph',  label: 'Graph API (M365)', icon: Globe },
+  ]
+
+  const handlePollNow = async () => {
+    setPolling(true)
+    await new Promise(r => setTimeout(r, 1800))
+    // Simulate finding 1 new email → create fake log entry
+    const fakeEmails = [
+      { from: 'jane.doe@company.com', name: 'Jane Doe', subject: 'My computer won\'t turn on' },
+      { from: 'bob.smith@acme.com',   name: 'Bob Smith',  subject: 'Outlook is crashing repeatedly' },
+      { from: 'lisa.k@techcorp.io',   name: 'Lisa K',     subject: 'Need VPN access for new project' },
+    ]
+    const pick = fakeEmails[Math.floor(Math.random() * fakeEmails.length)]
+    const entry = {
+      id: Date.now(),
+      messageId: `<${Date.now()}@mail.demo>`,
+      fromEmail: pick.from,
+      fromName: pick.name,
+      subject: pick.subject,
+      status: 'processed',
+      ticketId: `TKT-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      processedAt: new Date().toISOString(),
+    }
+    onPollNow(entry)
+    setInboundEdits(p => ({
+      ...p,
+      lastPolledAt: new Date().toISOString(),
+      processedCount: (p.processedCount || 0) + 1,
+    }))
+    setPolling(false)
+    addToast(`1 email converted → ${entry.ticketId}`, 'success')
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header + master toggle */}
+      <div className="flex items-center justify-between p-4 glass-card border border-glass rounded-xl">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+            <Inbox size={16} className="text-violet-500" />
+          </div>
+          <div>
+            <div className="text-sm font-bold t-main">Email → Ticket</div>
+            <div className="text-xs t-muted">Auto-create tickets from incoming emails</div>
+          </div>
+        </div>
+        <button onClick={() => set('enabled', !inboundEdits.enabled)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold transition-all ${
+            inboundEdits.enabled
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+              : 'border-glass t-muted'
+          }`}>
+          {inboundEdits.enabled
+            ? <><ToggleRight size={16} className="text-emerald-500" /> Enabled</>
+            : <><ToggleLeft  size={16} /> Disabled</>}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Left — Connection config */}
+        <Card>
+          <CardHeader title="Inbound Mailbox" subtitle="Where to fetch incoming emails from" />
+
+          {/* Auth type selector */}
+          <div className="mb-3">
+            <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Auth Method</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {AUTH_TYPES.map(({ id, label, icon: Icon }) => (
+                <button key={id} type="button" onClick={() => set('authType', id)}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-[10px] font-semibold transition-all leading-tight text-center
+                    ${authType === id
+                      ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400'
+                      : 'border-glass t-muted hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                  <Icon size={14} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {/* IMAP fields (basic + oauth) */}
+            {authType !== 'graph' && (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">IMAP Host</label>
+                    <input className={inputCls} value={inboundEdits.imapHost || ''} placeholder="imap.gmail.com"
+                      onChange={e => set('imapHost', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Port</label>
+                    <input className={inputCls} value={inboundEdits.imapPort || '993'} placeholder="993"
+                      onChange={e => set('imapPort', e.target.value)} />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={inboundEdits.imapSsl ?? true}
+                    onChange={e => set('imapSsl', e.target.checked)} className="accent-indigo-500" />
+                  <span className="text-xs t-main">Use SSL/TLS</span>
+                </label>
+
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Email / Username</label>
+                  <input className={inputCls} value={inboundEdits.imapUser || ''} placeholder="helpdesk@company.com"
+                    onChange={e => set('imapUser', e.target.value)} />
+                </div>
+
+                {authType === 'basic' && (
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Password / App Password</label>
+                    <div className="relative">
+                      <input type={showPass ? 'text' : 'password'} className={inputCls} value={inboundEdits.imapPass || ''} placeholder="••••••••"
+                        onChange={e => set('imapPass', e.target.value)} />
+                      <button type="button" onClick={() => setShowPass(v => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 t-muted hover:t-main transition-colors">
+                        {showPass ? <EyeOff size={13}/> : <Eye size={13}/>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {authType === 'oauth' && (
+                  <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-[11px] t-muted">
+                    <span className="text-indigo-500 font-semibold">XOAUTH2</span> — Uses the access token from the OAuth 2.0 outbound config above. Authorize outbound OAuth first.
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Folder to Monitor</label>
+                  <input className={inputCls} value={inboundEdits.imapFolder || 'INBOX'} placeholder="INBOX"
+                    onChange={e => set('imapFolder', e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {/* Graph API (M365) fields */}
+            {authType === 'graph' && (
+              <>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Shared Mailbox Address</label>
+                  <input className={inputCls} value={inboundEdits.graphMailbox || ''} placeholder="helpdesk@yourorg.onmicrosoft.com"
+                    onChange={e => set('graphMailbox', e.target.value)} />
+                </div>
+                <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-[11px] t-muted">
+                  <span className="text-blue-500 font-semibold">Microsoft Graph</span> — Requires <code className="font-mono">Mail.Read</code> (Application) permission in Azure. Uses OAuth tokens from the outbound M365 config.
+                </div>
+              </>
+            )}
+
+            {/* After processing */}
+            <div className="pt-1 border-t border-glass space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={inboundEdits.markSeen ?? true}
+                  onChange={e => set('markSeen', e.target.checked)} className="accent-indigo-500" />
+                <span className="text-xs t-main">Mark emails as read after processing</span>
+              </label>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Move to folder after processing <span className="font-normal t-muted">(optional)</span></label>
+                <input className={inputCls} value={inboundEdits.moveToFolder || ''} placeholder="Processed"
+                  onChange={e => set('moveToFolder', e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Right — Defaults + Schedule */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Auto-Ticket Defaults" subtitle="Applied to every email-created ticket" />
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Default Category</label>
+                <select className={inputCls} value={inboundEdits.defaultCategory || 'email'} onChange={e => set('defaultCategory', e.target.value)}>
+                  {[...categories].sort((a, b) => a.sortOrder - b.sortOrder).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Default Priority</label>
+                <select className={inputCls} value={inboundEdits.defaultPriority || 'medium'} onChange={e => set('defaultPriority', e.target.value)}>
+                  {PRIORITIES_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Auto-Assign To</label>
+                <select className={inputCls} value={inboundEdits.defaultAssignee || 'unassigned'} onChange={e => set('defaultAssignee', e.target.value)}>
+                  <option value="unassigned">— Unassigned —</option>
+                  {agents.filter(a => a.id !== 'unassigned').map(a => (
+                    <option key={a.id} value={a.id}>{a.name} ({a.group})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader title="Polling Schedule" />
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Poll Interval</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" min={1} max={1440} className="glass-input w-24 text-sm text-center"
+                    value={inboundEdits.pollIntervalMinutes || 5}
+                    onChange={e => set('pollIntervalMinutes', Number(e.target.value))} />
+                  <span className="text-xs t-muted">minutes</span>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 rounded-lg bg-black/5 dark:bg-white/3 border border-glass">
+                  <div className="text-[10px] t-muted mb-0.5 flex items-center gap-1"><Clock size={9}/> Last polled</div>
+                  <div className="text-xs font-semibold t-main">
+                    {inboundEdits.lastPolledAt
+                      ? new Date(inboundEdits.lastPolledAt).toLocaleTimeString()
+                      : '—'}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-lg bg-black/5 dark:bg-white/3 border border-glass">
+                  <div className="text-[10px] t-muted mb-0.5 flex items-center gap-1"><Hash size={9}/> Converted</div>
+                  <div className="text-xs font-semibold t-main">{inboundEdits.processedCount || 0}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="primary" size="sm" onClick={onSaveInbound}><Save size={13}/> Save</Button>
+              <button onClick={handlePollNow} disabled={polling || !inboundEdits.enabled}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
+                  ${!inboundEdits.enabled ? 'opacity-40 cursor-not-allowed border-glass t-muted'
+                    : polling ? 'border-violet-500/30 text-violet-500 opacity-80 cursor-wait'
+                    : 'border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10'}`}>
+                {polling ? <><Loader2 size={12} className="animate-spin"/> Polling…</> : <><Zap size={12}/> Poll Now</>}
+              </button>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Email Log */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <CardHeader title="Email Conversion Log" subtitle={`${emailLog.length} recent entries`} />
+          {emailLog.length > 0 && (
+            <button onClick={onClearLog} className="flex items-center gap-1 text-[10px] t-muted hover:text-rose-500 transition-colors">
+              <XCircle size={11}/> Clear
+            </button>
+          )}
+        </div>
+
+        {emailLog.length === 0 ? (
+          <div className="py-8 text-center">
+            <Inbox size={28} className="mx-auto t-muted mb-2 opacity-40" />
+            <p className="text-xs t-muted">No emails processed yet.</p>
+            <p className="text-[11px] t-muted mt-1">Enable inbound email and click Poll Now to test.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-glass">
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">From</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Subject → Ticket</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Status</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-glass">
+                {emailLog.map(entry => (
+                  <tr key={entry.id} className="hover:bg-black/3 dark:hover:bg-white/3 transition-colors">
+                    <td className="py-2 pr-3">
+                      <div className="font-medium t-main truncate max-w-[130px]">{entry.fromName || entry.fromEmail}</div>
+                      <div className="text-[10px] t-muted truncate max-w-[130px]">{entry.fromEmail}</div>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="t-main truncate max-w-[200px]">{entry.subject}</div>
+                      {entry.ticketId && (
+                        <div className="flex items-center gap-1 text-[10px] text-indigo-500 mt-0.5">
+                          <ArrowRight size={9}/> {entry.ticketId}
+                        </div>
+                      )}
+                      {entry.errorMessage && (
+                        <div className="text-[10px] text-rose-500 mt-0.5 truncate max-w-[200px]">{entry.errorMessage}</div>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${STATUS_META[entry.status]?.cls || ''}`}>
+                        {STATUS_META[entry.status]?.label || entry.status}
+                      </span>
+                    </td>
+                    <td className="py-2 t-muted whitespace-nowrap">
+                      {new Date(entry.processedAt).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+// ─── Test Email Panel ─────────────────────────────────────────────────────────
+function TestEmailPanel({ open, testTo, setTestTo, status, message, onSend, onClose, inputCls }) {
+  if (!open) return null
+  return (
+    <div className="mt-4 p-4 rounded-xl border border-indigo-500/25 bg-indigo-500/5 space-y-3 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center">
+            <Mail size={13} className="text-indigo-500" />
+          </div>
+          <div>
+            <div className="text-xs font-bold t-main">Send Test Email</div>
+            <div className="text-[10px] t-muted">Verify your email configuration is working</div>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 t-muted transition-colors">
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* Recipient input */}
+      <div>
+        <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+          Send Test To (Recipient Email)
+        </label>
+        <div className="flex gap-2">
+          <input
+            className={inputCls + ' flex-1'}
+            type="email"
+            placeholder="you@example.com"
+            value={testTo}
+            onChange={e => setTestTo(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onSend()}
+            disabled={status === 'loading'}
+          />
+          <button
+            onClick={onSend}
+            disabled={status === 'loading'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border
+              ${status === 'loading'
+                ? 'opacity-60 cursor-not-allowed border-indigo-500/30 text-indigo-400'
+                : 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-700 shadow-sm'}`}
+          >
+            {status === 'loading'
+              ? <><Loader2 size={12} className="animate-spin" /> Sending…</>
+              : <><ArrowRight size={12} /> Send</>}
+          </button>
+        </div>
+      </div>
+
+      {/* Result */}
+      {status === 'success' && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/25">
+          <CheckCircle2 size={15} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Email Sent Successfully</div>
+            <div className="text-[11px] t-muted mt-0.5">{message}</div>
+          </div>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/25">
+          <XCircle size={15} className="text-rose-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="text-xs font-semibold text-rose-600 dark:text-rose-400">Test Failed</div>
+            <div className="text-[11px] t-muted mt-0.5">{message}</div>
+          </div>
+        </div>
+      )}
+      {status === 'loading' && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/20">
+          <Loader2 size={13} className="text-indigo-500 animate-spin flex-shrink-0" />
+          <div className="text-[11px] text-indigo-600 dark:text-indigo-400">Connecting and sending test email…</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Email Tab Component ──────────────────────────────────────────────────────
+function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, inboundEdits, setInboundEdits, agents, emailLog, categories, inputCls, onSave, onTest, onSaveInbound, onPollNow, onClearLog, addToast }) {
+  const [emailSubTab, setEmailSubTab] = useState('outbound')
+  const emailType = emailEdits.type || 'smtp'
+  const [oauthShowSecret, setOauthShowSecret] = useState(false)
+  const [smtpShowPass, setSmtpShowPass] = useState(false)
+  const [isAuthorizing, setIsAuthorizing] = useState(false)
+
+  // ── Test Email state ─────────────────────────────────────────────────────
+  const [testPanel, setTestPanel] = useState(false)
+  const [testTo, setTestTo] = useState('')
+  const [testStatus, setTestStatus] = useState(null) // null | 'loading' | 'success' | 'error'
+  const [testMsg,  setTestMsg]  = useState('')
+
+  const validateConfig = () => {
+    if (emailType === 'smtp') {
+      if (!smtp.host)  return 'SMTP Host is required'
+      if (!smtp.port)  return 'SMTP Port is required'
+      if (!smtp.from)  return 'From Address is required'
+      if (!smtp.user)  return 'Username is required'
+      if (!smtp.pass)  return 'Password is required'
+    } else if (emailType === 'm365') {
+      if (!m365.tenantId)     return 'Tenant ID is required'
+      if (!m365.clientId)     return 'Client (Application) ID is required'
+      if (!m365.clientSecret) return 'Client Secret is required'
+      if (!m365.from)         return 'From Address is required'
+    } else if (emailType === 'oauth') {
+      if (!oauth.from)         return 'From Address is required'
+      if (!oauth.clientId)     return 'Client ID is required'
+      if (!oauth.clientSecret) return 'Client Secret is required'
+      if (!oauth.connected)    return 'OAuth is not authorized yet — click Authorize first'
+    }
+    return null
+  }
+
+  const handleSendTest = () => {
+    if (!testTo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testTo)) {
+      setTestStatus('error'); setTestMsg('Enter a valid recipient email address'); return
+    }
+    const err = validateConfig()
+    if (err) { setTestStatus('error'); setTestMsg(err); return }
+
+    setTestStatus('loading')
+    setTestMsg('')
+    // Simulate async send (in real app: API call to backend)
+    setTimeout(() => {
+      const fromAddr =
+        emailType === 'smtp'  ? smtp.from  :
+        emailType === 'm365'  ? m365.from  :
+        oauth.from
+      setTestStatus('success')
+      setTestMsg(`Test email sent successfully to ${testTo} from ${fromAddr}`)
+      addToast('Test email sent!', 'success')
+    }, 2200)
+  }
+
+  const openTestPanel = () => {
+    const err = validateConfig()
+    if (err) { addToast(err, 'error'); return }
+    setTestPanel(true)
+    setTestStatus(null)
+    setTestMsg('')
+    setTestTo('')
+  }
+
+  const setType = (t) => setEmailEdits(c => ({ ...c, type: t }))
+  const setOauth = (key, val) => setEmailEdits(c => ({ ...c, oauth: { ...c.oauth, [key]: val } }))
+  const setSmtp  = (key, val) => setEmailEdits(c => ({ ...c, smtp:  { ...c.smtp,  [key]: val } }))
+  const setM365  = (key, val) => setEmailEdits(c => ({ ...c, m365:  { ...c.m365,  [key]: val } }))
+
+  const oauth = emailEdits.oauth || {}
+  const smtp  = emailEdits.smtp  || {}
+  const m365  = emailEdits.m365  || {}
+
+  // When provider changes, auto-fill endpoints + scopes
+  const handleProviderChange = (provider) => {
+    const preset = OAUTH_PROVIDERS[provider]
+    setEmailEdits(c => ({
+      ...c,
+      oauth: {
+        ...c.oauth,
+        provider,
+        authEndpoint:  preset.authEndpoint,
+        tokenEndpoint: preset.tokenEndpoint,
+        scopes:        preset.scopes,
+      }
+    }))
+  }
+
+  // Simulate OAuth authorization flow
+  const handleAuthorize = () => {
+    if (!oauth.clientId || !oauth.clientSecret) {
+      addToast('Enter Client ID and Client Secret first', 'error'); return
+    }
+    setIsAuthorizing(true)
+    // In a real app: window.open(buildAuthUrl(), '_blank') and handle callback
+    setTimeout(() => {
+      setIsAuthorizing(false)
+      const expiry = new Date(Date.now() + 3600_000).toISOString()
+      setEmailEdits(c => ({
+        ...c,
+        oauth: { ...c.oauth, connected: true, connectedEmail: oauth.from || 'helpdesk@company.com', tokenExpiry: expiry }
+      }))
+      addToast('OAuth authorization successful', 'success')
+    }, 2000)
+  }
+
+  const handleRevoke = () => {
+    setEmailEdits(c => ({ ...c, oauth: { ...c.oauth, connected: false, connectedEmail: '', tokenExpiry: null } }))
+    addToast('OAuth access revoked', 'info')
+  }
+
+  const TYPE_TABS = [
+    { id: 'smtp',  label: 'SMTP',       icon: Mail },
+    { id: 'oauth', label: 'OAuth 2.0',  icon: ShieldCheck },
+    { id: 'm365',  label: 'M365',       icon: Globe },
+  ]
+
+  const provider = oauth.provider || 'google'
+  const providerPreset = OAUTH_PROVIDERS[provider]
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-tab switcher: Outbound | Inbound */}
+      <div className="flex gap-1 p-1 glass-card w-fit border border-glass rounded-xl">
+        {[
+          { id: 'outbound', icon: Mail,  label: 'Outbound Mail' },
+          { id: 'inbound',  icon: Inbox, label: 'Inbound → Ticket' },
+        ].map(({ id, icon: Icon, label }) => (
+          <button key={id} onClick={() => setEmailSubTab(id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              emailSubTab === id
+                ? 'bg-indigo-600/30 t-main border border-indigo-500/30'
+                : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+            <Icon size={13}/>{label}
+          </button>
+        ))}
+      </div>
+
+      {/* Inbound sub-tab */}
+      {emailSubTab === 'inbound' && (
+        <InboundEmailSection
+          inboundEdits={inboundEdits} setInboundEdits={setInboundEdits}
+          agents={agents} emailLog={emailLog} categories={categories}
+          onSaveInbound={onSaveInbound} onPollNow={onPollNow} onClearLog={onClearLog}
+          addToast={addToast} inputCls={inputCls}
+        />
+      )}
+
+      {/* Outbound sub-tab */}
+      {emailSubTab === 'outbound' && <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      {/* Left — Triggers */}
+      <div className="space-y-4">
+        <Card>
+          <CardHeader title="Email Triggers" subtitle="Automated notifications" />
+          <div className="space-y-3">
+            {[
+              { key: 'new',     label: 'New ticket submitted', desc: 'Notify team on new ticket creation' },
+              { key: 'assign',  label: 'Ticket assigned',      desc: 'Notify agent when ticket assigned' },
+              { key: 'resolve', label: 'Ticket resolved',      desc: 'Notify submitter on resolution' },
+            ].map(({ key, label, desc }) => (
+              <label key={key} className="flex items-start gap-3 p-3 rounded-lg bg-black/5 dark:bg-white/3 border border-glass cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-all">
+                <input type="checkbox" checked={triggersEdits[key]} onChange={e => setTriggersEdits(t => ({ ...t, [key]: e.target.checked }))}
+                  className="mt-0.5 accent-indigo-500" />
+                <div>
+                  <div className="text-sm t-main font-medium">{label}</div>
+                  <div className="text-xs t-muted mt-0.5">{desc}</div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </Card>
+
+        {/* Connection method type selector */}
+        <Card>
+          <CardHeader title="Connection Method" subtitle="Choose how to send emails" />
+          <div className="grid grid-cols-3 gap-2">
+            {TYPE_TABS.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setType(id)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-xs font-semibold transition-all
+                  ${emailType === id
+                    ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-400 shadow-lg shadow-indigo-500/10'
+                    : 'border-glass t-muted hover:bg-black/5 dark:hover:bg-white/5 hover:t-main'}`}>
+                <Icon size={16} />
+                {label}
+              </button>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Right — Config panel */}
+      <div>
+        {/* ── SMTP ── */}
+        {emailType === 'smtp' && (
+          <Card>
+            <CardHeader title="SMTP Configuration" />
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">SMTP Host</label>
+                  <input className={inputCls} value={smtp.host || ''} placeholder="smtp.office365.com"
+                    onChange={e => setSmtp('host', e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Port</label>
+                  <input className={inputCls} value={smtp.port || '587'} placeholder="587"
+                    onChange={e => setSmtp('port', e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Security</label>
+                <select className={inputCls} value={smtp.security || 'tls'} onChange={e => setSmtp('security', e.target.value)}>
+                  <option value="tls">STARTTLS</option>
+                  <option value="ssl">SSL / TLS</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
+                <input className={inputCls} value={smtp.from || ''} placeholder="helpdesk@company.com"
+                  onChange={e => setSmtp('from', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Username</label>
+                <input className={inputCls} value={smtp.user || ''} placeholder="username"
+                  onChange={e => setSmtp('user', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Password</label>
+                <div className="relative">
+                  <input type={smtpShowPass ? 'text' : 'password'} className={inputCls} value={smtp.pass || ''} placeholder="••••••••"
+                    onChange={e => setSmtp('pass', e.target.value)} />
+                  <button type="button" onClick={() => setSmtpShowPass(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs t-muted hover:t-main transition-colors">
+                    {smtpShowPass ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save</Button>
+              <Button variant="ghost" size="sm" onClick={openTestPanel}>
+                <Mail size={13} /> Send Test Email
+              </Button>
+            </div>
+            <TestEmailPanel
+              open={testPanel} testTo={testTo} setTestTo={setTestTo}
+              status={testStatus} message={testMsg}
+              onSend={handleSendTest} onClose={() => { setTestPanel(false); setTestStatus(null) }}
+              inputCls={inputCls}
+            />
+          </Card>
+        )}
+
+        {/* ── OAuth 2.0 ── */}
+        {emailType === 'oauth' && (
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                <ShieldCheck size={16} className="text-indigo-500" />
+              </div>
+              <div>
+                <div className="text-sm font-bold t-main">OAuth 2.0 Configuration</div>
+                <div className="text-xs t-muted">Secure token-based mail authentication</div>
+              </div>
+            </div>
+
+            {/* Connection Status Banner */}
+            {oauth.connected ? (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 mb-4">
+                <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Connected</div>
+                  <div className="text-[11px] t-muted truncate">{oauth.connectedEmail}</div>
+                  {oauth.tokenExpiry && (
+                    <div className="text-[10px] t-muted mt-0.5">
+                      Token expires: {new Date(oauth.tokenExpiry).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+                <button onClick={handleRevoke}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-rose-500 dark:text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all">
+                  <Link2Off size={11} /> Revoke
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-4">
+                <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-xs font-semibold text-amber-600 dark:text-amber-400">Not Connected</div>
+                  <div className="text-[11px] t-muted">Fill credentials below and click Authorize</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 mb-4">
+              {/* Provider selector */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">OAuth Provider</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(OAUTH_PROVIDERS).map(([key, val]) => (
+                    <button key={key} type="button" onClick={() => handleProviderChange(key)}
+                      className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-medium transition-all
+                        ${provider === key
+                          ? 'bg-indigo-600/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400'
+                          : 'border-glass t-muted hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                      <span>{val.icon}</span>
+                      <span className="truncate">{key === 'custom' ? 'Custom' : key === 'google' ? 'Google' : 'Microsoft'}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] t-muted mt-1.5">{providerPreset.hint}</p>
+              </div>
+
+              {/* From Address */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
+                <input className={inputCls} value={oauth.from || ''} placeholder="helpdesk@company.com"
+                  onChange={e => setOauth('from', e.target.value)} />
+              </div>
+
+              {/* Client ID */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">
+                  <span className="flex items-center gap-1"><KeyRound size={10} /> Client ID</span>
+                </label>
+                <input className={inputCls} value={oauth.clientId || ''} placeholder="your-client-id.apps.googleusercontent.com"
+                  onChange={e => setOauth('clientId', e.target.value)} />
+              </div>
+
+              {/* Client Secret */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Client Secret</label>
+                <div className="relative">
+                  <input type={oauthShowSecret ? 'text' : 'password'} className={inputCls} value={oauth.clientSecret || ''}
+                    placeholder="GOCSPX-••••••••••••••••••••"
+                    onChange={e => setOauth('clientSecret', e.target.value)} />
+                  <button type="button" onClick={() => setOauthShowSecret(v => !v)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs t-muted hover:t-main transition-colors">
+                    {oauthShowSecret ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Redirect URI */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Redirect URI
+                  <span className="ml-1 text-[9px] font-normal text-indigo-500">(register this in your provider console)</span>
+                </label>
+                <div className="relative">
+                  <input className={`${inputCls} pr-16 font-mono text-[11px]`} value={oauth.redirectUri || ''}
+                    onChange={e => setOauth('redirectUri', e.target.value)} />
+                  <button type="button"
+                    onClick={() => { navigator.clipboard.writeText(oauth.redirectUri || ''); addToast('Redirect URI copied', 'success') }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-indigo-500 hover:text-indigo-400 transition-colors">
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              {/* Scopes */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Scopes</label>
+                <textarea rows={2} className={`${inputCls} resize-none font-mono text-[11px]`}
+                  value={oauth.scopes || ''}
+                  placeholder="https://mail.google.com/"
+                  onChange={e => setOauth('scopes', e.target.value)} />
+              </div>
+
+              {/* Custom endpoints (only for custom provider) */}
+              {provider === 'custom' && (
+                <div className="space-y-3 p-3 rounded-xl bg-black/5 dark:bg-white/3 border border-glass">
+                  <div className="text-[10px] font-bold t-sub uppercase tracking-wider">Custom Endpoints</div>
+                  <div>
+                    <label className="block text-[10px] t-muted mb-1">Authorization Endpoint</label>
+                    <input className={`${inputCls} font-mono text-[11px]`} value={oauth.authEndpoint || ''}
+                      placeholder="https://provider.com/oauth2/authorize"
+                      onChange={e => setOauth('authEndpoint', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] t-muted mb-1">Token Endpoint</label>
+                    <input className={`${inputCls} font-mono text-[11px]`} value={oauth.tokenEndpoint || ''}
+                      placeholder="https://provider.com/oauth2/token"
+                      onChange={e => setOauth('tokenEndpoint', e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save Config</Button>
+              {!oauth.connected ? (
+                <button onClick={handleAuthorize} disabled={isAuthorizing}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
+                    ${isAuthorizing
+                      ? 'opacity-60 cursor-not-allowed border-emerald-500/30 text-emerald-500'
+                      : 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/60'}`}>
+                  {isAuthorizing
+                    ? <><RefreshCw size={12} className="animate-spin" /> Authorizing…</>
+                    : <><Link2 size={12} /> Authorize</>}
+                </button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={openTestPanel}>
+                  <Mail size={13} /> Send Test Email
+                </Button>
+              )}
+            </div>
+            <TestEmailPanel
+              open={testPanel} testTo={testTo} setTestTo={setTestTo}
+              status={testStatus} message={testMsg}
+              onSend={handleSendTest} onClose={() => { setTestPanel(false); setTestStatus(null) }}
+              inputCls={inputCls}
+            />
+          </Card>
+        )}
+
+        {/* ── M365 ── */}
+        {emailType === 'm365' && (
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <Globe size={16} className="text-blue-500" />
+              </div>
+              <div>
+                <div className="text-sm font-bold t-main">Microsoft 365 / Azure</div>
+                <div className="text-xs t-muted">App-only auth via client credentials flow</div>
+              </div>
+            </div>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Tenant ID</label>
+                <input className={`${inputCls} font-mono text-[11px]`} value={m365.tenantId || ''} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  onChange={e => setM365('tenantId', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Client (Application) ID</label>
+                <input className={`${inputCls} font-mono text-[11px]`} value={m365.clientId || ''} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  onChange={e => setM365('clientId', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Client Secret</label>
+                <input type="password" className={inputCls} value={m365.clientSecret || ''} placeholder="••••••••••••"
+                  onChange={e => setM365('clientSecret', e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
+                <input className={inputCls} value={m365.from || ''} placeholder="helpdesk@yourorg.onmicrosoft.com"
+                  onChange={e => setM365('from', e.target.value)} />
+              </div>
+              <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-[11px] t-muted leading-relaxed">
+                <strong className="text-blue-500 dark:text-blue-400">Required Azure permissions:</strong> Mail.Send (Application)
+                <br />Register your app in Azure Portal → App registrations → API permissions
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save</Button>
+              <Button variant="ghost" size="sm" onClick={openTestPanel}>
+                <Mail size={13} /> Send Test Email
+              </Button>
+            </div>
+            <TestEmailPanel
+              open={testPanel} testTo={testTo} setTestTo={setTestTo}
+              status={testStatus} message={testMsg}
+              onSend={handleSendTest} onClose={() => { setTestPanel(false); setTestStatus(null) }}
+              inputCls={inputCls}
+            />
+          </Card>
+        )}
+      </div>
+      </div>} {/* end outbound grid */}
+    </div>
+  )
+}
 
 export default function Admin() {
   const [tab, setTab] = useState('overview')
-  const { agents, slaSettings, emailConfig, addAgent, deleteAgent, updateSla, updateEmailConfig, fetchAgents, fetchSla, fetchEmailConfig } = useAdminStore()
-  const { tickets, fetchTickets } = useTicketStore()
+  const {
+    companyProfile, updateCompanyProfile,
+    ticketSettings, updateTicketSettings,
+    emailTemplates, updateEmailTemplate,
+    groups, addGroup, updateGroup, deleteGroup,
+    agents, slaSettings, emailConfig, emailTriggers,
+    inboundEmail, emailLog,
+    categories,
+    addAgent, deleteAgent, updateSla,
+    updateEmailConfig, updateEmailTriggers,
+    updateInboundEmail, addEmailLogEntry, clearEmailLog,
+    addCategory, updateCategory, deleteCategory,
+    resetAgents,
+  } = useAdminStore()
+
+  const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
+  const logoInputRef = useRef(null)
+
+  // ── Ticket Settings local state ──────────────────────────────────────────
+  const [tktEdits, setTktEdits] = useState({ ...ticketSettings })
+  const [tplEdits, setTplEdits] = useState({
+    ticketOpen:   { ...emailTemplates.ticketOpen },
+    ticketClosed: { ...emailTemplates.ticketClosed },
+  })
+
+  const formatPreview = `${tktEdits.numberPrefix}-${'0'.repeat(Math.max(1, Number(tktEdits.numberDigits) - 1))}1`
+
+  const handleSaveTicketSettings = () => {
+    updateTicketSettings(tktEdits)
+    addToast('Ticket settings saved', 'success')
+  }
+
+  const handleSaveTemplate = (key) => {
+    updateEmailTemplate(key, tplEdits[key])
+    addToast('Email template saved', 'success')
+  }
+
+  const insertVar = (key, field, tag) => {
+    setTplEdits(p => ({ ...p, [key]: { ...p[key], [field]: p[key][field] + tag } }))
+  }
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { addToast('Logo must be under 2 MB', 'error'); return }
+    const reader = new FileReader()
+    reader.onload = (ev) => setCompanyEdits(p => ({ ...p, logo: ev.target.result }))
+    reader.readAsDataURL(file)
+  }
+
+  const handleSaveCompany = () => {
+    updateCompanyProfile(companyEdits)
+    addToast('Company profile saved', 'success')
+  }
+
+  // ── Groups local state ────────────────────────────────────────────────────
+  const [newGroup, setNewGroup] = useState({ name: '', description: '', color: '#3B82F6' })
+  const [editingGroupId, setEditingGroupId] = useState(null)
+  const [editingGroupData, setEditingGroupData] = useState({})
+
+  const handleAddGroup = (e) => {
+    e.preventDefault()
+    if (!newGroup.name.trim()) { addToast('Group name is required', 'error'); return }
+    addGroup(newGroup)
+    setNewGroup({ name: '', description: '', color: '#3B82F6' })
+    addToast(`Group "${newGroup.name}" added`, 'success')
+  }
+
+  const startEditGroup  = (g) => { setEditingGroupId(g.id); setEditingGroupData({ name: g.name, description: g.description, color: g.color }) }
+  const saveEditGroup   = (id) => { updateGroup(id, editingGroupData); setEditingGroupId(null); addToast('Group updated', 'success') }
+  const cancelEditGroup = ()   => setEditingGroupId(null)
+
+  // ── Nested category state (within Groups tab) ─────────────────────────────
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set(groups.map(g => g.id)))
+  const [addCatGroupId,  setAddCatGroupId]  = useState(null)
+  const [newCatForm,     setNewCatForm]     = useState({ name: '', color: '#3B82F6', description: '' })
+  const [editCatId,      setEditCatId]      = useState(null)
+  const [editCatForm,    setEditCatForm]    = useState({})
+
+  const toggleGroupExpand = (id) => setExpandedGroups(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const handleAddCatToGroup = (e, groupId) => {
+    e.preventDefault()
+    if (!newCatForm.name.trim()) { addToast('Category name is required', 'error'); return }
+    addCategory({ ...newCatForm, groupId })
+    setNewCatForm({ name: '', color: '#3B82F6', description: '' })
+    setAddCatGroupId(null)
+    addToast(`Category "${newCatForm.name}" added`, 'success')
+  }
+  const { tickets, bulkUpdate, bulkDelete, resetToSeed } = useTicketStore()
   const { addToast } = useUiStore()
   const { currentUser } = useUserStore()
   const [selectedTicket, setSelectedTicket] = useState(null)
@@ -29,37 +1210,9 @@ export default function Admin() {
 
   const [newAgent, setNewAgent] = useState({ name: '', group: '', username: '', password: '', role: 'technician' })
   const [slaEdits, setSlaEdits] = useState({ ...slaSettings })
-  const [emailEdits, setEmailEdits] = useState({
-    new:    emailConfig?.trigger_new    ?? true,
-    assign: emailConfig?.trigger_assign ?? true,
-    resolve: emailConfig?.trigger_resolve ?? true,
-    smtp: {
-      host: emailConfig?.smtp_host || '',
-      port: emailConfig?.smtp_port || '587',
-      from: emailConfig?.smtp_from || '',
-      user: emailConfig?.smtp_user || '',
-      pass: '',
-    },
-  })
-
-  // Keep slaEdits in sync when slaSettings loads
-  useEffect(() => { setSlaEdits({ ...slaSettings }) }, [slaSettings])
-
-  // Keep emailEdits in sync when emailConfig loads
-  useEffect(() => {
-    setEmailEdits({
-      new:    emailConfig?.trigger_new    ?? true,
-      assign: emailConfig?.trigger_assign ?? true,
-      resolve: emailConfig?.trigger_resolve ?? true,
-      smtp: {
-        host: emailConfig?.smtp_host || '',
-        port: emailConfig?.smtp_port || '587',
-        from: emailConfig?.smtp_from || '',
-        user: emailConfig?.smtp_user || '',
-        pass: '',
-      },
-    })
-  }, [emailConfig])
+  const [emailEdits, setEmailEdits] = useState({ ...emailConfig })
+  const [triggersEdits, setTriggersEdits] = useState({ ...emailTriggers })
+  const [inboundEdits, setInboundEdits] = useState({ ...inboundEmail })
 
   const handleAddAgent = async (e) => {
     e.preventDefault()
@@ -109,10 +1262,15 @@ export default function Admin() {
     }
   }
 
-  const handleRefresh = async () => {
-    await Promise.all([fetchTickets(), fetchAgents(), fetchSla(), fetchEmailConfig()])
-    addToast('Data refreshed', 'info')
+  const handleTestEmail = () => addToast('Test email sent successfully', 'success')
+
+  const handleSaveInbound = () => {
+    updateInboundEmail(inboundEdits)
+    addToast('Inbound email settings saved', 'success')
   }
+
+  const handlePollNow = (entry) => addEmailLogEntry(entry)
+  const handleClearLog = () => { clearEmailLog(); addToast('Log cleared', 'info') }
 
   const agentWorkload = agents.map(a => ({
     ...a,
@@ -188,6 +1346,554 @@ export default function Admin() {
               ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Company */}
+      {tab === 'company' && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader title="Basic Information" subtitle="Details available in email templates" />
+            <div className="space-y-4">
+              <div>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Building2 size={11} /> Company Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  className={inputCls}
+                  value={companyEdits.name}
+                  onChange={e => setCompanyEdits(p => ({ ...p, name: e.target.value }))}
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Globe size={11} /> Website
+                </label>
+                <input
+                  className={inputCls}
+                  value={companyEdits.website}
+                  onChange={e => setCompanyEdits(p => ({ ...p, website: e.target.value }))}
+                  placeholder="https://example.com"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Phone size={11} /> Phone Number
+                </label>
+                <input
+                  className={inputCls}
+                  value={companyEdits.phone}
+                  onChange={e => setCompanyEdits(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <MapPin size={11} /> Address
+                </label>
+                <textarea
+                  rows={3}
+                  className={inputCls + ' resize-none'}
+                  value={companyEdits.address}
+                  onChange={e => setCompanyEdits(p => ({ ...p, address: e.target.value }))}
+                  placeholder="123 Main Street, City, State, ZIP"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button variant="primary" size="sm" onClick={handleSaveCompany}>
+                  <Save size={13} /> Save Changes
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setCompanyEdits({ ...companyProfile })}>
+                  Reset Changes
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Logo */}
+          <Card>
+            <CardHeader title="Company Logo" subtitle="Displayed in the sidebar and emails" />
+            <div className="space-y-4">
+              {/* Logo preview */}
+              <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-glass bg-black/3 dark:bg-white/3 h-40 relative overflow-hidden">
+                {companyEdits.logo ? (
+                  <>
+                    <img
+                      src={companyEdits.logo}
+                      alt="Company logo"
+                      className="max-h-36 max-w-full object-contain p-2"
+                    />
+                    <button
+                      onClick={() => setCompanyEdits(p => ({ ...p, logo: null }))}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center hover:bg-rose-600 transition-all"
+                    >
+                      <X size={12} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-2 t-muted">
+                    <ImagePlus size={32} className="opacity-40" />
+                    <span className="text-xs opacity-60">No logo uploaded</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload button */}
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+              <Button variant="secondary" size="sm" className="w-full" onClick={() => logoInputRef.current?.click()}>
+                <ImagePlus size={13} /> {companyEdits.logo ? 'Change Logo' : 'Upload Logo'}
+              </Button>
+              <p className="text-[10px] t-sub text-center">PNG, JPG, SVG or WebP · Max 2 MB</p>
+
+              <div className="flex gap-2 pt-1">
+                <Button variant="primary" size="sm" onClick={handleSaveCompany} className="flex-1">
+                  <Save size={13} /> Save Changes
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setCompanyEdits(p => ({ ...p, logo: companyProfile.logo }))}>
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Tickets */}
+      {tab === 'tickets' && (
+        <div className="space-y-4">
+
+          {/* ── Ticket Number Series ───────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Ticket Number Series" subtitle="Configure how ticket IDs are generated" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                    Ticket Number Prefix
+                  </label>
+                  <input
+                    className={inputCls}
+                    value={tktEdits.numberPrefix}
+                    maxLength={10}
+                    onChange={e => setTktEdits(p => ({ ...p, numberPrefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                    placeholder="TKT"
+                  />
+                  <p className="text-[10px] t-sub mt-1">Letters and numbers only (e.g. TKT, INC, REQ)</p>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                    Number of Digits
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={tktEdits.numberDigits}
+                    onChange={e => setTktEdits(p => ({ ...p, numberDigits: Number(e.target.value) }))}
+                  >
+                    {[3,4,5,6].map(d => (
+                      <option key={d} value={d}>{d} digits — {'0'.repeat(d-1)}1</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                    Default Status
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={tktEdits.defaultStatus}
+                    onChange={e => setTktEdits(p => ({ ...p, defaultStatus: e.target.value }))}
+                  >
+                    <option value="open">Open</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="on-hold">On Hold</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                    Default Priority
+                  </label>
+                  <select
+                    className={inputCls}
+                    value={tktEdits.defaultPriority}
+                    onChange={e => setTktEdits(p => ({ ...p, defaultPriority: e.target.value }))}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <Button variant="primary" size="sm" onClick={handleSaveTicketSettings}>
+                  <Save size={13} /> Save Settings
+                </Button>
+              </div>
+
+              {/* Preview */}
+              <div className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-glass bg-black/3 dark:bg-white/3">
+                <p className="text-[10px] font-bold t-sub uppercase tracking-widest">Format Preview</p>
+                <div className="text-3xl font-mono font-bold text-indigo-600 dark:text-indigo-400 tracking-wide">
+                  {formatPreview}
+                </div>
+                <p className="text-xs t-muted text-center">
+                  New tickets will be numbered like this.<br />
+                  Existing tickets are not renamed.
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          {/* ── Email Templates ────────────────────────────────────────── */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <FileText size={15} className="text-indigo-500" />
+              <h2 className="text-sm font-bold t-main">Email Template Sets</h2>
+              <span className="text-[10px] t-sub ml-1">Sent automatically to the requester</span>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {[
+                { key: 'ticketOpen',   label: 'Ticket Opened', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                { key: 'ticketClosed', label: 'Ticket Closed',  color: 'text-slate-600 dark:text-slate-400',    bg: 'bg-slate-500/10 border-slate-500/20' },
+              ].map(({ key, label, color, bg }) => (
+                <Card key={key}>
+                  {/* Header with enable toggle */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${bg} ${color}`}>{label}</span>
+                    </div>
+                    <button
+                      onClick={() => setTplEdits(p => ({ ...p, [key]: { ...p[key], enabled: !p[key].enabled } }))}
+                      className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${tplEdits[key].enabled ? 'text-emerald-600 dark:text-emerald-400' : 't-muted'}`}
+                    >
+                      {tplEdits[key].enabled
+                        ? <ToggleRight size={20} className="text-emerald-500" />
+                        : <ToggleLeft  size={20} className="t-muted" />}
+                      {tplEdits[key].enabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* Subject */}
+                    <div>
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                        Subject Line
+                      </label>
+                      <input
+                        className={inputCls}
+                        value={tplEdits[key].subject}
+                        onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], subject: e.target.value } }))}
+                        placeholder="Enter email subject..."
+                      />
+                    </div>
+
+                    {/* Body */}
+                    <div>
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                        Email Body
+                      </label>
+                      <textarea
+                        rows={10}
+                        className={inputCls + ' resize-y font-mono text-[11px] leading-relaxed'}
+                        value={tplEdits[key].body}
+                        onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], body: e.target.value } }))}
+                      />
+                    </div>
+
+                    {/* Variable chips */}
+                    <div>
+                      <p className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Insert Variable</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {TEMPLATE_VARS.map(v => (
+                          <button
+                            key={v.tag}
+                            title={v.desc}
+                            onClick={() => insertVar(key, 'body', v.tag)}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all"
+                          >
+                            {v.tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button variant="primary" size="sm" onClick={() => handleSaveTemplate(key)}>
+                      <Save size={13} /> Save Template
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Groups & Categories */}
+      {tab === 'groups' && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+          {/* ── Left: Create New Group ───────────────────────────── */}
+          <div className="xl:col-span-1">
+            <Card>
+              <CardHeader title="Create New Group" subtitle="Groups contain categories" />
+              <form onSubmit={handleAddGroup} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Group Name *</label>
+                  <input className={inputCls} value={newGroup.name}
+                    onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))}
+                    placeholder="e.g. Microsoft 365" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Description</label>
+                  <input className={inputCls} value={newGroup.description}
+                    onChange={e => setNewGroup(g => ({ ...g, description: e.target.value }))}
+                    placeholder="What does this group cover?" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Color</label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {GROUP_COLORS.map(c => (
+                      <button key={c} type="button" onClick={() => setNewGroup(g => ({ ...g, color: c }))}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${newGroup.color === c ? 'border-white scale-110 shadow-md' : 'border-transparent'}`}
+                        style={{ background: c }} />
+                    ))}
+                  </div>
+                </div>
+                <Button type="submit" variant="primary" size="sm" className="w-full">
+                  <Plus size={13} /> Add Group
+                </Button>
+              </form>
+            </Card>
+          </div>
+
+          {/* ── Right: Groups with nested Categories ─────────────── */}
+          <div className="xl:col-span-2 space-y-3">
+            {groups.map(group => {
+              const groupCats    = categories.filter(c => c.groupId === group.id).sort((a,b) => a.sortOrder - b.sortOrder)
+              const isExpanded   = expandedGroups.has(group.id)
+              const isEditingGrp = editingGroupId === group.id
+              const isAddingCat  = addCatGroupId === group.id
+
+              return (
+                <div key={group.id} className="rounded-2xl border border-glass overflow-hidden glass-card">
+
+                  {/* Group Header */}
+                  <div className="flex items-center gap-3 px-4 py-3"
+                    style={{ background: group.color + '12', borderBottom: isExpanded ? `1px solid ${group.color}25` : 'none' }}>
+
+                    {isEditingGrp ? (
+                      /* Inline edit group */
+                      <div className="flex-1 space-y-2">
+                        <div className="flex gap-2 items-center">
+                          <input className={inputCls + ' flex-1 text-sm'} value={editingGroupData.name}
+                            onChange={e => setEditingGroupData(d => ({ ...d, name: e.target.value }))} />
+                          <div className="flex gap-1 flex-shrink-0">
+                            {GROUP_COLORS.map(c => (
+                              <button key={c} type="button" onClick={() => setEditingGroupData(d => ({ ...d, color: c }))}
+                                className={`w-5 h-5 rounded-full border-2 ${editingGroupData.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                                style={{ background: c }} />
+                            ))}
+                          </div>
+                        </div>
+                        <input className={inputCls + ' text-xs'} value={editingGroupData.description}
+                          onChange={e => setEditingGroupData(d => ({ ...d, description: e.target.value }))}
+                          placeholder="Description" />
+                        <div className="flex gap-2">
+                          <Button variant="primary" size="sm" onClick={() => saveEditGroup(group.id)}><Save size={11}/> Save</Button>
+                          <Button variant="ghost" size="sm" onClick={cancelEditGroup}><X size={11}/> Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Color icon */}
+                        <button onClick={() => toggleGroupExpand(group.id)}
+                          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm transition-transform hover:scale-105"
+                          style={{ background: group.color + '30', border: `1.5px solid ${group.color}50` }}>
+                          <div className="w-3.5 h-3.5 rounded-full" style={{ background: group.color }} />
+                        </button>
+
+                        {/* Group info */}
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleGroupExpand(group.id)}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold t-main">{group.name}</span>
+                            {group.isBuiltin && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 t-sub">Built-in</span>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5">
+                            <span className="text-[10px] t-muted">{groupCats.length} categor{groupCats.length !== 1 ? 'ies' : 'y'}</span>
+                            {group.description && <span className="text-[10px] t-sub truncate">{group.description}</span>}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button onClick={() => { setAddCatGroupId(isAddingCat ? null : group.id); if (!isExpanded) toggleGroupExpand(group.id) }}
+                            className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-all"
+                            style={{ color: group.color, borderColor: group.color+'40', background: group.color+'15' }}>
+                            <Plus size={11}/> Add Category
+                          </button>
+                          <button onClick={() => startEditGroup(group)}
+                            className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 t-sub hover:t-main transition-all">
+                            <Pencil size={12}/>
+                          </button>
+                          {!group.isBuiltin && (
+                            <button onClick={() => { deleteGroup(group.id); addToast('Group deleted', 'info') }}
+                              className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 transition-all">
+                              <Trash2 size={12}/>
+                            </button>
+                          )}
+                          <button onClick={() => toggleGroupExpand(group.id)} className="p-1.5 t-sub hover:t-main transition-all">
+                            <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <div className="px-4 py-3 space-y-2">
+
+                      {/* Add Category inline form */}
+                      {isAddingCat && (
+                        <form onSubmit={e => handleAddCatToGroup(e, group.id)}
+                          className="flex flex-wrap items-end gap-2 p-3 rounded-xl mb-3"
+                          style={{ background: group.color+'08', border: `1px dashed ${group.color}40` }}>
+                          <div className="flex-1 min-w-32">
+                            <div className="text-[10px] t-sub mb-1">Category Name *</div>
+                            <input className={inputCls + ' text-sm'} value={newCatForm.name}
+                              onChange={e => setNewCatForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="e.g. Exchange Email" autoFocus />
+                          </div>
+                          <div className="flex-1 min-w-32">
+                            <div className="text-[10px] t-sub mb-1">Description</div>
+                            <input className={inputCls + ' text-sm'} value={newCatForm.description}
+                              onChange={e => setNewCatForm(f => ({ ...f, description: e.target.value }))}
+                              placeholder="Optional" />
+                          </div>
+                          <div>
+                            <div className="text-[10px] t-sub mb-1">Color</div>
+                            <div className="flex gap-1">
+                              {GROUP_COLORS.map(c => (
+                                <button key={c} type="button" onClick={() => setNewCatForm(f => ({ ...f, color: c }))}
+                                  className={`w-5 h-5 rounded-full border-2 transition-all ${newCatForm.color === c ? 'border-white scale-110' : 'border-transparent'}`}
+                                  style={{ background: c }} />
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <Button type="submit" variant="primary" size="sm"><Plus size={11}/> Add</Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setAddCatGroupId(null)}><X size={11}/></Button>
+                          </div>
+                        </form>
+                      )}
+
+                      {/* Categories list */}
+                      {groupCats.length === 0 && !isAddingCat ? (
+                        <div className="text-xs t-muted text-center py-4 opacity-60">
+                          No categories yet — click <strong>Add Category</strong> to create one
+                        </div>
+                      ) : (
+                        groupCats.map(cat => (
+                          <div key={cat.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-glass hover:bg-black/5 dark:hover:bg-white/3 transition-all group">
+                            {/* Color dot */}
+                            <div className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
+                              style={{ background: (editCatId===cat.id ? editCatForm.color : cat.color)+'22', border: `1.5px solid ${(editCatId===cat.id ? editCatForm.color : cat.color)}50` }}>
+                              <span className="w-2 h-2 rounded-full" style={{ background: editCatId===cat.id ? editCatForm.color : cat.color }} />
+                            </div>
+
+                            {editCatId === cat.id ? (
+                              /* Inline edit category */
+                              <div className="flex-1 flex flex-wrap items-center gap-2">
+                                <input className={inputCls + ' flex-1 min-w-28 text-xs'} value={editCatForm.name}
+                                  onChange={e => setEditCatForm(f => ({ ...f, name: e.target.value }))} autoFocus />
+                                <input className={inputCls + ' flex-1 min-w-28 text-xs'} value={editCatForm.description||''}
+                                  onChange={e => setEditCatForm(f => ({ ...f, description: e.target.value }))}
+                                  placeholder="Description" />
+                                <div className="flex gap-1">
+                                  {GROUP_COLORS.map(c => (
+                                    <button key={c} type="button" onClick={() => setEditCatForm(f => ({ ...f, color: c }))}
+                                      className={`w-4 h-4 rounded-full border-2 ${editCatForm.color===c ? 'border-white scale-110' : 'border-transparent'}`}
+                                      style={{ background: c }} />
+                                  ))}
+                                </div>
+                                <Button variant="primary" size="sm" onClick={() => { updateCategory(cat.id, editCatForm); setEditCatId(null); addToast('Category updated','success') }}><Save size={11}/></Button>
+                                <Button variant="ghost" size="sm" onClick={() => setEditCatId(null)}><X size={11}/></Button>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium t-main">{cat.name}</span>
+                                    {cat.isBuiltin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 t-sub font-bold uppercase">Built-in</span>}
+                                  </div>
+                                  {cat.description && <div className="text-[10px] t-muted mt-0.5">{cat.description}</div>}
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => { setEditCatId(cat.id); setEditCatForm({ name: cat.name, color: cat.color, description: cat.description||'' }) }}
+                                    className="p-1.5 rounded-lg hover:bg-indigo-500/15 text-indigo-400 hover:text-indigo-500 transition-all">
+                                    <Pencil size={12}/>
+                                  </button>
+                                  {!cat.isBuiltin && (
+                                    <button onClick={() => { deleteCategory(cat.id); addToast('Category deleted','info') }}
+                                      className="p-1.5 rounded-lg hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
+                                      <Trash2 size={12}/>
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Ungrouped categories */}
+            {(() => {
+              const ungrouped = categories.filter(c => !c.groupId)
+              if (!ungrouped.length) return null
+              return (
+                <div className="rounded-2xl border border-dashed border-glass overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-black/3 dark:bg-white/3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-black/10 dark:bg-white/10">
+                      <Tag size={14} className="t-sub" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-sm font-bold t-muted">Ungrouped</span>
+                      <div className="text-[10px] t-sub mt-0.5">{ungrouped.length} categor{ungrouped.length !== 1 ? 'ies' : 'y'} not assigned to a group</div>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    {ungrouped.map(cat => (
+                      <div key={cat.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-glass hover:bg-black/5 dark:hover:bg-white/3 transition-all group">
+                        <div className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
+                          style={{ background: cat.color+'22', border: `1.5px solid ${cat.color}50` }}>
+                          <span className="w-2 h-2 rounded-full" style={{ background: cat.color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium t-main">{cat.name}</span>
+                            {cat.isBuiltin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 t-sub font-bold uppercase">Built-in</span>}
+                          </div>
+                          {cat.description && <div className="text-[10px] t-muted mt-0.5">{cat.description}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 
@@ -284,52 +1990,28 @@ export default function Admin() {
       )}
 
       {/* Email */}
-      {tab === 'email' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader title="Email Triggers" subtitle="Automated notifications" />
-            <div className="space-y-3 mb-4">
-              {[
-                { key: 'new',     label: 'New ticket submitted', desc: 'Notify team on new ticket creation' },
-                { key: 'assign',  label: 'Ticket assigned',      desc: 'Notify agent when ticket assigned' },
-                { key: 'resolve', label: 'Ticket resolved',      desc: 'Notify submitter on resolution' },
-              ].map(({ key, label, desc }) => (
-                <label key={key} className="flex items-start gap-3 p-3 rounded-lg bg-black/5 dark:bg-white/3 border border-glass cursor-pointer hover:bg-black/10 dark:hover:bg-white/5 transition-all">
-                  <input type="checkbox" checked={emailEdits[key]} onChange={e => setEmailEdits(t => ({ ...t, [key]: e.target.checked }))}
-                    className="mt-0.5 accent-indigo-500" />
-                  <div>
-                    <div className="text-sm t-main font-medium">{label}</div>
-                    <div className="text-xs t-muted mt-0.5">{desc}</div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </Card>
+      {tab === 'email' && <EmailTab
+        emailEdits={emailEdits} setEmailEdits={setEmailEdits}
+        triggersEdits={triggersEdits} setTriggersEdits={setTriggersEdits}
+        inboundEdits={inboundEdits} setInboundEdits={setInboundEdits}
+        agents={agents} emailLog={emailLog} categories={categories}
+        inputCls={inputCls}
+        onSave={handleSaveEmail} onTest={handleTestEmail}
+        onSaveInbound={handleSaveInbound}
+        onPollNow={handlePollNow}
+        onClearLog={handleClearLog}
+        addToast={addToast}
+      />}
 
-          <Card>
-            <CardHeader title="SMTP Configuration" />
-            <div className="space-y-3 mb-4">
-              {[
-                { key: 'host', label: 'SMTP Host', placeholder: 'smtp.office365.com' },
-                { key: 'port', label: 'Port', placeholder: '587' },
-                { key: 'from', label: 'From Address', placeholder: 'helpdesk@company.com' },
-                { key: 'user', label: 'Username', placeholder: 'username' },
-                { key: 'pass', label: 'Password', placeholder: '••••••••', type: 'password' },
-              ].map(({ key, label, placeholder, type = 'text' }) => (
-                <div key={key}>
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">{label}</label>
-                  <input type={type} className={inputCls}
-                    value={emailEdits.smtp?.[key] || ''}
-                    placeholder={placeholder}
-                    onChange={e => setEmailEdits(c => ({ ...c, smtp: { ...c.smtp, [key]: e.target.value } }))} />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="primary" size="sm" onClick={handleSaveEmail}><Save size={13} /> Save</Button>
-            </div>
-          </Card>
-        </div>
+      {/* Categories */}
+      {tab === 'categories' && (
+        <CategoriesTab
+          categories={categories}
+          onAdd={(cat) => { addCategory(cat); addToast(`Category "${cat.name}" added`, 'success') }}
+          onUpdate={(id, changes) => { updateCategory(id, changes); addToast('Category updated', 'success') }}
+          onDelete={(id) => { deleteCategory(id); addToast('Category deleted', 'info') }}
+          inputCls={inputCls}
+        />
       )}
 
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}

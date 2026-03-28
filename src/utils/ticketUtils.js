@@ -1,5 +1,11 @@
-export const STATUSES   = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
-export const PRIORITIES = ['critical', 'high', 'medium', 'low']
+export const STATUSES      = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
+export const PRIORITIES    = ['critical', 'high', 'medium', 'low']
+export const TICKET_TYPES  = ['request', 'incident']
+
+export const TICKET_TYPE_META = {
+  request:  { label: 'Request',  color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-500',   icon: '📋' },
+  incident: { label: 'Incident', color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   dot: 'bg-rose-500',   icon: '⚠️' },
+}
 export const CATEGORIES = {
   hardware: 'Hardware',
   software: 'Software',
@@ -10,10 +16,13 @@ export const CATEGORIES = {
   other:    'Other',
 }
 
-export function genId(tickets) {
-  const nums = tickets.map(t => parseInt(t.id.replace('TKT-', ''), 10)).filter(Boolean)
+export function genId(tickets, prefix = 'TKT', digits = 4) {
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-`)
+  const nums = tickets
+    .map(t => parseInt(t.id.replace(re, ''), 10))
+    .filter(n => !isNaN(n) && n > 0)
   const next = nums.length ? Math.max(...nums) + 1 : 1
-  return 'TKT-' + String(next).padStart(4, '0')
+  return `${prefix}-${String(next).padStart(Number(digits), '0')}`
 }
 
 export function categoryLabel(cat) {

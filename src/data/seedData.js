@@ -24,13 +24,129 @@ export const DEFAULT_EMAIL_CONFIG = {
   type: 'smtp',
   smtp: { host: '', port: '587', security: 'tls', from: '', user: '', pass: '' },
   m365: { tenantId: '', clientId: '', clientSecret: '', from: '' },
+  oauth: {
+    provider: 'google',          // 'google' | 'microsoft' | 'custom'
+    clientId: '',
+    clientSecret: '',
+    redirectUri: 'http://localhost:5173/admin/oauth/callback',
+    scopes: 'https://mail.google.com/',
+    authEndpoint: '',            // auto-filled per provider, or custom
+    tokenEndpoint: '',           // auto-filled per provider, or custom
+    from: '',
+    // Runtime state (not persisted to backend in real app — demo only)
+    connected: false,
+    connectedEmail: '',
+    tokenExpiry: null,
+  },
 }
 
 export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: false }
 
+// ── Dynamic categories ────────────────────────────────────────────────────────
+export const DEFAULT_CATEGORIES = [
+  { id: 'hardware',  name: 'Hardware',      color: '#8B5CF6', isBuiltin: true,  sortOrder: 1,  description: 'Physical equipment issues' },
+  { id: 'software',  name: 'Software',      color: '#3B82F6', isBuiltin: true,  sortOrder: 2,  description: 'Application and OS issues' },
+  { id: 'network',   name: 'Network',       color: '#10B981', isBuiltin: true,  sortOrder: 3,  description: 'Connectivity and network issues' },
+  { id: 'access',    name: 'Access',        color: '#F59E0B', isBuiltin: true,  sortOrder: 4,  description: 'Permissions and login issues' },
+  { id: 'email',     name: 'Email',         color: '#EF4444', isBuiltin: true,  sortOrder: 5,  description: 'Email and messaging issues' },
+  { id: 'security',  name: 'Security',      color: '#EC4899', isBuiltin: true,  sortOrder: 6,  description: 'Security incidents and threats' },
+  { id: 'other',     name: 'Other',         color: '#6B7280', isBuiltin: true,  sortOrder: 7,  description: 'Uncategorised requests' },
+]
+
+export const DEFAULT_INBOUND_EMAIL = {
+  enabled: false,
+  authType: 'basic',           // 'basic' | 'oauth' | 'graph'
+  // IMAP
+  imapHost: '',
+  imapPort: '993',
+  imapSsl: true,
+  imapUser: '',
+  imapPass: '',
+  imapFolder: 'INBOX',
+  // Graph (M365)
+  graphMailbox: '',
+  // Auto-ticket defaults
+  defaultCategory: 'other',
+  defaultPriority: 'medium',
+  defaultAssignee: 'unassigned',
+  // Polling
+  pollIntervalMinutes: 5,
+  markSeen: true,
+  moveToFolder: '',
+  // Stats (updated at runtime)
+  lastPolledAt: null,
+  processedCount: 0,
+}
+
+// Demo email log entries (shown in the UI log table)
+export const DEFAULT_EMAIL_LOG = []
+
+// ── Ticket Groups ─────────────────────────────────────────────────────────────
+export const DEFAULT_GROUPS = [
+  { id: 'security',    name: 'Security',     description: 'Security incidents and threats',    color: '#EC4899', isBuiltin: true },
+  { id: 'network',     name: 'Network',      description: 'Network and connectivity issues',    color: '#10B981', isBuiltin: true },
+  { id: 'l1-support',  name: 'L1 Support',   description: 'First-line general support',         color: '#3B82F6', isBuiltin: true },
+  { id: 'application', name: 'Application',  description: 'Software and application support',   color: '#8B5CF6', isBuiltin: true },
+  { id: 'it-admin',    name: 'IT Admin',      description: 'IT administration and management',  color: '#F59E0B', isBuiltin: true },
+  { id: 'hardware',    name: 'Hardware',      description: 'Physical equipment and devices',    color: '#EF4444', isBuiltin: true },
+]
+
+// ── Ticket Settings ───────────────────────────────────────────────────────────
+export const DEFAULT_TICKET_SETTINGS = {
+  numberPrefix:    'TKT',    // prefix before the dash  e.g. TKT → TKT-0001
+  numberDigits:    4,        // zero-pad length          4 → 0001
+  defaultStatus:   'open',
+  defaultPriority: 'low',
+}
+
+// ── Email Templates ───────────────────────────────────────────────────────────
+export const DEFAULT_EMAIL_TEMPLATES = {
+  ticketOpen: {
+    enabled: true,
+    subject: 'Ticket [{ticket_id}] Opened: {ticket_subject}',
+    body:
+`Hi {contact_name},
+
+Thank you for reaching out. Your support ticket has been successfully created.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Priority   : {ticket_priority}
+Status     : {ticket_status}
+────────────────────────────
+
+Our support team will review your request and respond as soon as possible.
+
+Regards,
+{company_name} IT Support`,
+  },
+  ticketClosed: {
+    enabled: true,
+    subject: 'Ticket [{ticket_id}] Closed: {ticket_subject}',
+    body:
+`Hi {contact_name},
+
+We are pleased to let you know that your support ticket has been resolved and closed.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Closed By  : {agent_name}
+Closed On  : {closed_date}
+────────────────────────────
+
+If the issue recurs or you need further help, please open a new ticket.
+
+Regards,
+{company_name} IT Support`,
+  },
+}
+
 export const SEED_TICKETS = [
   {
     id: 'TKT-0001',
+    type: 'incident',
     subject: "Laptop won't boot after Windows update",
     category: 'software',
     priority: 'high',
@@ -53,6 +169,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0002',
+    type: 'incident',
     subject: 'VPN disconnects every 30 minutes',
     category: 'network',
     priority: 'medium',
@@ -76,6 +193,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0003',
+    type: 'incident',
     subject: 'Printer on Floor 3 offline',
     category: 'hardware',
     priority: 'low',
@@ -100,6 +218,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0004',
+    type: 'incident',
     subject: 'Ransomware detected on DESKTOP-17',
     category: 'security',
     priority: 'critical',
@@ -122,6 +241,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0005',
+    type: 'incident',
     subject: 'Outlook cannot connect to Exchange server',
     category: 'email',
     priority: 'high',
@@ -142,6 +262,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0006',
+    type: 'request',
     subject: 'Request access to SharePoint Finance site',
     category: 'access',
     priority: 'low',
@@ -165,6 +286,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0007',
+    type: 'incident',
     subject: 'Monitor flickering on workstation',
     category: 'hardware',
     priority: 'medium',
@@ -187,6 +309,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0008',
+    type: 'request',
     subject: 'Software installation request: Adobe Premiere Pro',
     category: 'software',
     priority: 'low',
@@ -207,6 +330,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0009',
+    type: 'incident',
     subject: 'Wi-Fi dead zone in Conference Room B',
     category: 'network',
     priority: 'medium',
@@ -230,6 +354,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0010',
+    type: 'request',
     subject: 'Password reset — account locked after failed attempts',
     category: 'access',
     priority: 'high',
@@ -253,6 +378,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0011',
+    type: 'incident',
     subject: 'Microsoft Teams crashes on startup',
     category: 'software',
     priority: 'medium',
@@ -274,6 +400,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0012',
+    type: 'incident',
     subject: 'Server room cooling alarm triggered',
     category: 'hardware',
     priority: 'critical',
@@ -297,6 +424,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0013',
+    type: 'incident',
     subject: 'USB ports not working on docking station',
     category: 'hardware',
     priority: 'low',
@@ -317,6 +445,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0014',
+    type: 'incident',
     subject: 'Phishing email received — potential breach',
     category: 'security',
     priority: 'critical',
@@ -338,6 +467,7 @@ export const SEED_TICKETS = [
   },
   {
     id: 'TKT-0015',
+    type: 'incident',
     subject: 'Slow internet speed affecting entire office',
     category: 'network',
     priority: 'high',

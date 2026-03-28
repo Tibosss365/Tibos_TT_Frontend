@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useAdminStore } from '../../stores/adminStore'
 
 const NAV = [
   { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
@@ -20,6 +21,7 @@ const ACTIONS = [
 export function Sidebar() {
   const { currentUser, logout } = useUserStore()
   const { sidebarOpen, toggleSidebar } = useUiStore()
+  const { companyProfile } = useAdminStore()
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -42,13 +44,21 @@ export function Sidebar() {
         className="flex items-center gap-3 px-4 h-16 flex-shrink-0"
         style={{ borderBottom: '1px solid var(--c-border)' }}
       >
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-glow-indigo">
-          <Zap size={16} className="text-white" />
-        </div>
+        {companyProfile?.logo ? (
+          <img
+            src={companyProfile.logo}
+            alt="logo"
+            className="w-8 h-8 rounded-xl object-contain flex-shrink-0 bg-white/10 p-0.5"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-glow-indigo">
+            <Zap size={16} className="text-white" />
+          </div>
+        )}
         {sidebarOpen && (
           <div className="overflow-hidden">
-            <div className="text-sm font-bold leading-none t-main">
-              HelpdeskPro
+            <div className="text-sm font-bold leading-none t-main truncate">
+              {companyProfile?.name || 'HelpdeskPro'}
             </div>
             <div className="text-[10px] mt-0.5 t-muted opacity-80">
               IT Support

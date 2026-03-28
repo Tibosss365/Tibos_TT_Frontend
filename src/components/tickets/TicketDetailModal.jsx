@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { Trash2, Save, MessageSquare } from 'lucide-react'
+import {
+  Trash2, Save, MessageSquare, Pencil, X, CheckSquare, Square,
+  Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
+  Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
+  CalendarDays, Briefcase,
+} from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { PriorityBadge, StatusBadge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -7,7 +12,7 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
-import { STATUSES, PRIORITIES, CATEGORIES, categoryLabel, fmtDateTime, timeAgo } from '../../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo } from '../../utils/ticketUtils'
 
 const TIMELINE_STYLES = {
   created:  { dot: 'bg-blue-500',    label: 'Opened' },
@@ -17,13 +22,146 @@ const TIMELINE_STYLES = {
   resolved: { dot: 'bg-emerald-500', label: 'Resolved' },
 }
 
+const MODAL_TABS = [
+  { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
+  { id: 'details',       icon: FileText,      label: 'Details' },
+  { id: 'tasks',         icon: ClipboardList, label: 'Tasks' },
+  { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
+  { id: 'reminders',    icon: Bell,          label: 'Reminders' },
+  { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
+  { id: 'worklog',      icon: Timer,         label: 'Work Log' },
+]
+
+const inputCls  = 'glass-input w-full text-sm py-1.5'
+const labelCls  = 'block text-[10px] font-bold t-sub uppercase tracking-wider mb-1'
+
+// ── Requester Details Sidebar ─────────────────────────────────────────────────
+function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, onEdit, onSave, onCancel, onDelete }) {
+  const initials = (ticket.submitter || ticket.contactName || '?')
+    .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+
+  return (
+    <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col">
+      {/* Requester */}
+      <div className="p-4 border-b border-glass">
+        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">Requester Details</div>
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-md">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <input className={inputCls + ' mb-1 text-xs'} value={edits.submitter} onChange={e => set('submitter', e.target.value)} placeholder="Full name" />
+            ) : (
+              <div className="text-sm font-semibold t-main truncate">{edits.submitter || '—'}</div>
+            )}
+            {isEditing ? (
+              <input className={inputCls + ' text-xs'} type="email" value={edits.email} onChange={e => set('email', e.target.value)} placeholder="email@example.com" />
+            ) : (
+              <div className="text-xs t-muted truncate mt-0.5">{edits.email || '—'}</div>
+            )}
+          </div>
+        </div>
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center gap-2 text-xs t-muted">
+            <Briefcase size={11} className="flex-shrink-0" />
+            {isEditing ? (
+              <input className={inputCls + ' text-xs py-1'} value={edits.company} onChange={e => set('company', e.target.value)} placeholder="Company" />
+            ) : (
+              <span className="truncate">{edits.company || '—'}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Ticket Meta */}
+      <div className="p-4 border-b border-glass space-y-3 flex-1">
+        <div>
+          <div className={labelCls}>Ticket ID</div>
+          <div className="text-xs font-mono font-semibold t-main">{ticket.id}</div>
+        </div>
+        <div>
+          <div className={labelCls}>Created</div>
+          <div className="text-xs t-main">{fmtDateTime(ticket.created)}</div>
+        </div>
+        <div>
+          <div className={labelCls}>Last Updated</div>
+          <div className="text-xs t-main">{fmtDateTime(ticket.updated)}</div>
+        </div>
+        <div>
+          <div className={labelCls}>Category</div>
+          {isEditing ? (
+            <select className={inputCls} value={edits.category} onChange={e => set('category', e.target.value)}>
+              {[...categories].sort((a,b)=>a.sortOrder-b.sortOrder).map(c =>
+                <option key={c.id} value={c.id}>{c.name}</option>
+              )}
+            </select>
+          ) : (
+            <div className="text-xs t-main py-1">{categories.find(c=>c.id===edits.category)?.name || edits.category || '—'}</div>
+          )}
+        </div>
+        <div>
+          <div className={labelCls}>Group</div>
+          {isEditing ? (
+            <select className={inputCls} value={edits.group||''} onChange={e => set('group', e.target.value)}>
+              <option value="">— Unassigned —</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          ) : (
+            (() => {
+              const g = groups.find(x => x.id === edits.group)
+              return g ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                  style={{ background: g.color+'20', color: g.color, border: `1px solid ${g.color}40` }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: g.color }} />{g.name}
+                </span>
+              ) : <div className="text-xs t-main py-1 opacity-40">—</div>
+            })()
+          )}
+        </div>
+        <div>
+          <div className={labelCls}>Asset</div>
+          {isEditing ? (
+            <input className={inputCls} value={edits.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. WS-042" />
+          ) : (
+            <div className="text-xs t-main py-1">{edits.asset || '—'}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="p-4 space-y-2">
+        {isEditing ? (
+          <>
+            <Button variant="primary" size="sm" className="w-full" onClick={onSave}><Save size={13} /> Save Changes</Button>
+            <Button variant="ghost" size="sm" className="w-full" onClick={onCancel}><X size={13} /> Cancel</Button>
+          </>
+        ) : (
+          <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> Edit Ticket</Button>
+        )}
+        <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> Delete Ticket</Button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Modal ────────────────────────────────────────────────────────────────
 export function TicketDetailModal({ ticket, onClose }) {
-  const { updateTicket, addTimelineEvent, deleteTicket } = useTicketStore()
-  const { agents, getAgentName } = useAdminStore()
+  const {
+    updateTicket, addTimelineEvent, deleteTicket,
+    addTask, toggleTask, deleteTask,
+    addWorkLog, deleteWorkLog,
+    addReminder, toggleReminder, deleteReminder,
+    addApproval, updateApprovalStatus,
+  } = useTicketStore()
+  const { agents, getAgentName, getCategoryName, categories, groups } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
 
+  const [activeTab, setActiveTab] = useState('conversations')
+  const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
+<<<<<<< HEAD
     status:   ticket.status,
     priority: ticket.priority,
     assignee: ticket.assignee || '',
@@ -62,10 +200,46 @@ export function TicketDetailModal({ ticket, onClose }) {
     } catch (e) {
       addToast(e.message || 'Failed to add comment', 'error')
     }
+=======
+    subject:     ticket.subject     || '',
+    status:      ticket.status      || 'open',
+    priority:    ticket.priority    || 'medium',
+    type:        ticket.type        || 'request',
+    assignee:    ticket.assignee    || 'unassigned',
+    group:       ticket.group       || '',
+    description: ticket.description || '',
+    submitter:   ticket.submitter   || '',
+    company:     ticket.company     || '',
+    email:       ticket.email       || '',
+    category:    ticket.category    || '',
+    asset:       ticket.asset       || '',
+    resolution:  ticket.resolution  || '',
+  })
+
+  const set = (k, v) => setEdits(x => ({ ...x, [k]: v }))
+
+  // ── Live ticket data ────────────────────────────────────────────────────────
+  const liveTicket = useTicketStore(s => s.tickets.find(t => t.id === ticket.id)) || ticket
+
+  // ── Edit / Save / Cancel ───────────────────────────────────────────────────
+  const handleEdit   = () => setIsEditing(true)
+  const handleCancel = () => { setEdits({ subject: ticket.subject||'', status: ticket.status||'open', priority: ticket.priority||'medium', type: ticket.type||'request', assignee: ticket.assignee||'unassigned', group: ticket.group||'', description: ticket.description||'', submitter: ticket.submitter||'', company: ticket.company||'', email: ticket.email||'', category: ticket.category||'', asset: ticket.asset||'', resolution: ticket.resolution||'' }); setIsEditing(false) }
+
+  const handleSave = () => {
+    const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
+    const changes = {}
+    fields.forEach(k => { if ((edits[k]||'') !== (ticket[k]||'')) changes[k] = edits[k] })
+    if (changes.status)   addTimelineEvent(ticket.id, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
+    if (changes.assignee) addTimelineEvent(ticket.id, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })
+    if (Object.keys(changes).length > 0) { updateTicket(ticket.id, changes); addToast('Ticket updated', 'success') }
+    else addToast('No changes to save', 'info')
+    setIsEditing(false)
+>>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
   }
 
   const handleDelete = async () => {
     if (window.confirm('Delete this ticket? This cannot be undone.')) {
+<<<<<<< HEAD
       try {
         await deleteTicket(ticket._uuid)
         addToast('Ticket deleted', 'error')
@@ -73,27 +247,65 @@ export function TicketDetailModal({ ticket, onClose }) {
       } catch (e) {
         addToast(e.message || 'Failed to delete ticket', 'error')
       }
+=======
+      deleteTicket(ticket.id); addToast('Ticket deleted', 'error'); onClose()
+>>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
     }
   }
 
-  const selectCls = 'glass-input w-full text-sm py-1.5'
+  // ── Comment ────────────────────────────────────────────────────────────────
+  const [comment, setComment] = useState('')
+  const handleComment = () => {
+    if (!comment.trim()) return
+    addTimelineEvent(ticket.id, { type: 'comment', text: comment, author: currentUser?.name || 'Agent' })
+    setComment(''); addToast('Comment added', 'success')
+  }
+
+  // ── Tasks ──────────────────────────────────────────────────────────────────
+  const [newTask, setNewTask] = useState({ title: '', dueDate: '', assignee: currentUser?.id || '' })
+  const handleAddTask = (e) => {
+    e.preventDefault()
+    if (!newTask.title.trim()) return
+    addTask(ticket.id, newTask); setNewTask({ title: '', dueDate: '', assignee: currentUser?.id || '' })
+    addToast('Task added', 'success')
+  }
+
+  // ── Work Log ───────────────────────────────────────────────────────────────
+  const [newLog, setNewLog] = useState({ hours: '', description: '', date: new Date().toISOString().slice(0,10) })
+  const handleAddLog = (e) => {
+    e.preventDefault()
+    if (!newLog.hours || !newLog.description.trim()) return
+    addWorkLog(ticket.id, { ...newLog, agent: currentUser?.name || 'Agent' })
+    setNewLog({ hours: '', description: '', date: new Date().toISOString().slice(0,10) })
+    addToast('Work log added', 'success')
+  }
+
+  // ── Reminders ─────────────────────────────────────────────────────────────
+  const [newReminder, setNewReminder] = useState({ date: '', note: '' })
+  const handleAddReminder = (e) => {
+    e.preventDefault()
+    if (!newReminder.date) return
+    addReminder(ticket.id, newReminder); setNewReminder({ date: '', note: '' })
+    addToast('Reminder set', 'success')
+  }
+
+  // ── Approvals ─────────────────────────────────────────────────────────────
+  const [newApproval, setNewApproval] = useState({ requestedFrom: '', note: '' })
+  const handleAddApproval = (e) => {
+    e.preventDefault()
+    if (!newApproval.requestedFrom) return
+    addApproval(ticket.id, { ...newApproval, requestedBy: currentUser?.name || 'Agent' })
+    setNewApproval({ requestedFrom: '', note: '' })
+    addToast('Approval request sent', 'success')
+  }
+
+  const totalHours = (liveTicket.workLog||[]).reduce((s, w) => s + Number(w.hours||0), 0)
 
   return (
-    <Modal isOpen onClose={onClose} title={ticket.id} size="lg">
-      <div className="flex flex-col lg:flex-row gap-0">
-        {/* Left: details + timeline */}
-        <div className="flex-1 p-5 min-w-0">
-          <div className="flex items-start gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-bold t-main mb-2 tracking-tight">{ticket.subject}</h3>
-              <div className="flex items-center gap-2 flex-wrap">
-                <PriorityBadge priority={ticket.priority} />
-                <StatusBadge status={ticket.status} />
-                <span className="text-xs t-sub font-bold uppercase tracking-wider">{categoryLabel(ticket.category)}</span>
-              </div>
-            </div>
-          </div>
+    <Modal isOpen onClose={onClose} title="" size="xl">
+      <div className="flex flex-col" style={{ maxHeight: 'calc(90vh - 56px)' }}>
 
+<<<<<<< HEAD
           {/* Edit controls */}
           <div className="grid grid-cols-3 gap-3 mb-5">
             <div>
@@ -161,27 +373,55 @@ export function TicketDetailModal({ ticket, onClose }) {
                 <MessageSquare size={14} /> Post
               </Button>
             </div>
+=======
+        {/* ── Top Status Bar ───────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-5 py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-2">
+          <span className="text-sm font-bold t-main font-mono">{ticket.id}</span>
+          <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
+          {isEditing ? (
+            <select className="glass-input text-xs py-1 w-28" value={edits.type} onChange={e => set('type', e.target.value)}>
+              {TICKET_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+            </select>
+          ) : (() => {
+            const m = TICKET_TYPE_META[edits.type] || TICKET_TYPE_META.request
+            return (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${m.bg} ${m.border} ${m.color}`}>
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.dot}`} />{m.label}
+              </span>
+            )
+          })()}
+          <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
+          {isEditing ? (
+            <select className="glass-input text-xs py-1 w-32" value={edits.status} onChange={e => set('status', e.target.value)}>
+              {STATUSES.map(s => <option key={s} value={s}>{s.split('-').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')}</option>)}
+            </select>
+          ) : <StatusBadge status={edits.status} />}
+          {isEditing ? (
+            <select className="glass-input text-xs py-1 w-28" value={edits.priority} onChange={e => set('priority', e.target.value)}>
+              {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
+            </select>
+          ) : <PriorityBadge priority={edits.priority} />}
+          {isEditing ? (
+            <select className="glass-input text-xs py-1 w-36" value={edits.assignee} onChange={e => set('assignee', e.target.value)}>
+              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          ) : (
+            <span className="text-xs t-muted">
+              <span className="t-sub">Assignee:</span> {getAgentName(edits.assignee)}
+            </span>
+          )}
+          <div className="flex-1" />
+          <div className="flex items-center gap-1.5 text-[10px] t-sub">
+            <CalendarDays size={11} />
+            Created {fmtDateTime(ticket.created)}
+>>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
           </div>
         </div>
 
-        {/* Right: metadata sidebar */}
-        <div className="lg:w-56 p-5 border-t lg:border-t-0 lg:border-l border-white/6 flex-shrink-0 space-y-4">
-          {[
-            ['Ticket ID',   ticket.id],
-            ['Submitter',   ticket.submitter],
-            ['Company',     ticket.company],
-            ['Email',       ticket.email],
-            ['Category',    categoryLabel(ticket.category)],
-            ['Asset',       ticket.asset || '—'],
-            ['Created',     fmtDateTime(ticket.created)],
-            ['Updated',     fmtDateTime(ticket.updated)],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-0.5">{label}</div>
-              <div className="text-xs t-main font-medium">{value || '—'}</div>
-            </div>
-          ))}
+        {/* ── Body ─────────────────────────────────────────────────────── */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
 
+<<<<<<< HEAD
           <div className="pt-4 border-t border-glass space-y-2">
             <Button variant="primary" size="sm" className="w-full" onClick={handleSave} disabled={saving}>
               <Save size={13} /> {saving ? 'Saving…' : 'Save Changes'}
@@ -189,7 +429,328 @@ export function TicketDetailModal({ ticket, onClose }) {
             <Button variant="danger" size="sm" className="w-full" onClick={handleDelete}>
               <Trash2 size={13} /> Delete Ticket
             </Button>
+=======
+          {/* Left: Tabs */}
+          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+
+            {/* Tab bar */}
+            <div className="flex border-b border-glass px-4 flex-shrink-0 overflow-x-auto">
+              {MODAL_TABS.map(({ id, icon: Icon, label }) => {
+                // Badge counts
+                let badge = 0
+                if (id === 'tasks')     badge = (liveTicket.tasks||[]).filter(t=>!t.done).length
+                if (id === 'reminders') badge = (liveTicket.reminders||[]).filter(r=>!r.done).length
+                if (id === 'approvals') badge = (liveTicket.approvals||[]).filter(a=>a.status==='pending').length
+                if (id === 'worklog')   badge = (liveTicket.workLog||[]).length
+                return (
+                  <button key={id} onClick={() => setActiveTab(id)}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0
+                      ${activeTab === id
+                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                        : 'border-transparent t-muted hover:t-main hover:border-black/20 dark:hover:border-white/20'}`}>
+                    <Icon size={12} />
+                    {label}
+                    {badge > 0 && (
+                      <span className="ml-0.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold bg-indigo-500 text-white flex items-center justify-center">{badge}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-1 overflow-y-auto p-5">
+
+              {/* ── Conversations ── */}
+              {activeTab === 'conversations' && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {(liveTicket.timeline || []).map((ev, i) => {
+                      const style = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30' }
+                      return (
+                        <div key={i} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${style.dot}`} />
+                            {i < (liveTicket.timeline||[]).length - 1 && <div className="w-px flex-1 bg-black/5 dark:bg-white/6 mt-1 min-h-[12px]" />}
+                          </div>
+                          <div className="pb-3 flex-1 min-w-0">
+                            {ev.author && <div className="text-[10px] font-bold t-sub mb-0.5">{ev.author}</div>}
+                            <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.text }} />
+                            <div className="text-[10px] t-sub opacity-70 mt-0.5">{timeAgo(ev.ts)}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="pt-3 border-t border-glass">
+                    <div className={labelCls}>Add Comment</div>
+                    <div className="flex gap-2">
+                      <textarea value={comment} onChange={e => setComment(e.target.value)}
+                        className="glass-input flex-1 text-sm resize-none" rows={2} placeholder="Write a comment…" />
+                      <Button variant="ghost" size="sm" onClick={handleComment} className="self-end flex-shrink-0">
+                        <MessageSquare size={13} /> Post
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Details ── */}
+              {activeTab === 'details' && (
+                <div className="space-y-4">
+                  <div>
+                    <div className={labelCls}>Subject</div>
+                    {isEditing ? (
+                      <input className={inputCls + ' font-semibold'} value={edits.subject} onChange={e => set('subject', e.target.value)} />
+                    ) : (
+                      <div className="text-sm font-semibold t-main py-1">{edits.subject || '—'}</div>
+                    )}
+                  </div>
+                  <div>
+                    <div className={labelCls}>Description</div>
+                    {isEditing ? (
+                      <textarea className={inputCls + ' resize-none leading-relaxed'} rows={5}
+                        value={edits.description} onChange={e => set('description', e.target.value)} />
+                    ) : (
+                      <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap">{edits.description || <span className="opacity-40">No description</span>}</div>
+                    )}
+                  </div>
+                  {!isEditing && (
+                    <Button variant="primary" size="sm" onClick={handleEdit}><Pencil size={13}/> Edit Details</Button>
+                  )}
+                </div>
+              )}
+
+              {/* ── Tasks ── */}
+              {activeTab === 'tasks' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddTask} className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3 space-y-3">
+                    <div className={labelCls}>Add New Task</div>
+                    <input className={inputCls} value={newTask.title} onChange={e => setNewTask(t=>({...t,title:e.target.value}))} placeholder="Task title…" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Due Date</div>
+                        <input type="date" className={inputCls} value={newTask.dueDate} onChange={e => setNewTask(t=>({...t,dueDate:e.target.value}))} />
+                      </div>
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Assign To</div>
+                        <select className={inputCls} value={newTask.assignee} onChange={e => setNewTask(t=>({...t,assignee:e.target.value}))}>
+                          <option value="">— Select —</option>
+                          {agents.filter(a=>a.id!=='unassigned').map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <Button type="submit" variant="primary" size="sm"><Plus size={12}/> Add Task</Button>
+                  </form>
+                  <div className="space-y-2">
+                    {(liveTicket.tasks||[]).length === 0
+                      ? <div className="text-sm t-muted text-center py-6">No tasks yet</div>
+                      : (liveTicket.tasks||[]).map(task => (
+                        <div key={task.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${task.done ? 'opacity-50 border-glass bg-black/3 dark:bg-white/3' : 'border-glass bg-black/3 dark:bg-white/3'}`}>
+                          <button onClick={() => toggleTask(ticket.id, task.id)} className="mt-0.5 flex-shrink-0 text-indigo-500">
+                            {task.done ? <CheckSquare size={15}/> : <Square size={15} className="t-sub"/>}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className={`text-sm t-main font-medium ${task.done ? 'line-through' : ''}`}>{task.title}</div>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              {task.dueDate && <span className="text-[10px] t-sub flex items-center gap-1"><CalendarDays size={9}/>{fmtDate(task.dueDate)}</span>}
+                              {task.assignee && <span className="text-[10px] t-sub flex items-center gap-1"><User size={9}/>{getAgentName(task.assignee)}</span>}
+                            </div>
+                          </div>
+                          <button onClick={() => deleteTask(ticket.id, task.id)} className="p-1 hover:bg-rose-500/20 hover:text-rose-500 rounded t-sub transition-all">
+                            <X size={12}/>
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Resolution ── */}
+              {activeTab === 'resolution' && (
+                <div className="space-y-4">
+                  {(edits.status === 'resolved' || edits.status === 'closed') && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
+                      <CheckCircle2 size={14} className="text-emerald-500"/>
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">This ticket is {edits.status}</span>
+                    </div>
+                  )}
+                  <div>
+                    <div className={labelCls}>Resolution Notes</div>
+                    <textarea
+                      className={inputCls + ' resize-none leading-relaxed'}
+                      rows={6}
+                      value={edits.resolution}
+                      onChange={e => set('resolution', e.target.value)}
+                      placeholder="Describe how the issue was resolved…"
+                    />
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button variant="primary" size="sm" onClick={() => { set('status','resolved'); handleSave(); addTimelineEvent(ticket.id, { type:'resolved', text:`Ticket resolved by <strong>${currentUser?.name||'Agent'}</strong>` }) }}>
+                      <CheckCircle2 size={13}/> Mark Resolved
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket.id, { resolution: edits.resolution }); addToast('Resolution notes saved','success') }}>
+                      <Save size={13}/> Save Notes
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Reminders ── */}
+              {activeTab === 'reminders' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddReminder} className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3 space-y-3">
+                    <div className={labelCls}>Set New Reminder</div>
+                    <div>
+                      <div className="text-[10px] t-sub mb-1">Date & Time</div>
+                      <input type="datetime-local" className={inputCls} value={newReminder.date} onChange={e => setNewReminder(r=>({...r,date:e.target.value}))} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] t-sub mb-1">Note</div>
+                      <input className={inputCls} value={newReminder.note} onChange={e => setNewReminder(r=>({...r,note:e.target.value}))} placeholder="What to remind about?" />
+                    </div>
+                    <Button type="submit" variant="primary" size="sm"><Bell size={12}/> Set Reminder</Button>
+                  </form>
+                  <div className="space-y-2">
+                    {(liveTicket.reminders||[]).length === 0
+                      ? <div className="text-sm t-muted text-center py-6">No reminders set</div>
+                      : (liveTicket.reminders||[]).map(rem => (
+                        <div key={rem.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${rem.done ? 'opacity-50 border-glass' : 'border-amber-500/30 bg-amber-500/5'}`}>
+                          <button onClick={() => toggleReminder(ticket.id, rem.id)} className="mt-0.5 flex-shrink-0 text-amber-500">
+                            {rem.done ? <CheckSquare size={15}/> : <Bell size={15}/>}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            {rem.note && <div className={`text-sm t-main font-medium ${rem.done ? 'line-through' : ''}`}>{rem.note}</div>}
+                            <div className="text-[10px] t-sub flex items-center gap-1 mt-0.5"><CalendarDays size={9}/>{new Date(rem.date).toLocaleString()}</div>
+                          </div>
+                          <button onClick={() => deleteReminder(ticket.id, rem.id)} className="p-1 hover:bg-rose-500/20 hover:text-rose-500 rounded t-sub transition-all"><X size={12}/></button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Approvals ── */}
+              {activeTab === 'approvals' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddApproval} className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3 space-y-3">
+                    <div className={labelCls}>Request Approval</div>
+                    <div>
+                      <div className="text-[10px] t-sub mb-1">Approval From</div>
+                      <select className={inputCls} value={newApproval.requestedFrom} onChange={e => setNewApproval(a=>({...a,requestedFrom:e.target.value}))}>
+                        <option value="">— Select Agent —</option>
+                        {agents.filter(a=>a.id!=='unassigned').map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="text-[10px] t-sub mb-1">Note (optional)</div>
+                      <input className={inputCls} value={newApproval.note} onChange={e => setNewApproval(a=>({...a,note:e.target.value}))} placeholder="Why do you need approval?" />
+                    </div>
+                    <Button type="submit" variant="primary" size="sm"><ThumbsUp size={12}/> Send Request</Button>
+                  </form>
+                  <div className="space-y-2">
+                    {(liveTicket.approvals||[]).length === 0
+                      ? <div className="text-sm t-muted text-center py-6">No approvals yet</div>
+                      : (liveTicket.approvals||[]).map(appr => (
+                        <div key={appr.id} className={`p-3 rounded-xl border ${appr.status==='approved' ? 'bg-emerald-500/5 border-emerald-500/25' : appr.status==='rejected' ? 'bg-rose-500/5 border-rose-500/25' : 'bg-amber-500/5 border-amber-500/25'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs font-semibold t-main">
+                              {getAgentName(appr.requestedFrom)}
+                            </div>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${appr.status==='approved' ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' : appr.status==='rejected' ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400' : 'bg-amber-500/20 text-amber-600 dark:text-amber-400'}`}>
+                              {appr.status}
+                            </span>
+                          </div>
+                          {appr.note && <div className="text-xs t-muted mb-2">{appr.note}</div>}
+                          <div className="text-[10px] t-sub mb-2">Requested by {appr.requestedBy} · {timeAgo(appr.ts)}</div>
+                          {appr.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <button onClick={() => updateApprovalStatus(ticket.id, appr.id, 'approved')}
+                                className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition-all border border-emerald-500/25">
+                                <ThumbsUp size={11}/> Approve
+                              </button>
+                              <button onClick={() => updateApprovalStatus(ticket.id, appr.id, 'rejected')}
+                                className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/30 transition-all border border-rose-500/25">
+                                <ThumbsDown size={11}/> Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Work Log ── */}
+              {activeTab === 'worklog' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/15">
+                    <Timer size={16} className="text-indigo-500 flex-shrink-0"/>
+                    <div>
+                      <div className="text-[10px] t-sub uppercase tracking-wider">Total Time Logged</div>
+                      <div className="text-lg font-bold t-main">{totalHours.toFixed(1)} <span className="text-sm font-normal t-muted">hours</span></div>
+                    </div>
+                  </div>
+                  <form onSubmit={handleAddLog} className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3 space-y-3">
+                    <div className={labelCls}>Log Work</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Hours Spent</div>
+                        <input type="number" step="0.25" min="0.25" className={inputCls} value={newLog.hours}
+                          onChange={e => setNewLog(l=>({...l,hours:e.target.value}))} placeholder="e.g. 1.5" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Date</div>
+                        <input type="date" className={inputCls} value={newLog.date} onChange={e => setNewLog(l=>({...l,date:e.target.value}))} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] t-sub mb-1">Description</div>
+                      <input className={inputCls} value={newLog.description} onChange={e => setNewLog(l=>({...l,description:e.target.value}))} placeholder="What did you work on?" />
+                    </div>
+                    <Button type="submit" variant="primary" size="sm"><Plus size={12}/> Log Time</Button>
+                  </form>
+                  <div className="space-y-2">
+                    {(liveTicket.workLog||[]).length === 0
+                      ? <div className="text-sm t-muted text-center py-6">No work logged yet</div>
+                      : [...(liveTicket.workLog||[])].reverse().map(entry => (
+                        <div key={entry.id} className="flex items-start gap-3 p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                            <Timer size={13} className="text-indigo-500"/>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold t-main">{entry.hours}h</span>
+                              <span className="text-[10px] t-sub">{fmtDate(entry.date)}</span>
+                            </div>
+                            <div className="text-xs t-muted mt-0.5">{entry.description}</div>
+                            <div className="text-[10px] t-sub mt-0.5">by {entry.agent}</div>
+                          </div>
+                          <button onClick={() => deleteWorkLog(ticket.id, entry.id)} className="p-1 hover:bg-rose-500/20 hover:text-rose-500 rounded t-sub transition-all"><X size={12}/></button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+>>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
           </div>
+
+          {/* Right: Requester + Meta + Actions */}
+          <RequesterPanel
+            ticket={liveTicket}
+            isEditing={isEditing}
+            edits={edits}
+            set={set}
+            agents={agents}
+            groups={groups}
+            categories={categories}
+            onEdit={handleEdit}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            onDelete={handleDelete}
+          />
         </div>
       </div>
     </Modal>

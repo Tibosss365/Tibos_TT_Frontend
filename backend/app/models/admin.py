@@ -12,6 +12,13 @@ from app.database import Base
 class EmailType(str, enum.Enum):
     smtp = "smtp"
     m365 = "m365"
+    oauth = "oauth"
+
+
+class OAuthProvider(str, enum.Enum):
+    google = "google"
+    microsoft = "microsoft"
+    custom = "custom"
 
 
 class SMTPSecurity(str, enum.Enum):
@@ -60,6 +67,21 @@ class EmailConfig(Base):
     m365_client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     m365_client_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
     m365_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # OAuth 2.0 fields
+    oauth_provider: Mapped[OAuthProvider | None] = mapped_column(
+        SAEnum(OAuthProvider, name="oauthprovider"), nullable=True
+    )
+    oauth_client_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    oauth_client_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oauth_redirect_uri: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    oauth_scopes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oauth_auth_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    oauth_token_endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    oauth_from: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Stored tokens (encrypted in production)
+    oauth_access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oauth_refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oauth_token_expiry: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Triggers
     trigger_new: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     trigger_assign: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

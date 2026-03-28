@@ -5,23 +5,67 @@ import {
 } from 'recharts'
 import { useAdminStore } from '../stores/adminStore'
 import { Card, CardHeader } from '../components/ui/Card'
-import { categoryLabel } from '../utils/ticketUtils'
-import { api } from '../api/client'
 
 const STATUS_FILL = { open:'#3b82f6','in-progress':'#a855f7','on-hold':'#f59e0b',resolved:'#10b981',closed:'#64748b' }
 const slaColors = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#64748b' }
 
 export default function Analytics() {
-  const { slaSettings } = useAdminStore()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { tickets } = useTicketStore()
+  const { slaSettings, agents, getCategoryName } = useAdminStore()
 
-  useEffect(() => {
-    api.get('/analytics')
-      .then(setData)
-      .catch(e => console.error('analytics error', e))
-      .finally(() => setLoading(false))
-  }, [])
+  const statusData = useMemo(() => {
+    const counts = {}
+    tickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1 })
+    return Object.entries(counts).map(([s, count]) => ({
+      name: s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
+      count, fill: STATUS_FILL[s] || '#6366f1'
+    }))
+  }, [tickets])
+
+  const categoryData = useMemo(() => {
+    const counts = {}
+    tickets.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
+    return Object.entries(counts)
+      .map(([cat, count]) => ({ name: getCategoryName(cat), count }))
+      .sort((a, b) => b.count - a.count)
+  }, [tickets, getCategoryName])
+
+  const resolutionRate = useMemo(() => {
+    const resolved = tickets.filter(t => ['resolved', 'closed'].includes(t.status)).length
+    return tickets.length ? Math.round((resolved / tickets.length) * 100) : 0
+  }, [tickets])
+
+  const priorityData = useMemo(() =>
+    ['critical', 'high', 'medium', 'low'].map(p => ({
+      name: p.charAt(0).toUpperCase() + p.slice(1),
+      total: tickets.filter(t => t.priority === p).length,
+      resolved: tickets.filter(t => t.priority === p && ['resolved', 'closed'].includes(t.status)).length,
+    })),
+    [tickets]
+  )
+
+  const slaData = useMemo(() => {
+    return ['critical', 'high', 'medium', 'low'].map(p => {
+      const pTickets = tickets.filter(t => t.priority === p && t.status === 'resolved')
+      const slaMins = (slaSettings[p] || 4) * 60
+      const compliant = pTickets.filter(t => {
+        const diffMins = (new Date(t.updated) - new Date(t.created)) / 60000
+        return diffMins <= slaMins
+      }).length
+      const rate = pTickets.length ? Math.round((compliant / pTickets.length) * 100) : 100
+      return { priority: p.charAt(0).toUpperCase() + p.slice(1), rate, compliant, total: pTickets.length }
+    })
+  }, [tickets, slaSettings])
+
+  const volumeData = useMemo(() => {
+    const buckets = {}
+    tickets.forEach(t => {
+      const d = new Date(t.created)
+      const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      buckets[key] = (buckets[key] || 0) + 1
+    })
+    return Object.entries(buckets).slice(-10).map(([date, count]) => ({ date, count }))
+  }, [tickets])
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
@@ -58,33 +102,33 @@ export default function Analytics() {
   }
 
   // Prepare chart data from API response
-  const statusData = Object.entries(data.status_distribution || {}).map(([s, count]) => ({
+  const apiStatusData = Object.entries(data.status_distribution || {}).map(([s, count]) => ({
     name: s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
     count,
     fill: STATUS_FILL[s] || '#6366f1',
   }))
 
-  const categoryData = Object.entries(data.category_distribution || {})
+  const apiCategoryData = Object.entries(data.category_distribution || {})
     .map(([cat, count]) => ({ name: categoryLabel(cat), count }))
     .sort((a, b) => b.count - a.count)
 
-  const volumeData = (data.tickets_over_time || []).map(row => ({
+  const apiVolumeData = (data.tickets_over_time || []).map(row => ({
     date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     count: row.count,
   }))
 
-  const priorityData = ['critical', 'high', 'medium', 'low'].map(p => ({
+  const apiPriorityData = ['critical', 'high', 'medium', 'low'].map(p => ({
     name: p.charAt(0).toUpperCase() + p.slice(1),
     total: data.priority_distribution?.[p] || 0,
     resolved: 0,  // backend doesn't split this; shown as total only
   }))
 
-  const slaData = ['critical', 'high', 'medium', 'low'].map(p => ({
+  const apiSlaData = ['critical', 'high', 'medium', 'low'].map(p => ({
     priority: p.charAt(0).toUpperCase() + p.slice(1),
     rate: data.sla_compliance?.[p] ?? 100,
   }))
 
-  const resolutionRate = data.resolution_rate || 0
+  const apiResolutionRate = data.resolution_rate || 0
   const totalResolved = (data.status_distribution?.resolved || 0) + (data.status_distribution?.closed || 0)
   const totalTickets = Object.values(data.status_distribution || {}).reduce((a, b) => a + b, 0)
 
@@ -105,12 +149,12 @@ export default function Analytics() {
           <Card>
             <CardHeader title="Tickets by Status" subtitle="Current distribution" />
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={statusData} margin={{ left: -20 }}>
+              <BarChart data={apiStatusData} margin={{ left: -20 }}>
                 <XAxis dataKey="name" tick={{ fill: 'var(--c-text-30)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'var(--c-text-30)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--c-chart-grid)' }} />
                 <Bar dataKey="count" radius={[5, 5, 0, 0]}>
-                  {statusData.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                  {apiStatusData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -126,7 +170,7 @@ export default function Analytics() {
                 <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" className="text-black/5 dark:text-white/5" strokeWidth="10" />
                 <circle cx="60" cy="60" r="52" fill="none"
                   stroke="url(#grad)" strokeWidth="10" strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 52 * resolutionRate / 100} ${2 * Math.PI * 52}`}
+                  strokeDasharray={`${2 * Math.PI * 52 * apiResolutionRate / 100} ${2 * Math.PI * 52}`}
                   style={{ transition: 'stroke-dasharray 1s ease' }} />
                 <defs>
                   <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -136,7 +180,7 @@ export default function Analytics() {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold text-gradient">{resolutionRate}%</span>
+                <span className="text-3xl font-bold text-gradient">{apiResolutionRate}%</span>
                 <span className="text-[10px] t-sub font-bold uppercase tracking-wider">resolved</span>
               </div>
             </div>
@@ -153,7 +197,7 @@ export default function Analytics() {
         <Card>
           <CardHeader title="Ticket Volume" subtitle="Tickets created over last 30 days" />
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={volumeData} margin={{ left: -20 }}>
+            <LineChart data={apiVolumeData} margin={{ left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--c-chart-grid)" />
               <XAxis dataKey="date" tick={{ fill: 'var(--c-text-30)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--c-text-30)', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -167,8 +211,8 @@ export default function Analytics() {
         <Card>
           <CardHeader title="Top Categories" />
           <div className="space-y-3 mt-2">
-            {categoryData.slice(0, 6).map((cat, i) => {
-              const max = categoryData[0]?.count || 1
+            {apiCategoryData.slice(0, 6).map((cat, i) => {
+              const max = apiCategoryData[0]?.count || 1
               const pct = (cat.count / max) * 100
               const colors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444']
               return (
@@ -189,7 +233,7 @@ export default function Analytics() {
       <Card>
         <CardHeader title="SLA Compliance" subtitle="Response time targets met per priority" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {slaData.map(item => {
+          {apiSlaData.map(item => {
             const color = slaColors[item.priority.toLowerCase()] || '#6366f1'
             return (
               <div key={item.priority} className="text-center p-4 rounded-xl bg-black/5 dark:bg-white/3 border border-glass">
@@ -224,7 +268,7 @@ export default function Analytics() {
               </tr>
             </thead>
             <tbody>
-              {priorityData.map(row => {
+              {apiPriorityData.map(row => {
                 const slaRow = slaData.find(s => s.priority === row.name)
                 const rate = slaRow?.rate ?? 100
                 const colors = { Critical: 'text-rose-400', High: 'text-orange-400', Medium: 'text-amber-400', Low: 'text-slate-400' }

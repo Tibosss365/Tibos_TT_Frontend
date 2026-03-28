@@ -7,7 +7,7 @@ export const useUiStore = create(
   persist(
     (set, get) => ({
       sidebarOpen: true,
-      isDark: true,
+      isDark: false,
       toasts: [],
       activeModal: null,   // { type: 'ticket', data: ticketObj }
 

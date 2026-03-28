@@ -28,20 +28,20 @@
   --c-nav-active-border: rgba(99,102,241,0.25);
   --c-scrollbar:       rgba(99,102,241,0.2);
 
-  /* text */
-  --c-text:    #1e293b;
-  --c-text-80: rgba(30,41,59,0.8);
-  --c-text-70: rgba(30,41,59,0.7);
-  --c-text-60: rgba(30,41,59,0.6);
-  --c-text-50: rgba(30,41,59,0.5);
-  --c-text-40: rgba(30,41,59,0.4);
-  --c-text-30: rgba(30,41,59,0.3);
-  --c-text-25: rgba(30,41,59,0.25);
-  --c-text-20: rgba(30,41,59,0.2);
+  /* text — solid slate values so nothing is washed out in light mode */
+  --c-text:    #0f172a;
+  --c-text-80: #1e293b;
+  --c-text-70: #334155;
+  --c-text-60: #475569;
+  --c-text-50: #64748b;
+  --c-text-40: #64748b;
+  --c-text-30: #94a3b8;
+  --c-text-25: #94a3b8;
+  --c-text-20: #94a3b8;
 
   /* charts */
-  --c-chart-grid: rgba(99,102,241,0.06);
-  --c-chart-text: rgba(30,41,59,0.4);
+  --c-chart-grid: rgba(99,102,241,0.08);
+  --c-chart-text: #64748b;
 }
 
 html.dark {
@@ -170,7 +170,7 @@ html.dark {
   .btn-ghost {
     background: var(--c-hover);
     border: 1px solid var(--c-card-border);
-    color: var(--c-text-50);
+    color: var(--c-text-60);
     font-weight: 500;
     border-radius: 0.5rem;
     transition: all 0.2s ease;
@@ -192,7 +192,7 @@ html.dark {
     gap: 0.75rem;
     padding: 0.625rem 0.75rem;
     border-radius: 0.5rem;
-    color: var(--c-text-50);
+    color: var(--c-text-60);
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
@@ -256,8 +256,8 @@ html.dark {
    to ensure transparency works in both modes.
 ═══════════════════════════════════════════════════════════ */
 .t-main    { color: var(--c-text); }
-.t-muted    { color: var(--c-text-40); }
-.t-sub      { color: var(--c-text-25); }
+.t-muted   { color: var(--c-text-60); }
+.t-sub     { color: var(--c-text-50); }
 
 .bg-glass   { background: var(--c-card-bg); }
 .border-glass { border-color: var(--c-card-border); }

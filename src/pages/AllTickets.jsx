@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Search, Download, Trash2, CheckSquare, Square, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Search, Filter, Download, Trash2, CheckSquare, Square, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
@@ -7,13 +8,25 @@ import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
-import { STATUSES, PRIORITIES, CATEGORIES, categoryLabel, timeAgo } from '../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo } from '../utils/ticketUtils'
 
 export default function AllTickets() {
-  const { tickets, loading, filters, setFilter, resetFilters, selectedIds, toggleSelect, selectAll, clearSelection, bulkUpdate, bulkDelete, getFilteredTickets } = useTicketStore()
-  const { getAgentName } = useAdminStore()
+  const location = useLocation()
+  const { tickets, filters, setFilter, resetFilters, selectedIds, toggleSelect, selectAll, clearSelection, bulkUpdate, bulkDelete, getFilteredTickets } = useTicketStore()
+  const { getAgentName, getCategoryName, categories, groups, getGroupName } = useAdminStore()
   const { addToast } = useUiStore()
   const [selectedTicket, setSelectedTicket] = useState(null)
+
+  // Auto-open ticket when navigated from notification
+  useEffect(() => {
+    const openId = location.state?.openTicketId
+    if (openId) {
+      const ticket = tickets.find(t => t.id === openId)
+      if (ticket) setSelectedTicket(ticket)
+      // Clear state so back-navigation doesn't re-open
+      window.history.replaceState({}, '')
+    }
+  }, [location.state])
 
   const filtered = getFilteredTickets()
   const allSelected = filtered.length > 0 && filtered.every(t => selectedIds.includes(t._uuid))
@@ -60,7 +73,7 @@ export default function AllTickets() {
     a.download = 'tickets.csv'; a.click()
   }
 
-  const hasFilters = filters.status || filters.priority || filters.category || filters.search
+  const hasFilters = filters.status || filters.priority || filters.category || filters.group || filters.type || filters.search
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -88,7 +101,9 @@ export default function AllTickets() {
           {[
             { key: 'status',   opts: STATUSES,   label: 'Status',   fmt: s => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ') },
             { key: 'priority', opts: PRIORITIES, label: 'Priority', fmt: p => p.charAt(0).toUpperCase() + p.slice(1) },
-            { key: 'category', opts: Object.keys(CATEGORIES), label: 'Category', fmt: categoryLabel },
+            { key: 'category', opts: [...categories].sort((a,b)=>a.sortOrder-b.sortOrder).map(c=>c.id), label: 'Category', fmt: getCategoryName },
+            { key: 'group',    opts: groups.map(g=>g.id),   label: 'Group',    fmt: getGroupName },
+            { key: 'type',     opts: TICKET_TYPES,           label: 'Type',     fmt: t => t.charAt(0).toUpperCase() + t.slice(1) },
           ].map(({ key, opts, label, fmt }) => (
             <select key={key} value={filters[key]} onChange={e => setFilter(key, e.target.value)} className="glass-input text-sm py-1.5">
               <option value="">{label}</option>
@@ -133,33 +148,55 @@ export default function AllTickets() {
                     {allSelected ? <CheckSquare size={14} /> : <Square size={14} />}
                   </button>
                 </th>
-                {['ID', 'Subject', 'Priority', 'Status', 'Category', 'Assignee', 'Updated'].map(h => (
+                {['ID', 'Type', 'Subject', 'Priority', 'Status', 'Group', 'Category', 'Assignee', 'Updated'].map(h => (
                   <th key={h} className="py-3 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={8} className="py-12 text-center t-sub text-sm">Loading…</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center t-sub text-sm">No tickets found</td></tr>
+              {filtered.length === 0 ? (
+                <tr><td colSpan={9} className="py-12 text-center t-sub text-sm">No tickets found</td></tr>
               ) : filtered.map(ticket => (
-                <tr key={ticket._uuid}
+                <tr key={ticket.id}
                   onClick={() => setSelectedTicket(ticket)}
-                  className={`border-b border-glass hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group ${selectedIds.includes(ticket._uuid) ? 'bg-indigo-500/10 dark:bg-indigo-500/8' : ''}`}>
-                  <td className="py-3 pl-4 pr-2" onClick={e => { e.stopPropagation(); toggleSelect(ticket._uuid) }}>
-                    {selectedIds.includes(ticket._uuid)
+                  className={`border-b border-glass hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group ${selectedIds.includes(ticket.id) ? 'bg-indigo-500/10 dark:bg-indigo-500/8' : ''}`}>
+                  <td className="py-3 pl-4 pr-2" onClick={e => { e.stopPropagation(); toggleSelect(ticket.id) }}>
+                    {selectedIds.includes(ticket.id)
                       ? <CheckSquare size={14} className="text-indigo-500" />
                       : <Square size={14} className="t-sub opacity-50 hover:opacity-100" />}
                   </td>
                   <td className="py-3 px-3 font-mono text-[11px] t-sub whitespace-nowrap">{ticket.id}</td>
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    {(() => {
+                      const t = ticket.type || 'request'
+                      const m = TICKET_TYPE_META[t] || TICKET_TYPE_META.request
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${m.bg} ${m.border} ${m.color}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.dot}`} />
+                          {m.label}
+                        </span>
+                      )
+                    })()}
+                  </td>
                   <td className="py-3 px-3 max-w-xs">
                     <div className="t-main font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{ticket.subject}</div>
                     <div className="text-[10px] t-muted mt-0.5">{ticket.submitter}</div>
                   </td>
                   <td className="py-3 px-3 whitespace-nowrap"><PriorityBadge priority={ticket.priority} /></td>
                   <td className="py-3 px-3 whitespace-nowrap"><StatusBadge status={ticket.status} /></td>
-                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{categoryLabel(ticket.category)}</td>
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    {ticket.group ? (() => {
+                      const g = groups.find(x => x.id === ticket.group)
+                      return g ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: g.color + '20', color: g.color, border: `1px solid ${g.color}40` }}>
+                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: g.color }} />
+                          {g.name}
+                        </span>
+                      ) : <span className="text-xs t-muted">—</span>
+                    })() : <span className="text-xs t-muted">—</span>}
+                  </td>
+                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getCategoryName(ticket.category)}</td>
                   <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getAgentName(ticket.assignee)}</td>
                   <td className="py-3 px-3 text-xs t-sub whitespace-nowrap">{timeAgo(ticket.updated)}</td>
                 </tr>

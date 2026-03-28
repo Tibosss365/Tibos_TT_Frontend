@@ -2,11 +2,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import select
 
 from app.config import get_settings
 from app.database import Base, engine
 from app.redis_client import close_redis, get_redis
 from app.routers import admin, agents, analytics, auth, events, notifications, tickets, ws
+from app.routers import inbound_email, categories
+from app.services.email_poller import email_poller
 
 # Import all models so Base.metadata knows about all tables
 import app.models  # noqa: F401
@@ -16,24 +19,33 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create all database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("[OK] Database tables ready")
+    # ── Startup ────────────────────────────────────────────────────────
+    # 1. Redis
+    redis = await get_redis()
+    await redis.ping()
+    print("✓ Redis connected")
 
-    # Startup: warm up redis connection (non-fatal if Redis is unavailable)
+    # 2. Start email poller only if inbound email is enabled in DB
     try:
-        redis = await get_redis()
-        await redis.ping()
-        print("[OK] Redis connected")
+        from app.database import AsyncSessionLocal
+        from app.models.inbound_email import InboundEmailConfig
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(InboundEmailConfig))
+            cfg = result.scalar_one_or_none()
+            if cfg and cfg.enabled:
+                email_poller.start()
+                print("✓ Email poller started")
+            else:
+                print("  Email poller is disabled (configure via Admin → Email → Inbound)")
     except Exception as e:
-        print(f"⚠ Redis not available: {e} — caching disabled")
+        print(f"  Email poller could not start: {e}")
 
     yield
 
-    # Shutdown
+    # ── Shutdown ───────────────────────────────────────────────────────
+    email_poller.stop()
     await close_redis()
-    print("[OK] Redis connection closed")
+    print("✓ Shutdown complete")
 
 
 app = FastAPI(
@@ -59,6 +71,8 @@ app.include_router(tickets.router)
 app.include_router(notifications.router)
 app.include_router(admin.router)
 app.include_router(analytics.router)
+app.include_router(inbound_email.router)
+app.include_router(categories.router)
 app.include_router(events.router)
 app.include_router(ws.router)
 
@@ -67,4 +81,10 @@ app.include_router(ws.router)
 async def health():
     redis = await get_redis()
     redis_ok = await redis.ping()
-    return {"status": "ok", "redis": redis_ok}
+    return {
+        "status": "ok",
+        "redis": redis_ok,
+        "email_poller": "running" if (
+            email_poller._task and not email_poller._task.done()
+        ) else "stopped",
+    }
