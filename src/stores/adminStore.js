@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { api } from '../api/client'
 import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGERS, DEFAULT_INBOUND_EMAIL, DEFAULT_EMAIL_LOG, DEFAULT_CATEGORIES, DEFAULT_TICKET_SETTINGS, DEFAULT_EMAIL_TEMPLATES, DEFAULT_GROUPS } from '../data/seedData'
 
 export const useAdminStore = create(
@@ -89,6 +90,24 @@ export const useAdminStore = create(
     }
   },
 
+  fetchCategories: async () => {
+    try {
+      const data = await api.get('/categories')
+      const cats = data.map((c, i) => ({
+        id:          c.slug,
+        name:        c.name,
+        color:       c.color || '#6B7280',
+        description: c.description || '',
+        isBuiltin:   c.is_builtin,
+        sortOrder:   c.sort_order ?? (i + 1) * 10,
+        groupId:     c.group_id || null,
+      }))
+      set({ categories: cats })
+    } catch (e) {
+      console.error('fetchCategories error', e)
+    }
+  },
+
   addAgent: async (agentData) => {
     const initials = agentData.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     const body = {
@@ -131,14 +150,6 @@ export const useAdminStore = create(
     const data = await api.put('/admin/email', payload)
     set({ emailConfig: data })
   },
-
-      updateSla: (priority, hours) => {
-        set(s => ({ slaSettings: { ...s.slaSettings, [priority]: Number(hours) } }))
-      },
-
-      updateEmailConfig: (changes) => {
-        set(s => ({ emailConfig: { ...s.emailConfig, ...changes } }))
-      },
 
       updateEmailTriggers: (changes) => {
         set(s => ({ emailTriggers: { ...s.emailTriggers, ...changes } }))

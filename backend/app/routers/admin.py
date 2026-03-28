@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, require_admin
 from app.database import get_db
 from app.models.admin import EmailConfig, OAuthProvider, SLAConfig
-from app.models.ticket import Ticket, TicketStatus
+from app.models.ticket import Ticket, TicketPriority, TicketStatus
 from app.models.user import User
 from app.redis_client import get_redis
 from app.schemas.admin import (

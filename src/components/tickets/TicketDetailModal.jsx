@@ -161,46 +161,6 @@ export function TicketDetailModal({ ticket, onClose }) {
   const [activeTab, setActiveTab] = useState('conversations')
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
-<<<<<<< HEAD
-    status:   ticket.status,
-    priority: ticket.priority,
-    assignee: ticket.assignee || '',
-  })
-  const [comment, setComment] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  const handleSave = async () => {
-    const changes = {}
-    if (edits.status   !== ticket.status)   changes.status   = edits.status
-    if (edits.priority !== ticket.priority) changes.priority = edits.priority
-    if (edits.assignee !== (ticket.assignee || '')) changes.assignee = edits.assignee || null
-
-    if (Object.keys(changes).length === 0) {
-      addToast('No changes to save', 'info')
-      return
-    }
-    setSaving(true)
-    try {
-      await updateTicket(ticket._uuid, changes)
-      addToast('Ticket updated successfully', 'success')
-      onClose()
-    } catch (e) {
-      addToast(e.message || 'Failed to update ticket', 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleComment = async () => {
-    if (!comment.trim()) return
-    try {
-      await addTimelineEvent(ticket._uuid, { text: comment })
-      setComment('')
-      addToast('Comment added', 'success')
-    } catch (e) {
-      addToast(e.message || 'Failed to add comment', 'error')
-    }
-=======
     subject:     ticket.subject     || '',
     status:      ticket.status      || 'open',
     priority:    ticket.priority    || 'medium',
@@ -229,27 +189,16 @@ export function TicketDetailModal({ ticket, onClose }) {
     const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
     const changes = {}
     fields.forEach(k => { if ((edits[k]||'') !== (ticket[k]||'')) changes[k] = edits[k] })
-    if (changes.status)   addTimelineEvent(ticket.id, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
-    if (changes.assignee) addTimelineEvent(ticket.id, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })
-    if (Object.keys(changes).length > 0) { updateTicket(ticket.id, changes); addToast('Ticket updated', 'success') }
+    if (changes.status)   addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
+    if (changes.assignee) addTimelineEvent(ticket._uuid, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })
+    if (Object.keys(changes).length > 0) { updateTicket(ticket._uuid, changes); addToast('Ticket updated', 'success') }
     else addToast('No changes to save', 'info')
     setIsEditing(false)
->>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
   }
 
   const handleDelete = async () => {
     if (window.confirm('Delete this ticket? This cannot be undone.')) {
-<<<<<<< HEAD
-      try {
-        await deleteTicket(ticket._uuid)
-        addToast('Ticket deleted', 'error')
-        onClose()
-      } catch (e) {
-        addToast(e.message || 'Failed to delete ticket', 'error')
-      }
-=======
-      deleteTicket(ticket.id); addToast('Ticket deleted', 'error'); onClose()
->>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
+      deleteTicket(ticket._uuid); addToast('Ticket deleted', 'error'); onClose()
     }
   }
 
@@ -257,7 +206,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const [comment, setComment] = useState('')
   const handleComment = () => {
     if (!comment.trim()) return
-    addTimelineEvent(ticket.id, { type: 'comment', text: comment, author: currentUser?.name || 'Agent' })
+    addTimelineEvent(ticket._uuid, { type: 'comment', text: comment, author: currentUser?.name || 'Agent' })
     setComment(''); addToast('Comment added', 'success')
   }
 
@@ -305,75 +254,6 @@ export function TicketDetailModal({ ticket, onClose }) {
     <Modal isOpen onClose={onClose} title="" size="xl">
       <div className="flex flex-col" style={{ maxHeight: 'calc(90vh - 56px)' }}>
 
-<<<<<<< HEAD
-          {/* Edit controls */}
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <div>
-              <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Status</label>
-              <select className={selectCls} value={edits.status} onChange={e => setEdits(x => ({ ...x, status: e.target.value }))}>
-                {STATUSES.map(s => <option key={s} value={s}>{s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Priority</label>
-              <select className={selectCls} value={edits.priority} onChange={e => setEdits(x => ({ ...x, priority: e.target.value }))}>
-                {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Assignee</label>
-              <select className={selectCls} value={edits.assignee} onChange={e => setEdits(x => ({ ...x, assignee: e.target.value }))}>
-                <option value="">— Unassigned —</option>
-                {agents.map(a => <option key={String(a.id)} value={String(a.id)}>{a.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="mb-5">
-            <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Description</div>
-            <div className="text-sm t-main leading-relaxed bg-black/5 dark:bg-white/3 rounded-lg p-3 border border-glass">{ticket.description}</div>
-          </div>
-
-          {/* Timeline */}
-          <div>
-            <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">Timeline</div>
-            <div className="space-y-3">
-              {(ticket.timeline || []).map((ev, i) => {
-                const style = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30', label: 'Event' }
-                return (
-                  <div key={i} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${style.dot}`} />
-                      {i < ticket.timeline.length - 1 && <div className="w-px flex-1 bg-black/5 dark:bg-white/6 mt-1 min-h-[12px]" />}
-                    </div>
-                    <div className="pb-3 flex-1 min-w-0">
-                      {ev.author && <div className="text-[10px] font-bold t-sub mb-0.5">{ev.author}</div>}
-                      <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.text }} />
-                      <div className="text-[10px] t-sub opacity-70 mt-0.5">{timeAgo(ev.ts)}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Comment box */}
-          <div className="mt-4 pt-4 border-t border-glass">
-            <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Add Comment</div>
-            <div className="flex gap-2">
-              <textarea
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                className="glass-input flex-1 text-sm resize-none"
-                rows={2}
-                placeholder="Write a comment…"
-              />
-              <Button variant="ghost" size="sm" onClick={handleComment} className="self-end flex-shrink-0">
-                <MessageSquare size={14} /> Post
-              </Button>
-            </div>
-=======
         {/* ── Top Status Bar ───────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-5 py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-2">
           <span className="text-sm font-bold t-main font-mono">{ticket.id}</span>
@@ -414,22 +294,12 @@ export function TicketDetailModal({ ticket, onClose }) {
           <div className="flex items-center gap-1.5 text-[10px] t-sub">
             <CalendarDays size={11} />
             Created {fmtDateTime(ticket.created)}
->>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
           </div>
         </div>
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
-<<<<<<< HEAD
-          <div className="pt-4 border-t border-glass space-y-2">
-            <Button variant="primary" size="sm" className="w-full" onClick={handleSave} disabled={saving}>
-              <Save size={13} /> {saving ? 'Saving…' : 'Save Changes'}
-            </Button>
-            <Button variant="danger" size="sm" className="w-full" onClick={handleDelete}>
-              <Trash2 size={13} /> Delete Ticket
-            </Button>
-=======
           {/* Left: Tabs */}
           <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
@@ -586,10 +456,10 @@ export function TicketDetailModal({ ticket, onClose }) {
                     />
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="primary" size="sm" onClick={() => { set('status','resolved'); handleSave(); addTimelineEvent(ticket.id, { type:'resolved', text:`Ticket resolved by <strong>${currentUser?.name||'Agent'}</strong>` }) }}>
+                    <Button variant="primary" size="sm" onClick={() => { set('status','resolved'); handleSave(); addTimelineEvent(ticket._uuid, { type:'resolved', text:`Ticket resolved by <strong>${currentUser?.name||'Agent'}</strong>` }) }}>
                       <CheckCircle2 size={13}/> Mark Resolved
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket.id, { resolution: edits.resolution }); addToast('Resolution notes saved','success') }}>
+                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved','success') }}>
                       <Save size={13}/> Save Notes
                     </Button>
                   </div>
@@ -734,7 +604,6 @@ export function TicketDetailModal({ ticket, onClose }) {
               )}
 
             </div>
->>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
           </div>
 
           {/* Right: Requester + Meta + Actions */}

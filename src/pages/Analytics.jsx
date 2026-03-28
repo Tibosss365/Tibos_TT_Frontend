@@ -4,68 +4,24 @@ import {
   LineChart, Line, CartesianGrid
 } from 'recharts'
 import { useAdminStore } from '../stores/adminStore'
+import { api } from '../api/client'
 import { Card, CardHeader } from '../components/ui/Card'
 
 const STATUS_FILL = { open:'#3b82f6','in-progress':'#a855f7','on-hold':'#f59e0b',resolved:'#10b981',closed:'#64748b' }
 const slaColors = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#64748b' }
 
 export default function Analytics() {
-  const { tickets } = useTicketStore()
-  const { slaSettings, agents, getCategoryName } = useAdminStore()
+  const { slaSettings, getCategoryName } = useAdminStore()
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const statusData = useMemo(() => {
-    const counts = {}
-    tickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1 })
-    return Object.entries(counts).map(([s, count]) => ({
-      name: s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
-      count, fill: STATUS_FILL[s] || '#6366f1'
-    }))
-  }, [tickets])
+  useEffect(() => {
+    api.get('/analytics')
+      .then(d => { setData(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
 
-  const categoryData = useMemo(() => {
-    const counts = {}
-    tickets.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
-    return Object.entries(counts)
-      .map(([cat, count]) => ({ name: getCategoryName(cat), count }))
-      .sort((a, b) => b.count - a.count)
-  }, [tickets, getCategoryName])
-
-  const resolutionRate = useMemo(() => {
-    const resolved = tickets.filter(t => ['resolved', 'closed'].includes(t.status)).length
-    return tickets.length ? Math.round((resolved / tickets.length) * 100) : 0
-  }, [tickets])
-
-  const priorityData = useMemo(() =>
-    ['critical', 'high', 'medium', 'low'].map(p => ({
-      name: p.charAt(0).toUpperCase() + p.slice(1),
-      total: tickets.filter(t => t.priority === p).length,
-      resolved: tickets.filter(t => t.priority === p && ['resolved', 'closed'].includes(t.status)).length,
-    })),
-    [tickets]
-  )
-
-  const slaData = useMemo(() => {
-    return ['critical', 'high', 'medium', 'low'].map(p => {
-      const pTickets = tickets.filter(t => t.priority === p && t.status === 'resolved')
-      const slaMins = (slaSettings[p] || 4) * 60
-      const compliant = pTickets.filter(t => {
-        const diffMins = (new Date(t.updated) - new Date(t.created)) / 60000
-        return diffMins <= slaMins
-      }).length
-      const rate = pTickets.length ? Math.round((compliant / pTickets.length) * 100) : 100
-      return { priority: p.charAt(0).toUpperCase() + p.slice(1), rate, compliant, total: pTickets.length }
-    })
-  }, [tickets, slaSettings])
-
-  const volumeData = useMemo(() => {
-    const buckets = {}
-    tickets.forEach(t => {
-      const d = new Date(t.created)
-      const key = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      buckets[key] = (buckets[key] || 0) + 1
-    })
-    return Object.entries(buckets).slice(-10).map(([date, count]) => ({ date, count }))
-  }, [tickets])
+  const categoryLabel = getCategoryName
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
@@ -120,7 +76,7 @@ export default function Analytics() {
   const apiPriorityData = ['critical', 'high', 'medium', 'low'].map(p => ({
     name: p.charAt(0).toUpperCase() + p.slice(1),
     total: data.priority_distribution?.[p] || 0,
-    resolved: 0,  // backend doesn't split this; shown as total only
+    resolved: 0,
   }))
 
   const apiSlaData = ['critical', 'high', 'medium', 'low'].map(p => ({
@@ -269,7 +225,7 @@ export default function Analytics() {
             </thead>
             <tbody>
               {apiPriorityData.map(row => {
-                const slaRow = slaData.find(s => s.priority === row.name)
+                const slaRow = apiSlaData.find(s => s.priority === row.name)
                 const rate = slaRow?.rate ?? 100
                 const colors = { Critical: 'text-rose-400', High: 'text-orange-400', Medium: 'text-amber-400', Low: 'text-slate-400' }
                 return (

@@ -1,3 +1,4 @@
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -16,6 +17,13 @@ import app.models  # noqa: F401
 
 settings = get_settings()
 
+# Safe print that never crashes on Windows cp1252 consoles
+def _log(msg: str) -> None:
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", errors="replace").decode("ascii"))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,9 +31,33 @@ async def lifespan(app: FastAPI):
     # 1. Redis
     redis = await get_redis()
     await redis.ping()
-    print("✓ Redis connected")
+    _log("[OK] Redis connected")
 
-    # 2. Start email poller only if inbound email is enabled in DB
+    # 2. Seed built-in categories if the table is empty
+    try:
+        from app.database import AsyncSessionLocal
+        from app.models.category import Category
+        async with AsyncSessionLocal() as db:
+            existing = await db.execute(select(Category))
+            if not existing.scalars().first():
+                _BUILTIN_CATS = [
+                    ("hardware", "Hardware", "#8B5CF6", "Physical equipment issues",       1),
+                    ("software", "Software", "#3B82F6", "Application and OS issues",       2),
+                    ("network",  "Network",  "#10B981", "Connectivity and network issues", 3),
+                    ("access",   "Access",   "#F59E0B", "Permissions and login issues",    4),
+                    ("email",    "Email",    "#EF4444", "Email and messaging issues",       5),
+                    ("security", "Security", "#EC4899", "Security incidents and threats",  6),
+                    ("other",    "Other",    "#6B7280", "Uncategorised requests",          7),
+                ]
+                for slug, name, color, desc, order in _BUILTIN_CATS:
+                    db.add(Category(slug=slug, name=name, color=color,
+                                    description=desc, is_builtin=True, sort_order=order))
+                await db.commit()
+                _log("[OK] Built-in categories seeded")
+    except Exception as e:
+        _log(f"  Category seeding failed: {e}")
+
+    # 3. Start email poller only if inbound email is enabled in DB
     try:
         from app.database import AsyncSessionLocal
         from app.models.inbound_email import InboundEmailConfig
@@ -34,18 +66,18 @@ async def lifespan(app: FastAPI):
             cfg = result.scalar_one_or_none()
             if cfg and cfg.enabled:
                 email_poller.start()
-                print("✓ Email poller started")
+                _log("[OK] Email poller started")
             else:
-                print("  Email poller is disabled (configure via Admin → Email → Inbound)")
+                _log("  Email poller is disabled (configure via Admin -> Email -> Inbound)")
     except Exception as e:
-        print(f"  Email poller could not start: {e}")
+        _log(f"  Email poller could not start: {e}")
 
     yield
 
     # ── Shutdown ───────────────────────────────────────────────────────
     email_poller.stop()
     await close_redis()
-    print("✓ Shutdown complete")
+    _log("[OK] Shutdown complete")
 
 
 app = FastAPI(
@@ -58,7 +90,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

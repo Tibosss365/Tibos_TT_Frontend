@@ -12,7 +12,7 @@ import { timeAgo, PRIORITY_COLORS, STATUS_COLORS } from '../utils/ticketUtils'
 const DEFAULT_CHART_COLORS = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
 
 export default function Dashboard() {
-  const { tickets } = useTicketStore()
+  const { tickets, loading } = useTicketStore()
   const { getAgentName, getCategoryName, categories } = useAdminStore()
   const navigate = useNavigate()
 

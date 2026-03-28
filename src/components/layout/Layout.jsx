@@ -11,7 +11,7 @@ import { useNotificationStore } from '../../stores/notificationStore'
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
   const { fetchTickets } = useTicketStore()
-  const { fetchAgents, fetchSla, fetchEmailConfig } = useAdminStore()
+  const { fetchAgents, fetchSla, fetchEmailConfig, fetchCategories } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
   const sseRef = useRef(null)
 
@@ -23,6 +23,7 @@ export function Layout() {
     fetchAgents()
     fetchSla()
     fetchEmailConfig()
+    fetchCategories()
     fetchNotifications()
 
     // Open SSE connection

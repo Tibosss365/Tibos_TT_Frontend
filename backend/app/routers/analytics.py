@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user
 from app.database import get_db
 from app.models.admin import SLAConfig
-from app.models.ticket import Ticket, TicketCategory, TicketPriority, TicketStatus
+from app.models.ticket import Ticket, TicketPriority, TicketStatus
 from app.models.user import User
 from app.redis_client import get_redis
 from app.schemas.analytics import AnalyticsOut
@@ -35,13 +35,11 @@ async def get_analytics(
         )
         status_dist[s.value] = res.scalar_one()
 
-    # Category distribution
-    cat_dist: dict[str, int] = {}
-    for c in TicketCategory:
-        res = await db.execute(
-            select(func.count()).select_from(Ticket).where(Ticket.category == c)
-        )
-        cat_dist[c.value] = res.scalar_one()
+    # Category distribution — group by actual stored string values (supports custom categories)
+    cat_rows = await db.execute(
+        select(Ticket.category, func.count()).group_by(Ticket.category)
+    )
+    cat_dist: dict[str, int] = {row[0]: row[1] for row in cat_rows.all()}
 
     # Priority distribution
     pri_dist: dict[str, int] = {}

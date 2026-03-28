@@ -196,9 +196,9 @@ export default function AllTickets() {
                       ) : <span className="text-xs t-muted">—</span>
                     })() : <span className="text-xs t-muted">—</span>}
                   </td>
-                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getCategoryName(ticket.category)}</td>
-                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getAgentName(ticket.assignee)}</td>
-                  <td className="py-3 px-3 text-xs t-sub whitespace-nowrap">{timeAgo(ticket.updated)}</td>
+                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getCategoryName(ticket?.category)}</td>
+                  <td className="py-3 px-3 text-xs t-muted whitespace-nowrap">{getAgentName(ticket?.assignee?.name)}</td>
+                  <td className="py-3 px-3 text-xs t-sub whitespace-nowrap">{timeAgo(ticket?.updated)}</td>
                 </tr>
               ))}
             </tbody>

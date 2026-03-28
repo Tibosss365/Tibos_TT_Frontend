@@ -19,7 +19,7 @@ class TimelineEntryOut(BaseModel):
 
 class TicketBase(BaseModel):
     subject: str = Field(..., min_length=1, max_length=255)
-    category: TicketCategory
+    category: str = Field(..., min_length=1, max_length=80)
     priority: TicketPriority = TicketPriority.medium
     company: str = Field(default="")
     contact_name: str = Field(default="")
@@ -36,7 +36,7 @@ class TicketCreate(TicketBase):
 
 class TicketUpdate(BaseModel):
     subject: str | None = None
-    category: TicketCategory | None = None
+    category: str | None = Field(default=None, max_length=80)
     priority: TicketPriority | None = None
     status: TicketStatus | None = None
     assignee_id: uuid.UUID | None = None
@@ -68,7 +68,7 @@ class TicketListOut(BaseModel):
     ticket_number: int
     ticket_id: str
     subject: str
-    category: TicketCategory
+    category: str
     priority: TicketPriority
     status: TicketStatus
     submitter_name: str
@@ -84,7 +84,7 @@ class TicketFilter(BaseModel):
     search: str | None = None
     status: TicketStatus | None = None
     priority: TicketPriority | None = None
-    category: TicketCategory | None = None
+    category: str | None = None
     assignee_id: uuid.UUID | None = None
     sort: str = "newest"  # newest | oldest | priority | updated
 

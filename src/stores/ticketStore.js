@@ -1,71 +1,98 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { SEED_TICKETS } from '../data/seedData'
-import { genId } from '../utils/ticketUtils'
-import { useAdminStore } from './adminStore'
+import { api, normalizeTicket } from '../api/client'
 
 export const useTicketStore = create(
   persist(
     (set, get) => ({
-      tickets: SEED_TICKETS,
-      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' },
+      tickets: [],
+      loading: false,
+      filters: { status: '', priority: '', category: '', sort: 'newest', search: '' },
       selectedIds: [],
 
-      addTicket: (data) => {
-        const tickets = get().tickets
-        const { numberPrefix, numberDigits } = useAdminStore.getState().ticketSettings
-        const now = new Date().toISOString()
-        const ticket = {
-          ...data,
-          id: genId(tickets, numberPrefix, numberDigits),
-          created: now,
-          updated: now,
-          timeline: [
-            { type: 'created', text: `Ticket submitted by <strong>${data.contactName}</strong>`, ts: now },
-          ],
+      // ── API Methods ────────────────────────────────────────────────────────
+
+      fetchTickets: async () => {
+        set({ loading: true })
+        try {
+          let allTickets = []
+          let page = 1
+          while (true) {
+            const data = await api.get(`/tickets?page=${page}&page_size=100`)
+            const items = (data.items || []).map(normalizeTicket)
+            allTickets = [...allTickets, ...items]
+            if (page >= (data.pages || 1) || items.length === 0) break
+            page++
+          }
+          set({ tickets: allTickets, loading: false })
+        } catch (e) {
+          console.error('fetchTickets error', e)
+          set({ loading: false })
         }
-        set({ tickets: [ticket, ...tickets] })
+      },
+
+      addTicket: async (formData) => {
+        const body = {
+          subject:        formData.subject,
+          category:       formData.category,
+          priority:       formData.priority,
+          submitter_name: formData.contactName || formData.submitter || '',
+          company:        formData.company || '',
+          contact_name:   formData.contactName || '',
+          email:          formData.email || '',
+          phone:          formData.phone || null,
+          asset:          formData.asset || null,
+          description:    formData.description,
+        }
+        const data = await api.post('/tickets', body)
+        const ticket = normalizeTicket(data)
+        set(s => ({ tickets: [ticket, ...s.tickets] }))
         return ticket
       },
 
-  addTicket: async (formData) => {
-    const body = {
-      subject:       formData.subject,
-      category:      formData.category,
-      priority:      formData.priority,
-      submitter_name: formData.contactName || formData.submitter || '',
-      company:       formData.company || '',
-      contact_name:  formData.contactName || '',
-      email:         formData.email || '',
-      phone:         formData.phone || null,
-      asset:         formData.asset || null,
-      description:   formData.description,
-    }
-    const data = await api.post('/tickets', body)
-    const ticket = normalizeTicket(data)
-    set(s => ({ tickets: [ticket, ...s.tickets] }))
-    return ticket
-  },
+      updateTicket: async (uuid, changes) => {
+        const body = {}
+        if (changes.subject      !== undefined) body.subject      = changes.subject
+        if (changes.category     !== undefined) body.category     = changes.category
+        if (changes.priority     !== undefined) body.priority     = changes.priority
+        if (changes.status       !== undefined) body.status       = changes.status
+        if (changes.assignee     !== undefined) body.assignee_id  = changes.assignee || null
+        if (changes.company      !== undefined) body.company      = changes.company
+        if (changes.submitter    !== undefined) body.contact_name = changes.submitter
+        if (changes.email        !== undefined) body.email        = changes.email
+        if (changes.asset        !== undefined) body.asset        = changes.asset
+        if (changes.description  !== undefined) body.description  = changes.description
+        const data = await api.patch(`/tickets/${uuid}`, body)
+        const updated = normalizeTicket(data)
+        set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
+        return updated
+      },
 
-  updateTicket: async (uuid, changes) => {
-    const body = {}
-    if (changes.status   !== undefined) body.status    = changes.status
-    if (changes.priority !== undefined) body.priority  = changes.priority
-    if (changes.assignee !== undefined) body.assignee_id = changes.assignee || null
-    const data = await api.patch(`/tickets/${uuid}`, body)
-    const updated = normalizeTicket(data)
-    set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
-    return updated
-  },
+      deleteTicket: async (uuid) => {
+        await api.delete(`/tickets/${uuid}`)
+        set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
+      },
 
-  addTimelineEvent: async (uuid, event) => {
-    const data = await api.post(`/tickets/${uuid}/comments`, { text: event.text })
-    const updated = normalizeTicket(data)
-    set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
-    return updated
-  },
+      addTimelineEvent: async (uuid, event) => {
+        const data = await api.post(`/tickets/${uuid}/comments`, { text: event.text })
+        const updated = normalizeTicket(data)
+        set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
+        return updated
+      },
 
-      // ── Tasks ──────────────────────────────────────────────────────────
+      bulkUpdate: async (uuids, changes) => {
+        const action = changes.status === 'resolved' ? 'resolve' : 'close'
+        await api.post('/tickets/bulk', { ticket_ids: uuids, action })
+        await get().fetchTickets()
+        set({ selectedIds: [] })
+      },
+
+      bulkDelete: async (uuids) => {
+        await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
+        set(s => ({ tickets: s.tickets.filter(t => !uuids.includes(t._uuid)), selectedIds: [] }))
+      },
+
+      // ── Tasks ──────────────────────────────────────────────────────────────
       addTask: (ticketId, task) => {
         const id = 'task-' + Date.now()
         set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
@@ -83,7 +110,7 @@ export const useTicketStore = create(
           : t) }))
       },
 
-      // ── Work Log ───────────────────────────────────────────────────────
+      // ── Work Log ───────────────────────────────────────────────────────────
       addWorkLog: (ticketId, entry) => {
         const id = 'wl-' + Date.now()
         set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
@@ -96,7 +123,7 @@ export const useTicketStore = create(
           : t) }))
       },
 
-      // ── Reminders ──────────────────────────────────────────────────────
+      // ── Reminders ──────────────────────────────────────────────────────────
       addReminder: (ticketId, reminder) => {
         const id = 'rem-' + Date.now()
         set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
@@ -114,7 +141,7 @@ export const useTicketStore = create(
           : t) }))
       },
 
-      // ── Approvals ──────────────────────────────────────────────────────
+      // ── Approvals ──────────────────────────────────────────────────────────
       addApproval: (ticketId, approval) => {
         const id = 'appr-' + Date.now()
         set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
@@ -127,46 +154,25 @@ export const useTicketStore = create(
           : t) }))
       },
 
-      bulkUpdate: (ids, changes) => {
-        const now = new Date().toISOString()
-        set(state => ({
-          tickets: state.tickets.map(t =>
-            ids.includes(t.id) ? { ...t, ...changes, updated: now } : t
-          ),
-          selectedIds: [],
+      // ── Filters & Selection ────────────────────────────────────────────────
+      setFilter: (key, value) => {
+        set(s => ({ filters: { ...s.filters, [key]: value } }))
+      },
+
+      resetFilters: () => {
+        set({ filters: { status: '', priority: '', category: '', sort: 'newest', search: '' } })
+      },
+
+      toggleSelect: (uuid) => {
+        set(s => ({
+          selectedIds: s.selectedIds.includes(uuid)
+            ? s.selectedIds.filter(i => i !== uuid)
+            : [...s.selectedIds, uuid],
         }))
       },
 
-  bulkUpdate: async (uuids, changes) => {
-    const action = changes.status === 'resolved' ? 'resolve' : 'close'
-    await api.post('/tickets/bulk', { ticket_ids: uuids, action })
-    await get().fetchTickets()
-    set({ selectedIds: [] })
-  },
-
-  bulkDelete: async (uuids) => {
-    await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
-    set(s => ({ tickets: s.tickets.filter(t => !uuids.includes(t._uuid)), selectedIds: [] }))
-  },
-
-      resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' } })
-      },
-
-  resetFilters: () => {
-    set({ filters: { status: '', priority: '', category: '', sort: 'newest', search: '' } })
-  },
-
-  toggleSelect: (uuid) => {
-    set(s => ({
-      selectedIds: s.selectedIds.includes(uuid)
-        ? s.selectedIds.filter(i => i !== uuid)
-        : [...s.selectedIds, uuid],
-    }))
-  },
-
-  selectAll: (uuids) => set({ selectedIds: uuids }),
-  clearSelection: () => set({ selectedIds: [] }),
+      selectAll: (uuids) => set({ selectedIds: uuids }),
+      clearSelection: () => set({ selectedIds: [] }),
 
       getFilteredTickets: () => {
         const { tickets, filters } = get()
@@ -174,15 +180,13 @@ export const useTicketStore = create(
         if (filters.status)   result = result.filter(t => t.status === filters.status)
         if (filters.priority) result = result.filter(t => t.priority === filters.priority)
         if (filters.category) result = result.filter(t => t.category === filters.category)
-        if (filters.group)    result = result.filter(t => t.group === filters.group)
-        if (filters.type)     result = result.filter(t => t.type === filters.type)
         if (filters.search) {
           const q = filters.search.toLowerCase()
           result = result.filter(t =>
-            t.subject.toLowerCase().includes(q) ||
-            t.id.toLowerCase().includes(q) ||
-            t.submitter.toLowerCase().includes(q) ||
-            t.category.toLowerCase().includes(q)
+            (t.subject || '').toLowerCase().includes(q) ||
+            (t.id || '').toLowerCase().includes(q) ||
+            (t.submitter || '').toLowerCase().includes(q) ||
+            (t.category || '').toLowerCase().includes(q)
           )
         }
         switch (filters.sort) {

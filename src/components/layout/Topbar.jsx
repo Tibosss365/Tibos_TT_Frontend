@@ -20,13 +20,9 @@ function extractTicketId(text) {
 }
 
 export function Topbar() {
-<<<<<<< HEAD
-  const { notifications, markAllRead, unreadCount: unread } = useNotificationStore()
-=======
   const navigate = useNavigate()
   const { notifications, markAllRead, markRead, unreadCount } = useNotificationStore()
   const { tickets } = useTicketStore()
->>>>>>> 0a149504f5e5b1b820fda2607973e200e942d5a3
   const { setFilter } = useTicketStore()
   const { isDark, toggleTheme } = useUiStore()
   const [notifOpen, setNotifOpen] = useState(false)
@@ -131,7 +127,7 @@ export function Topbar() {
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--c-text-40)' }}
         >
           <Bell size={18} />
-          {unread > 0 && (
+          {unreadCount > 0 && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
           )}
         </button>
@@ -175,8 +171,8 @@ export function Topbar() {
             </div>
             <div>
               <div className="text-sm font-bold t-main">Notifications</div>
-              {unread > 0 && (
-                <div className="text-[10px] t-sub">{unread} unread</div>
+              {unreadCount > 0 && (
+                <div className="text-[10px] t-sub">{unreadCount} unread</div>
               )}
             </div>
           </div>

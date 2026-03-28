@@ -1121,6 +1121,7 @@ export default function Admin() {
     updateInboundEmail, addEmailLogEntry, clearEmailLog,
     addCategory, updateCategory, deleteCategory,
     resetAgents,
+    fetchAgents, fetchSla, fetchEmailConfig,
   } = useAdminStore()
 
   const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
@@ -1201,9 +1202,16 @@ export default function Admin() {
     setAddCatGroupId(null)
     addToast(`Category "${newCatForm.name}" added`, 'success')
   }
-  const { tickets, bulkUpdate, bulkDelete, resetToSeed } = useTicketStore()
+  const { tickets } = useTicketStore()
   const { addToast } = useUiStore()
   const { currentUser } = useUserStore()
+
+  const handleRefresh = () => {
+    fetchAgents()
+    fetchSla()
+    fetchEmailConfig()
+    addToast('Data refreshed', 'success')
+  }
   const [selectedTicket, setSelectedTicket] = useState(null)
 
   const unassigned = tickets.filter(t => !t.assignee && !['resolved', 'closed'].includes(t.status))
