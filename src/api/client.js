@@ -1,4 +1,6 @@
-const BASE = 'https://tt.tibostech.in'
+// const BASE = 'https://tt.tibostech.in'
+const BASE = 'https://tibos-tt-api.azurewebsites.net'
+
 
 function getToken() {
   try {
