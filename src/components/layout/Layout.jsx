@@ -7,12 +7,15 @@ import { useUserStore } from '../../stores/userStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useNotificationStore } from '../../stores/notificationStore'
+import { useUiStore } from '../../stores/uiStore'
+import { TicketDetailModal } from '../tickets/TicketDetailModal'
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
   const { fetchTickets } = useTicketStore()
   const { fetchAgents, fetchSla, fetchEmailConfig, fetchCategories } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
+  const { activeModal, closeModal } = useUiStore()
   const sseRef = useRef(null)
 
   useEffect(() => {
@@ -75,6 +78,9 @@ export function Layout() {
         </main>
       </div>
       <ToastContainer />
+      {activeModal?.type === 'ticket' && activeModal.data && (
+        <TicketDetailModal ticket={activeModal.data} onClose={closeModal} />
+      )}
     </div>
   )
 }

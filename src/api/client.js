@@ -22,8 +22,22 @@ async function request(path, options = {}) {
   if (res.status === 204) return null
   const data = await res.json()
   if (!res.ok) {
-    const msg = data?.detail || `HTTP ${res.status}`
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg))
+    const detail = data?.detail
+    let msg
+    if (!detail) {
+      msg = `HTTP ${res.status}`
+    } else if (typeof detail === 'string') {
+      msg = detail
+    } else if (Array.isArray(detail)) {
+      // FastAPI validation errors: [{loc, msg, type}]
+      msg = detail.map(e => {
+        const field = Array.isArray(e.loc) ? e.loc.filter(x => x !== 'body').join(' → ') : ''
+        return field ? `${field}: ${e.msg}` : e.msg
+      }).join('\n')
+    } else {
+      msg = JSON.stringify(detail)
+    }
+    throw new Error(msg)
   }
   return data
 }
@@ -54,6 +68,8 @@ export function normalizeTicket(t) {
     contactName: t.contact_name || '',
     assignee:    t.assignee_id ? String(t.assignee_id) : null,
     assigneeObj: t.assignee || null,
+    group:       t.group_id ? String(t.group_id) : '',
+    resolution:  t.resolution || '',
     created:     t.created_at,
     updated:     t.updated_at,
     timeline: (t.timeline || []).map(ev => ({

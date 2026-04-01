@@ -198,9 +198,10 @@ export const useAdminStore = create(
 
       resetAgents: () => set({ agents: DEFAULT_AGENTS }),
 
-      getAgentById: (id) => get().agents.find(a => a.id === id),
+      getAgentById: (id) => get().agents.find(a => String(a.id) === String(id)),
       getAgentName: (id) => {
-        const a = get().agents.find(ag => ag.id === id)
+        if (!id || id === 'unassigned') return '—'
+        const a = get().agents.find(ag => String(ag.id) === String(id))
         return a ? a.name : '—'
       },
     }),

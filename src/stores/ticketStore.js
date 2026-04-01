@@ -7,7 +7,7 @@ export const useTicketStore = create(
     (set, get) => ({
       tickets: [],
       loading: false,
-      filters: { status: '', priority: '', category: '', sort: 'newest', search: '' },
+      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' },
       selectedIds: [],
 
       // ── API Methods ────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ export const useTicketStore = create(
           phone:          formData.phone || null,
           asset:          formData.asset || null,
           description:    formData.description,
+          assignee_id:    formData.assignee || null,
         }
         const data = await api.post('/tickets', body)
         const ticket = normalizeTicket(data)
@@ -62,6 +63,8 @@ export const useTicketStore = create(
         if (changes.email        !== undefined) body.email        = changes.email
         if (changes.asset        !== undefined) body.asset        = changes.asset
         if (changes.description  !== undefined) body.description  = changes.description
+        if (changes.resolution   !== undefined) body.resolution   = changes.resolution
+        if (changes.group        !== undefined) body.group_id     = changes.group || null
         const data = await api.patch(`/tickets/${uuid}`, body)
         const updated = normalizeTicket(data)
         set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
@@ -160,7 +163,7 @@ export const useTicketStore = create(
       },
 
       resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', sort: 'newest', search: '' } })
+        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' } })
       },
 
       toggleSelect: (uuid) => {
@@ -180,6 +183,8 @@ export const useTicketStore = create(
         if (filters.status)   result = result.filter(t => t.status === filters.status)
         if (filters.priority) result = result.filter(t => t.priority === filters.priority)
         if (filters.category) result = result.filter(t => t.category === filters.category)
+        if (filters.group)    result = result.filter(t => t.group === filters.group)
+        if (filters.type)     result = result.filter(t => t.type === filters.type)
         if (filters.search) {
           const q = filters.search.toLowerCase()
           result = result.filter(t =>

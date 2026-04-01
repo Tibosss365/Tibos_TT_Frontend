@@ -26,10 +26,10 @@ const MODAL_TABS = [
   { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
   { id: 'details',       icon: FileText,      label: 'Details' },
   { id: 'tasks',         icon: ClipboardList, label: 'Tasks' },
-  { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
   { id: 'reminders',    icon: Bell,          label: 'Reminders' },
   { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
   { id: 'worklog',      icon: Timer,         label: 'Work Log' },
+  { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
 ]
 
 const inputCls  = 'glass-input w-full text-sm py-1.5'
@@ -165,7 +165,7 @@ export function TicketDetailModal({ ticket, onClose }) {
     status:      ticket.status      || 'open',
     priority:    ticket.priority    || 'medium',
     type:        ticket.type        || 'request',
-    assignee:    ticket.assignee    || 'unassigned',
+    assignee:    ticket.assignee    || '',
     group:       ticket.group       || '',
     description: ticket.description || '',
     submitter:   ticket.submitter   || '',
@@ -183,16 +183,29 @@ export function TicketDetailModal({ ticket, onClose }) {
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
   const handleEdit   = () => setIsEditing(true)
-  const handleCancel = () => { setEdits({ subject: ticket.subject||'', status: ticket.status||'open', priority: ticket.priority||'medium', type: ticket.type||'request', assignee: ticket.assignee||'unassigned', group: ticket.group||'', description: ticket.description||'', submitter: ticket.submitter||'', company: ticket.company||'', email: ticket.email||'', category: ticket.category||'', asset: ticket.asset||'', resolution: ticket.resolution||'' }); setIsEditing(false) }
+  const handleCancel = () => { setEdits({ subject: ticket.subject||'', status: ticket.status||'open', priority: ticket.priority||'medium', type: ticket.type||'request', assignee: ticket.assignee||'', group: ticket.group||'', description: ticket.description||'', submitter: ticket.submitter||'', company: ticket.company||'', email: ticket.email||'', category: ticket.category||'', asset: ticket.asset||'', resolution: ticket.resolution||'' }); setIsEditing(false) }
 
-  const handleSave = () => {
+  const handleSave = (overrides = {}) => {
+    const merged = { ...edits, ...overrides }
     const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
     const changes = {}
-    fields.forEach(k => { if ((edits[k]||'') !== (ticket[k]||'')) changes[k] = edits[k] })
-    if (changes.status)   addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
+    fields.forEach(k => { if ((merged[k]||'') !== (ticket[k]||'')) changes[k] = merged[k] })
+    if (changes.status && changes.status !== 'resolved' && changes.status !== 'closed')
+      addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
     if (changes.assignee) addTimelineEvent(ticket._uuid, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })
-    if (Object.keys(changes).length > 0) { updateTicket(ticket._uuid, changes); addToast('Ticket updated', 'success') }
-    else addToast('No changes to save', 'info')
+    if (Object.keys(changes).length > 0) {
+      updateTicket(ticket._uuid, changes)
+      let msg = 'Ticket Updated'
+      if (changes.status === 'resolved') msg = 'Ticket Resolved'
+      else if (changes.status === 'closed') msg = 'Ticket Closed'
+      else if (changes.status === 'in-progress') msg = 'Ticket In Progress'
+      else if (changes.status === 'on-hold') msg = 'Ticket On Hold'
+      else if (changes.status === 'open') msg = 'Ticket Reopened'
+      else if (changes.assignee) msg = `Ticket Assigned to ${getAgentName(changes.assignee)}`
+      addToast(msg, 'success')
+    } else {
+      addToast('No changes to save', 'info')
+    }
     setIsEditing(false)
   }
 
@@ -283,11 +296,12 @@ export function TicketDetailModal({ ticket, onClose }) {
           ) : <PriorityBadge priority={edits.priority} />}
           {isEditing ? (
             <select className="glass-input text-xs py-1 w-36" value={edits.assignee} onChange={e => set('assignee', e.target.value)}>
-              {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              <option value="">— Unassigned —</option>
+              {agents.filter(a => a.id !== 'unassigned').map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           ) : (
             <span className="text-xs t-muted">
-              <span className="t-sub">Assignee:</span> {getAgentName(edits.assignee)}
+              <span className="t-sub">Assignee:</span> {edits.assignee ? getAgentName(edits.assignee) : '—'}
             </span>
           )}
           <div className="flex-1" />
@@ -440,9 +454,29 @@ export function TicketDetailModal({ ticket, onClose }) {
               {activeTab === 'resolution' && (
                 <div className="space-y-4">
                   {(edits.status === 'resolved' || edits.status === 'closed') && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25">
-                      <CheckCircle2 size={14} className="text-emerald-500"/>
-                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">This ticket is {edits.status}</span>
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={14} className="text-emerald-500"/>
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">This ticket is {edits.status}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 pt-1 border-t border-emerald-500/20">
+                        <div>
+                          <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-0.5">Assigned To</div>
+                          <div className="text-xs t-main">{edits.assignee ? getAgentName(edits.assignee) : '—'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-0.5">Resolved By</div>
+                          <div className="text-xs t-main">
+                            {(() => {
+                              const ev = [...(liveTicket.timeline || [])].reverse().find(e => e.type === 'resolved')
+                              if (!ev) return '—'
+                              return ev.text.replace(/<[^>]+>/g, '')
+                                .replace('Ticket resolved by ', '')
+                                .trim() || '—'
+                            })()}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div>
@@ -456,7 +490,11 @@ export function TicketDetailModal({ ticket, onClose }) {
                     />
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="primary" size="sm" onClick={() => { set('status','resolved'); handleSave(); addTimelineEvent(ticket._uuid, { type:'resolved', text:`Ticket resolved by <strong>${currentUser?.name||'Agent'}</strong>` }) }}>
+                    <Button variant="primary" size="sm" onClick={() => {
+                      set('status', 'resolved')
+                      handleSave({ status: 'resolved' })
+                      addTimelineEvent(ticket._uuid, { type: 'resolved', text: `Ticket resolved by <strong>${currentUser?.name || 'Agent'}</strong>` })
+                    }}>
                       <CheckCircle2 size={13}/> Mark Resolved
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved','success') }}>

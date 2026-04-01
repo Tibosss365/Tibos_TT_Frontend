@@ -24,7 +24,7 @@ export function Topbar() {
   const { notifications, markAllRead, markRead, unreadCount } = useNotificationStore()
   const { tickets } = useTicketStore()
   const { setFilter } = useTicketStore()
-  const { isDark, toggleTheme } = useUiStore()
+  const { isDark, toggleTheme, openModal } = useUiStore()
   const [notifOpen, setNotifOpen] = useState(false)
   const [searchVal, setSearchVal] = useState('')
 
@@ -41,8 +41,12 @@ export function Topbar() {
     const ticketId = extractTicketId(n.text)
     if (ticketId) {
       setNotifOpen(false)
-      // Navigate to All Tickets and pass the ticket id so it auto-opens
-      navigate('/tickets', { state: { openTicketId: ticketId } })
+      const ticket = tickets.find(t => t.id === ticketId)
+      if (ticket) {
+        openModal('ticket', ticket)
+      } else {
+        navigate('/tickets', { state: { openTicketId: ticketId } })
+      }
     }
   }
 

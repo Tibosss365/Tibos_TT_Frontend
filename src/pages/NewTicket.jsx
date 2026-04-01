@@ -9,7 +9,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
 
-const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: 'software', priority: 'medium', description: '', asset: '', group: '', type: 'request' }
+const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: 'software', priority: 'medium', description: '', asset: '', group: '', type: 'request', assignee: '' }
 
 const TICKET_TYPE_CONFIG = {
   request:  {
@@ -39,12 +39,13 @@ export default function NewTicket() {
   const { addTicket } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
-  const { slaSettings, categories, groups } = useAdminStore()
+  const { slaSettings, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
 
   const [form, setForm] = useState({ ...EMPTY, contactName: currentUser?.name || '', company: 'Acme Corp' })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }))
@@ -66,12 +67,15 @@ export default function NewTicket() {
     const errs = validate()
     if (Object.keys(errs).length) { setErrors(errs); return }
     setSubmitting(true)
+    setSubmitError('')
     try {
       await addTicket(form)
-      addToast('Ticket submitted successfully!', 'success')
+      addToast('Ticket Submitted', 'success')
       navigate('/tickets/mine')
     } catch (err) {
-      addToast(err.message || 'Failed to submit ticket', 'error')
+      const msg = err.message || 'Failed to submit ticket'
+      setSubmitError(msg)
+      addToast(msg, 'error')
     } finally {
       setSubmitting(false)
     }
@@ -166,9 +170,20 @@ export default function NewTicket() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className={labelCls}>Asset / Device</label>
-                <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Asset / Device</label>
+                  <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
+                </div>
+                <div>
+                  <label className={labelCls}>Assign To</label>
+                  <select className="glass-input w-full text-sm" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
+                    <option value="">— Unassigned —</option>
+                    {agents.filter(a => a.id !== 'unassigned').map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {/* Priority selector */}
@@ -203,6 +218,17 @@ export default function NewTicket() {
               </div>
             </div>
           </Card>
+
+          {submitError && (
+            <div className="flex gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 animate-fade-in">
+              <AlertTriangle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Ticket submission failed</div>
+                <pre className="text-xs text-rose-600 dark:text-rose-300/80 whitespace-pre-wrap break-words font-sans">{submitError}</pre>
+              </div>
+              <button type="button" onClick={() => setSubmitError('')} className="text-rose-400 hover:text-rose-600 transition-colors">✕</button>
+            </div>
+          )}
 
           <Button type="submit" variant="primary" size="lg" disabled={submitting} className="w-full shadow-glow-indigo">
             {submitting

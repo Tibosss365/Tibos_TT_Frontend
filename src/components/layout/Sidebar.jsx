@@ -78,6 +78,7 @@ export function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            end
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
             title={!sidebarOpen ? label : undefined}
           >
