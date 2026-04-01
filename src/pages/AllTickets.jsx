@@ -159,9 +159,9 @@ export default function AllTickets() {
               ) : filtered.map(ticket => (
                 <tr key={ticket.id}
                   onClick={() => setSelectedTicket(ticket)}
-                  className={`border-b border-glass hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group ${selectedIds.includes(ticket.id) ? 'bg-indigo-500/10 dark:bg-indigo-500/8' : ''}`}>
-                  <td className="py-3 pl-4 pr-2" onClick={e => { e.stopPropagation(); toggleSelect(ticket.id) }}>
-                    {selectedIds.includes(ticket.id)
+                  className={`border-b border-glass hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group ${selectedIds.includes(ticket._uuid) ? 'bg-indigo-500/10 dark:bg-indigo-500/8' : ''}`}>
+                  <td className="py-3 pl-4 pr-2" onClick={e => { e.stopPropagation(); toggleSelect(ticket._uuid) }}>
+                    {selectedIds.includes(ticket._uuid)
                       ? <CheckSquare size={14} className="text-indigo-500" />
                       : <Square size={14} className="t-sub opacity-50 hover:opacity-100" />}
                   </td>
