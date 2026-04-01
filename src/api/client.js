@@ -66,7 +66,7 @@ export function normalizeTicket(t) {
     description: t.description || '',
     submitter:   t.submitter_name,
     contactName: t.contact_name || '',
-    assignee:    t.assignee_id ? String(t.assignee_id) : null,
+    assignee:    t.assignee_id ? String(t.assignee_id) : (t.assignee?.id ? String(t.assignee.id) : null),
     assigneeObj: t.assignee || null,
     group:       t.group_id ? String(t.group_id) : '',
     resolution:  t.resolution || '',

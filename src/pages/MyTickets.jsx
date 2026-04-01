@@ -54,14 +54,14 @@ export default function MyTickets() {
       case 'subject':  return (
         <td key={key} className="py-3 px-4 max-w-xs">
           <div className="t-main font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{ticket.subject}</div>
-          <div className="text-[10px] t-muted mt-0.5">{ticket.submitter}</div>
+          <div className="text-[10px] t-muted mt-0.5">{ticket.submitter_name}</div>
         </td>
       )
       case 'priority': return <td key={key} className="py-3 px-4"><PriorityBadge priority={ticket.priority} /></td>
       case 'status':   return <td key={key} className="py-3 px-4"><StatusBadge status={ticket.status} /></td>
       case 'assignedTo': return (
         <td key={key} className="py-3 px-4">
-          {ticket.assignee
+          {ticket?.assignee
             ? <span className="inline-flex items-center gap-1.5 text-xs font-medium t-main">
                 <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
                   {getAgentName(ticket.assignee).charAt(0).toUpperCase()}
@@ -72,7 +72,7 @@ export default function MyTickets() {
         </td>
       )
       case 'category': return <td key={key} className="py-3 px-4 text-xs t-muted">{getCategoryName(ticket.category)}</td>
-      case 'updated':  return <td key={key} className="py-3 px-4 text-xs t-sub">{timeAgo(ticket.updated)}</td>
+      case 'updated':  return <td key={key} className="py-3 px-4 text-xs t-sub">{timeAgo(ticket.updated_at)}</td>
       default: return null
     }
   }
@@ -134,7 +134,7 @@ export default function MyTickets() {
               ) : myTickets.length === 0 ? (
                 <tr><td colSpan={cols.length} className="py-12 text-center t-muted">No tickets assigned to you</td></tr>
               ) : myTickets.map(ticket => (
-                <tr key={ticket._uuid}
+                <tr key={ticket?.id}
                   onClick={() => setSelectedTicket(ticket)}
                   className="border-b border-glass hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group">
                   {cols.map(c => cellValue(ticket, c.key))}
