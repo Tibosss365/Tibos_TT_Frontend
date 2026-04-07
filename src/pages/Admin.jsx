@@ -1116,7 +1116,7 @@ export default function Admin() {
     agents, slaSettings, emailConfig, emailTriggers,
     inboundEmail, emailLog,
     categories,
-    addAgent, deleteAgent, updateSla,
+    addAgent, updateAgent, deleteAgent, updateSla,
     updateEmailConfig, updateEmailTriggers,
     updateInboundEmail, addEmailLogEntry, clearEmailLog,
     addCategory, updateCategory, deleteCategory,
@@ -1217,6 +1217,32 @@ export default function Admin() {
   const unassigned = tickets.filter(t => !t.assignee && !['resolved', 'closed'].includes(t.status))
 
   const [newAgent, setNewAgent] = useState({ name: '', group: '', username: '', password: '', role: 'technician' })
+  const [editAgent, setEditAgent] = useState(null)   // agent being edited
+  const [editForm, setEditForm] = useState({})
+  const [editSaving, setEditSaving] = useState(false)
+
+  const openEditAgent = (agent) => {
+    setEditAgent(agent)
+    setEditForm({ name: agent.name, group: agent.group || '', username: agent.username || '', role: agent.role || 'technician', password: '' })
+  }
+  const closeEditAgent = () => { setEditAgent(null); setEditForm({}) }
+
+  const handleSaveAgent = async (e) => {
+    e.preventDefault()
+    if (!editForm.name || !editForm.username) { addToast('Name and username are required', 'error'); return }
+    setEditSaving(true)
+    try {
+      const changes = { name: editForm.name, group: editForm.group, username: editForm.username, role: editForm.role }
+      if (editForm.password) changes.password = editForm.password
+      await updateAgent(String(editAgent.id), changes)
+      addToast('Agent updated', 'success')
+      closeEditAgent()
+    } catch (err) {
+      addToast(err.message || 'Failed to update agent', 'error')
+    } finally {
+      setEditSaving(false)
+    }
+  }
   const [slaEdits, setSlaEdits] = useState({ ...slaSettings })
   const [emailEdits, setEmailEdits] = useState({ ...emailConfig })
   const [triggersEdits, setTriggersEdits] = useState({ ...emailTriggers })
@@ -1948,27 +1974,88 @@ export default function Admin() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 dark:from-indigo-500/40 dark:to-violet-500/40 border border-indigo-500/20 flex items-center justify-center text-xs font-bold t-main flex-shrink-0">
                     {agent.initials}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm t-main font-medium">{agent.name}</div>
-                    <div className="text-[10px] t-muted">{agent.group} · {agent.role || 'technician'}</div>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="text-sm t-main font-medium truncate">{agent.name}</div>
+                    <div className="text-[10px] t-muted truncate">{agent.group} · {agent.role || 'technician'}</div>
                   </div>
-                  {String(agent.id) !== String(currentUser?.id) && (
-                    <button onClick={async () => {
-                      try {
-                        await deleteAgent(String(agent.id))
-                        addToast('Agent removed', 'info')
-                      } catch (err) {
-                        addToast(err.message || 'Failed to remove agent', 'error')
-                      }
-                    }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 dark:hover:text-rose-400 transition-all">
-                      <Trash2 size={13} />
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                    <button onClick={() => openEditAgent(agent)}
+                      className="p-1.5 rounded-lg hover:bg-indigo-500/20 t-sub hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">
+                      <Pencil size={13} />
                     </button>
-                  )}
+                    {String(agent.id) !== String(currentUser?.id) && (
+                      <button onClick={async () => {
+                        try {
+                          await deleteAgent(String(agent.id))
+                          addToast('Agent removed', 'info')
+                        } catch (err) {
+                          addToast(err.message || 'Failed to remove agent', 'error')
+                        }
+                      }}
+                        className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 dark:hover:text-rose-400 transition-all">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </Card>
+        </div>
+      )}
+
+      {/* Edit Agent Modal */}
+      {editAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl border border-glass w-full max-w-md animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-glass">
+              <div>
+                <h2 className="text-sm font-bold t-main">Edit Agent</h2>
+                <p className="text-[11px] t-muted mt-0.5">{editAgent.name}</p>
+              </div>
+              <button onClick={closeEditAgent} className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 t-sub transition-all">
+                <X size={15} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveAgent} className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Full Name</label>
+                  <input className={inputCls} value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder="Jane Smith" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Group / Team</label>
+                  <input className={inputCls} value={editForm.group} onChange={e => setEditForm(f => ({ ...f, group: e.target.value }))} placeholder="L1 Support" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Role</label>
+                  <select className={inputCls} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
+                    <option value="technician">Technician</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Username</label>
+                  <input className={inputCls} value={editForm.username} onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))} placeholder="jsmith" autoComplete="off" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">
+                    New Password <span className="normal-case font-normal t-muted">(leave blank to keep current)</span>
+                  </label>
+                  <div className="relative">
+                    <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
+                    <input type="password" className={`${inputCls} pl-7`} value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={closeEditAgent}>Cancel</Button>
+                <Button type="submit" variant="primary" size="sm" className="flex-1" disabled={editSaving}>
+                  {editSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save Changes
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

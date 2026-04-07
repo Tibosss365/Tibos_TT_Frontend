@@ -123,6 +123,12 @@ export const useAdminStore = create(
     return data
   },
 
+  updateAgent: async (id, changes) => {
+    const data = await api.patch(`/agents/${id}`, changes)
+    set(s => ({ agents: s.agents.map(a => String(a.id) === String(id) ? { ...a, ...data } : a) }))
+    return data
+  },
+
   deleteAgent: async (id) => {
     await api.delete(`/agents/${id}`)
     set(s => ({ agents: s.agents.filter(a => String(a.id) !== String(id)) }))
