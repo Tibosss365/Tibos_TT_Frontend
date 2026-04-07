@@ -18,7 +18,15 @@ export const DEFAULT_AGENTS = [
   { id: 'unassigned', name: 'Unassigned', initials: '—', group: '—' },
 ]
 
-export const DEFAULT_SLA = { critical: 1, high: 4, medium: 8, low: 24 }
+export const DEFAULT_SLA = {
+  critical: 1, high: 4, medium: 8, low: 24,
+  timerStart: 'on_creation',      // 'on_creation' | 'on_assignment'
+  countdownMode: '24_7',          // '24_7' | 'business_hours'
+  workDays: [0, 1, 2, 3, 4],     // 0=Mon … 6=Sun
+  workStart: '09:00',
+  workEnd: '20:00',
+  pauseOn: ['on-hold'],           // statuses that pause SLA
+}
 
 export const DEFAULT_EMAIL_CONFIG = {
   type: 'smtp',

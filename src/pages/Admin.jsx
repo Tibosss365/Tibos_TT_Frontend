@@ -1202,7 +1202,7 @@ export default function Admin() {
     setAddCatGroupId(null)
     addToast(`Category "${newCatForm.name}" added`, 'success')
   }
-  const { tickets } = useTicketStore()
+  const { tickets, fetchTickets } = useTicketStore()
   const { addToast } = useUiStore()
   const { currentUser } = useUserStore()
 
@@ -1243,7 +1243,18 @@ export default function Admin() {
       setEditSaving(false)
     }
   }
-  const [slaEdits, setSlaEdits] = useState({ ...slaSettings })
+  const [slaEdits, setSlaEdits] = useState({
+    critical: slaSettings.critical ?? 1,
+    high:     slaSettings.high     ?? 4,
+    medium:   slaSettings.medium   ?? 8,
+    low:      slaSettings.low      ?? 24,
+    timerStart:    slaSettings.timerStart    || 'on_creation',
+    countdownMode: slaSettings.countdownMode || '24_7',
+    workDays:      slaSettings.workDays      || [0,1,2,3,4],
+    workStart:     slaSettings.workStart     || '09:00',
+    workEnd:       slaSettings.workEnd       || '20:00',
+    pauseOn:       slaSettings.pauseOn       || ['on-hold'],
+  })
   const [emailEdits, setEmailEdits] = useState({ ...emailConfig })
   const [triggersEdits, setTriggersEdits] = useState({ ...emailTriggers })
   const [inboundEdits, setInboundEdits] = useState({ ...inboundEmail })
@@ -1265,7 +1276,8 @@ export default function Admin() {
   const handleSaveSla = async () => {
     try {
       await updateSla(slaEdits)
-      addToast('SLA settings saved', 'success')
+      await fetchTickets()   // refresh all tickets so new sla_due_at values appear immediately
+      addToast('SLA settings saved — all active tickets updated', 'success')
     } catch (err) {
       addToast(err.message || 'Failed to save SLA', 'error')
     }
@@ -2061,27 +2073,126 @@ export default function Admin() {
 
       {/* SLA */}
       {tab === 'sla' && (
-        <Card className="max-w-lg">
-          <CardHeader title="SLA Response Times" subtitle="Configure response time targets per priority" />
-          <div className="space-y-3 mb-4">
-            {PRIORITIES.map(p => {
-              const colors = { critical: 'text-rose-500 dark:text-rose-400', high: 'text-orange-500 dark:text-orange-400', medium: 'text-amber-500 dark:text-amber-400', low: 't-muted' }
-              return (
-                <div key={p} className="flex items-center gap-4 p-3 rounded-lg bg-black/5 dark:bg-white/3 border border-glass">
-                  <span className={`text-sm font-bold w-20 flex-shrink-0 ${colors[p]}`}>{p.charAt(0).toUpperCase() + p.slice(1)}</span>
-                  <input
-                    type="number" min={1} max={168}
-                    className="glass-input w-24 text-sm text-center"
-                    value={slaEdits[p] || ''}
-                    onChange={e => setSlaEdits(s => ({ ...s, [p]: e.target.value }))}
-                  />
-                  <span className="text-xs t-sub">hours</span>
+        <div className="space-y-5 max-w-xl">
+          {/* Response Times */}
+          <Card>
+            <CardHeader title="SLA Response Times" subtitle="Maximum resolution time per priority level" />
+            <div className="space-y-3 mb-1">
+              {PRIORITIES.map(p => {
+                const colors = { critical: 'text-rose-500', high: 'text-orange-500', medium: 'text-amber-500', low: 't-muted' }
+                const dots   = { critical: 'bg-rose-500',  high: 'bg-orange-500',  medium: 'bg-amber-500',  low: 'bg-slate-400' }
+                return (
+                  <div key={p} className="flex items-center gap-4 p-3 rounded-lg bg-black/5 dark:bg-white/3 border border-glass">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dots[p]}`} />
+                    <span className={`text-sm font-bold w-20 flex-shrink-0 ${colors[p]}`}>{p.charAt(0).toUpperCase() + p.slice(1)}</span>
+                    <input
+                      type="number" min={1} max={720}
+                      className="glass-input w-24 text-sm text-center"
+                      value={slaEdits[p] || ''}
+                      onChange={e => setSlaEdits(s => ({ ...s, [p]: e.target.value }))}
+                    />
+                    <span className="text-xs t-sub">hours</span>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+
+          {/* Timer Behaviour */}
+          <Card>
+            <CardHeader title="Timer Behaviour" subtitle="When the SLA countdown starts and how it runs" />
+            <div className="space-y-4">
+              {/* Timer Start */}
+              <div>
+                <div className="text-xs font-bold t-sub uppercase tracking-wider mb-2">Start Timer</div>
+                <div className="flex gap-2">
+                  {[['on_creation','On Ticket Creation'],['on_assignment','On Agent Assignment']].map(([val, label]) => (
+                    <button key={val} onClick={() => setSlaEdits(s => ({ ...s, timerStart: val }))}
+                      className={`flex-1 text-xs py-2 px-3 rounded-lg border font-medium transition-all ${slaEdits.timerStart === val ? 'bg-indigo-500 text-white border-indigo-500' : 'border-glass t-muted hover:t-main'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+
+              {/* Countdown Mode */}
+              <div>
+                <div className="text-xs font-bold t-sub uppercase tracking-wider mb-2">Countdown Mode</div>
+                <div className="flex gap-2">
+                  {[['24_7','24 / 7 (Always On)'],['business_hours','Business Hours Only']].map(([val, label]) => (
+                    <button key={val} onClick={() => setSlaEdits(s => ({ ...s, countdownMode: val }))}
+                      className={`flex-1 text-xs py-2 px-3 rounded-lg border font-medium transition-all ${slaEdits.countdownMode === val ? 'bg-indigo-500 text-white border-indigo-500' : 'border-glass t-muted hover:t-main'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Business Hours (shown only when business_hours mode) */}
+              {slaEdits.countdownMode === 'business_hours' && (
+                <div className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3">
+                  <div className="text-xs font-bold t-sub uppercase tracking-wider">Business Hours</div>
+                  {/* Work Days */}
+                  <div>
+                    <div className="text-[10px] t-sub mb-1.5">Working Days</div>
+                    <div className="flex gap-1.5">
+                      {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) => {
+                        const selected = (slaEdits.workDays || []).includes(i)
+                        return (
+                          <button key={i} onClick={() => setSlaEdits(s => {
+                            const cur = s.workDays || []
+                            return { ...s, workDays: selected ? cur.filter(x => x !== i) : [...cur, i].sort() }
+                          })}
+                            className={`w-9 h-8 text-[11px] font-semibold rounded-lg border transition-all ${selected ? 'bg-indigo-500 text-white border-indigo-500' : 'border-glass t-muted hover:t-main'}`}>
+                            {d}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {/* Work Hours */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="text-[10px] t-sub mb-1">Start Time</div>
+                      <input type="time" className="glass-input text-sm w-full"
+                        value={slaEdits.workStart || '09:00'}
+                        onChange={e => setSlaEdits(s => ({ ...s, workStart: e.target.value }))} />
+                    </div>
+                    <div className="t-sub text-xs mt-4">to</div>
+                    <div className="flex-1">
+                      <div className="text-[10px] t-sub mb-1">End Time</div>
+                      <input type="time" className="glass-input text-sm w-full"
+                        value={slaEdits.workEnd || '20:00'}
+                        onChange={e => setSlaEdits(s => ({ ...s, workEnd: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Pause Conditions */}
+          <Card>
+            <CardHeader title="Pause Conditions" subtitle="SLA timer pauses when ticket moves to these statuses" />
+            <div className="flex flex-wrap gap-2">
+              {['on-hold','pending','waiting-for-customer','waiting-for-vendor'].map(s => {
+                const active = (slaEdits.pauseOn || []).includes(s)
+                return (
+                  <button key={s} onClick={() => setSlaEdits(e => {
+                    const cur = e.pauseOn || []
+                    return { ...e, pauseOn: active ? cur.filter(x => x !== s) : [...cur, s] }
+                  })}
+                    className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${active ? 'bg-amber-500/20 text-amber-500 border-amber-500/40' : 'border-glass t-muted hover:t-main'}`}>
+                    {active ? '⏸ ' : ''}{s}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[10px] t-sub mt-3">When the ticket leaves a paused status, the SLA deadline is extended by the time it was paused.</p>
+          </Card>
+
           <Button variant="primary" size="sm" onClick={handleSaveSla}><Save size={13} /> Save SLA Settings</Button>
-        </Card>
+        </div>
       )}
 
       {/* Email */}

@@ -58,6 +58,34 @@ export function timeAgo(iso) {
   return `${dy}d ago`
 }
 
+// ── SLA Utilities ─────────────────────────────────────────────────────────────
+
+function _fmtDuration(ms) {
+  const totalSec = Math.floor(Math.abs(ms) / 1000)
+  const d = Math.floor(totalSec / 86400)
+  const h = Math.floor((totalSec % 86400) / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
+
+/**
+ * Returns SLA status info for a ticket.
+ * @returns {{ label: string, overdue: boolean, paused: boolean, done: boolean } | null}
+ */
+export function getSlaInfo(ticket) {
+  if (!ticket.slaDueAt) return null
+  const status = ticket.status
+  if (status === 'resolved' || status === 'closed') return { label: 'Completed', overdue: false, paused: false, done: true }
+  if (status === 'on-hold') return { label: 'SLA Paused', overdue: false, paused: true, done: false }
+  const diff = new Date(ticket.slaDueAt).getTime() - Date.now()
+  if (diff < 0) return { label: `Overdue by ${_fmtDuration(diff)}`, overdue: true, paused: false, done: false }
+  // Warning zone: less than 25% of total SLA time remains (approximate with < 1h for now)
+  const warning = diff < 3600_000
+  return { label: `${_fmtDuration(diff)} left`, overdue: false, paused: false, done: false, warning }
+}
+
 export const PRIORITY_COLORS = {
   critical: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', dot: 'bg-rose-400' },
   high:     { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', dot: 'bg-orange-400' },

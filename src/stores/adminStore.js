@@ -70,10 +70,16 @@ export const useAdminStore = create(
       const data = await api.get('/admin/sla')
       set({
         slaSettings: {
-          critical: data.critical_hours,
-          high:     data.high_hours,
-          medium:   data.medium_hours,
-          low:      data.low_hours,
+          critical:      data.critical_hours,
+          high:          data.high_hours,
+          medium:        data.medium_hours,
+          low:           data.low_hours,
+          timerStart:    data.timer_start    || 'on_creation',
+          countdownMode: data.countdown_mode || '24_7',
+          workDays:      data.work_days      || [0,1,2,3,4],
+          workStart:     data.work_start     || '09:00',
+          workEnd:       data.work_end       || '20:00',
+          pauseOn:       data.pause_on       || ['on-hold'],
         },
       })
     } catch (e) {
@@ -136,18 +142,30 @@ export const useAdminStore = create(
 
   updateSla: async (slaValues) => {
     const body = {
-      critical_hours: Number(slaValues.critical),
-      high_hours:     Number(slaValues.high),
-      medium_hours:   Number(slaValues.medium),
-      low_hours:      Number(slaValues.low),
+      critical_hours:  Number(slaValues.critical),
+      high_hours:      Number(slaValues.high),
+      medium_hours:    Number(slaValues.medium),
+      low_hours:       Number(slaValues.low),
+      timer_start:     slaValues.timerStart    || 'on_creation',
+      countdown_mode:  slaValues.countdownMode || '24_7',
+      work_days:       slaValues.workDays      || [0,1,2,3,4],
+      work_start:      slaValues.workStart     || '09:00',
+      work_end:        slaValues.workEnd       || '20:00',
+      pause_on:        slaValues.pauseOn       || ['on-hold'],
     }
     const data = await api.put('/admin/sla', body)
     set({
       slaSettings: {
-        critical: data.critical_hours,
-        high:     data.high_hours,
-        medium:   data.medium_hours,
-        low:      data.low_hours,
+        critical:      data.critical_hours,
+        high:          data.high_hours,
+        medium:        data.medium_hours,
+        low:           data.low_hours,
+        timerStart:    data.timer_start    || 'on_creation',
+        countdownMode: data.countdown_mode || '24_7',
+        workDays:      data.work_days      || [0,1,2,3,4],
+        workStart:     data.work_start     || '09:00',
+        workEnd:       data.work_end       || '20:00',
+        pauseOn:       data.pause_on       || ['on-hold'],
       },
     })
   },

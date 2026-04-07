@@ -8,7 +8,7 @@ import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
-import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo } from '../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo } from '../utils/ticketUtils'
 
 export default function AllTickets() {
   const location = useLocation()
@@ -148,14 +148,14 @@ export default function AllTickets() {
                     {allSelected ? <CheckSquare size={14} /> : <Square size={14} />}
                   </button>
                 </th>
-                {['ID', 'Type', 'Subject', 'Priority', 'Status', 'Group', 'Category', 'Assignee', 'Updated'].map(h => (
+                {['ID', 'Type', 'Subject', 'Priority', 'Status', 'SLA', 'Group', 'Category', 'Assignee', 'Updated'].map(h => (
                   <th key={h} className="py-3 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center t-sub text-sm">No tickets found</td></tr>
+                <tr><td colSpan={10} className="py-12 text-center t-sub text-sm">No tickets found</td></tr>
               ) : filtered.map(ticket => (
                 <tr key={ticket.id}
                   onClick={() => setSelectedTicket(ticket)}
@@ -184,6 +184,28 @@ export default function AllTickets() {
                   </td>
                   <td className="py-3 px-3 whitespace-nowrap"><PriorityBadge priority={ticket.priority} /></td>
                   <td className="py-3 px-3 whitespace-nowrap"><StatusBadge status={ticket.status} /></td>
+                  <td className="py-3 px-3 whitespace-nowrap">
+                    {(() => {
+                      const sla = getSlaInfo(ticket)
+                      if (!sla) return <span className="text-xs t-muted">—</span>
+                      if (sla.done) return <span className="text-[11px] text-emerald-500 font-medium">Done</span>
+                      if (sla.paused) return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                          ⏸ Paused
+                        </span>
+                      )
+                      if (sla.overdue) return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
+                          ⚠ {sla.label}
+                        </span>
+                      )
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${sla.warning ? 'bg-amber-500/15 text-amber-500 border-amber-500/30' : 'bg-slate-500/10 text-slate-500 border-slate-500/20 dark:text-slate-400'}`}>
+                          ⏱ {sla.label}
+                        </span>
+                      )
+                    })()}
+                  </td>
                   <td className="py-3 px-3 whitespace-nowrap">
                     {ticket.group ? (() => {
                       const g = groups.find(x => x.id === ticket.group)

@@ -70,6 +70,9 @@ export function normalizeTicket(t) {
     assigneeObj: t.assignee || null,
     group:       t.group_id ? String(t.group_id) : '',
     resolution:  t.resolution || '',
+    slaDueAt:    t.sla_due_at || null,
+    slaPausedAt: t.sla_paused_at || null,
+    isOverdue:   t.is_overdue || false,
     created:     t.created_at,
     updated:     t.updated_at,
     timeline: (t.timeline || []).map(ev => ({

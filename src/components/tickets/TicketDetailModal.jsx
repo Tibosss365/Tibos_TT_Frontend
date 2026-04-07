@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Trash2, Save, MessageSquare, Pencil, X, CheckSquare, Square,
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
@@ -12,7 +12,7 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
-import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo } from '../../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo } from '../../utils/ticketUtils'
 
 const TIMELINE_STYLES = {
   created:  { dot: 'bg-blue-500',    label: 'Opened' },
@@ -23,20 +23,146 @@ const TIMELINE_STYLES = {
 }
 
 const MODAL_TABS = [
-  { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
   { id: 'details',       icon: FileText,      label: 'Details' },
   { id: 'tasks',         icon: ClipboardList, label: 'Tasks' },
   { id: 'reminders',    icon: Bell,          label: 'Reminders' },
   { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
   { id: 'worklog',      icon: Timer,         label: 'Work Log' },
   { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
+  { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
 ]
 
 const inputCls  = 'glass-input w-full text-sm py-1.5'
 const labelCls  = 'block text-[10px] font-bold t-sub uppercase tracking-wider mb-1'
 
+// ── Live SLA Countdown ────────────────────────────────────────────────────────
+function SlaCountdown({ ticket, slaSettings }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const status    = ticket.status
+  const dueAt     = ticket.slaDueAt
+  const pausedAt  = ticket.slaPausedAt
+  const pauseOn   = slaSettings?.pauseOn || ['on-hold']
+  const bizMode   = slaSettings?.countdownMode === 'business_hours'
+  const workDays  = slaSettings?.workDays  || [0,1,2,3,4]
+  const workStart = slaSettings?.workStart || '09:00'
+  const workEnd   = slaSettings?.workEnd   || '20:00'
+
+  if (!dueAt) return (
+    <div className="text-xs t-muted py-1">
+      {slaSettings?.timerStart === 'on_assignment' && !ticket.assignee
+        ? 'Starts when assigned'
+        : 'No SLA configured'}
+    </div>
+  )
+
+  if (status === 'resolved' || status === 'closed') return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+        <span className="text-xs text-emerald-500 font-semibold">SLA Met — Completed</span>
+      </div>
+      <div className="text-[10px] t-sub">Deadline was {new Date(dueAt).toLocaleString()}</div>
+    </div>
+  )
+
+  const isPaused = pauseOn.includes(status)
+  if (isPaused) return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+        <span className="text-xs text-amber-500 font-semibold">⏸ Paused — {status}</span>
+      </div>
+      <div className="text-[10px] t-sub">Deadline: {new Date(dueAt).toLocaleString()}</div>
+      {bizMode && <div className="text-[10px] t-sub">Mode: Business Hours</div>}
+    </div>
+  )
+
+  // For business-hours mode, compute effective remaining time (minutes inside biz hours)
+  function bizRemaining(dueMs) {
+    if (!bizMode) return dueMs - now
+    const [wsH, wsM] = workStart.split(':').map(Number)
+    const [weH, weM] = workEnd.split(':').map(Number)
+    const bizMsPerDay = ((weH * 60 + weM) - (wsH * 60 + wsM)) * 60000
+    if (bizMsPerDay <= 0) return dueMs - now
+    let remaining = 0
+    let cursor = now
+    const limit = dueMs
+    while (cursor < limit) {
+      const d = new Date(cursor)
+      const wd = d.getDay() === 0 ? 6 : d.getDay() - 1  // convert JS Sun=0 → Mon=0
+      if (!workDays.includes(wd)) { cursor += 86400000; continue }
+      const dayStart = new Date(d).setHours(wsH, wsM, 0, 0)
+      const dayEnd   = new Date(d).setHours(weH, weM, 0, 0)
+      const s = Math.max(cursor, dayStart)
+      const e = Math.min(limit, dayEnd)
+      if (e > s) remaining += e - s
+      cursor = dayEnd > cursor ? dayEnd : cursor + 86400000
+    }
+    return remaining
+  }
+
+  const diff     = new Date(dueAt).getTime() - now
+  const effDiff  = bizMode ? bizRemaining(new Date(dueAt).getTime()) : diff
+  const overdue  = diff < 0
+  const abs      = Math.abs(effDiff)
+  const d        = Math.floor(abs / 86400000)
+  const h        = Math.floor((abs % 86400000) / 3600000)
+  const m        = Math.floor((abs % 3600000) / 60000)
+  const s        = Math.floor((abs % 60000) / 1000)
+  const timeStr  = d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`
+
+  // Colour thresholds: green → yellow (≤25% time left) → red (overdue)
+  const total    = ticket.created ? new Date(dueAt).getTime() - new Date(ticket.created).getTime() : null
+  const pct      = total ? Math.min(100, Math.max(0, ((now - new Date(ticket.created).getTime()) / total) * 100)) : null
+  const warning  = !overdue && (effDiff < 3600000 || (pct !== null && pct > 75))
+
+  if (overdue) return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
+        <span className="text-xs font-bold text-rose-500 uppercase tracking-wide">Overdue</span>
+      </div>
+      <div className="text-xs text-rose-400 font-medium">by {timeStr}{bizMode ? ' (business time)' : ''}</div>
+      <div className="text-[10px] t-sub mt-0.5">Deadline: {new Date(dueAt).toLocaleString()}</div>
+      <div className="mt-2 h-1.5 rounded-full bg-rose-500/20 overflow-hidden">
+        <div className="h-full w-full rounded-full bg-rose-500 animate-pulse" />
+      </div>
+    </div>
+  )
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${warning ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+        <span className={`text-xs font-bold ${warning ? 'text-amber-400' : 'text-emerald-500'}`}>
+          {timeStr} left{bizMode ? ' (biz)' : ''}
+        </span>
+      </div>
+      <div className="text-[10px] t-sub">Deadline: {new Date(dueAt).toLocaleString()}</div>
+      {bizMode && (
+        <div className="text-[10px] t-sub">
+          Working: {workDays.map(i => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]).join(', ')} · {workStart}–{workEnd}
+        </div>
+      )}
+      {pct !== null && (
+        <div className="mt-2 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-1000 ${pct > 85 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Requester Details Sidebar ─────────────────────────────────────────────────
-function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, onEdit, onSave, onCancel, onDelete }) {
+function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete }) {
   const initials = (ticket.submitter || ticket.contactName || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
@@ -87,6 +213,10 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
         <div>
           <div className={labelCls}>Last Updated</div>
           <div className="text-xs t-main">{fmtDateTime(ticket.updated)}</div>
+        </div>
+        <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+          <div className={labelCls + ' mb-2'}>SLA Status</div>
+          <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
         </div>
         <div>
           <div className={labelCls}>Category</div>
@@ -148,17 +278,23 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export function TicketDetailModal({ ticket, onClose }) {
   const {
-    updateTicket, addTimelineEvent, deleteTicket,
+    updateTicket, addTimelineEvent, deleteTicket, fetchTicket,
     addTask, toggleTask, deleteTask,
     addWorkLog, deleteWorkLog,
     addReminder, toggleReminder, deleteReminder,
     addApproval, updateApprovalStatus,
   } = useTicketStore()
-  const { agents, getAgentName, getCategoryName, categories, groups } = useAdminStore()
+  const { agents, getAgentName, getCategoryName, categories, groups, slaSettings } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
 
-  const [activeTab, setActiveTab] = useState('conversations')
+  const [activeTab, setActiveTab] = useState('details')
+  const [resolverId, setResolverId] = useState(currentUser?.id || '')
+
+  // Load full ticket detail (with timeline) when modal opens
+  useEffect(() => {
+    fetchTicket(ticket._uuid)
+  }, [ticket._uuid])
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
     subject:     ticket.subject     || '',
@@ -305,6 +441,25 @@ export function TicketDetailModal({ ticket, onClose }) {
             </span>
           )}
           <div className="flex-1" />
+          {(() => {
+            const sla = getSlaInfo(liveTicket)
+            if (!sla || sla.done) return null
+            if (sla.paused) return (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                ⏸ SLA Paused
+              </span>
+            )
+            if (sla.overdue) return (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30 animate-pulse">
+                ⚠ {sla.label}
+              </span>
+            )
+            return (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${sla.warning ? 'bg-amber-500/15 text-amber-500 border-amber-500/30' : 'bg-slate-500/10 t-sub border-slate-500/20'}`}>
+                ⏱ {sla.label}
+              </span>
+            )
+          })()}
           <div className="flex items-center gap-1.5 text-[10px] t-sub">
             <CalendarDays size={11} />
             Created {fmtDateTime(ticket.created)}
@@ -468,8 +623,11 @@ export function TicketDetailModal({ ticket, onClose }) {
                           <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-0.5">Resolved By</div>
                           <div className="text-xs t-main">
                             {(() => {
-                              const ev = [...(liveTicket.timeline || [])].reverse().find(e => e.type === 'resolved')
+                              const timeline = liveTicket.timeline || []
+                              const ev = [...timeline].reverse().find(e => e.type === 'resolved')
                               if (!ev) return '—'
+                              // Use author name if available, otherwise extract from text
+                              if (ev.author) return ev.author
                               return ev.text.replace(/<[^>]+>/g, '')
                                 .replace('Ticket resolved by ', '')
                                 .trim() || '—'
@@ -483,21 +641,61 @@ export function TicketDetailModal({ ticket, onClose }) {
                     <div className={labelCls}>Resolution Notes</div>
                     <textarea
                       className={inputCls + ' resize-none leading-relaxed'}
-                      rows={6}
+                      rows={5}
                       value={edits.resolution}
                       onChange={e => set('resolution', e.target.value)}
                       placeholder="Describe how the issue was resolved…"
                     />
                   </div>
+                  {/* Resolver — shown when ticket is NOT yet resolved */}
+                  {edits.status !== 'resolved' && edits.status !== 'closed' && (
+                    <div>
+                      <div className={labelCls}>Resolved By</div>
+                      <select
+                        className={inputCls}
+                        value={resolverId}
+                        onChange={e => setResolverId(e.target.value)}
+                      >
+                        <option value="">— Select agent —</option>
+                        {agents.filter(a => a.id !== 'unassigned').map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                      {edits.assignee && edits.assignee !== currentUser?.id && (
+                        <p className="text-[10px] text-amber-500 mt-1">
+                          This ticket is assigned to {getAgentName(edits.assignee)}. Please confirm who resolved it.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="flex gap-2 flex-wrap">
-                    <Button variant="primary" size="sm" onClick={() => {
-                      set('status', 'resolved')
-                      handleSave({ status: 'resolved' })
-                      addTimelineEvent(ticket._uuid, { type: 'resolved', text: `Ticket resolved by <strong>${currentUser?.name || 'Agent'}</strong>` })
-                    }}>
-                      <CheckCircle2 size={13}/> Mark Resolved
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved','success') }}>
+                    {(edits.status === 'resolved' || edits.status === 'closed') ? (
+                      <Button variant="danger" size="sm" onClick={() => {
+                        set('status', 'open')
+                        handleSave({ status: 'open' })
+                      }}>
+                        <AlertCircle size={13}/> Reopen Ticket
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={!resolverId}
+                        onClick={() => {
+                          if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
+                          const resolverAgentName = getAgentName(resolverId)
+                          set('status', 'resolved')
+                          handleSave({ status: 'resolved', resolution: edits.resolution })
+                          // If resolver is different from current user, record it as a note
+                          if (resolverId !== currentUser?.id) {
+                            addTimelineEvent(ticket._uuid, { type: 'comment', text: `Resolved by: <strong>${resolverAgentName}</strong>` })
+                          }
+                        }}
+                      >
+                        <CheckCircle2 size={13}/> Mark Resolved
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved', 'success') }}>
                       <Save size={13}/> Save Notes
                     </Button>
                   </div>

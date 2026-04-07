@@ -76,6 +76,17 @@ export const useTicketStore = create(
         set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
       },
 
+      fetchTicket: async (uuid) => {
+        try {
+          const data = await api.get(`/tickets/${uuid}`)
+          const updated = normalizeTicket(data)
+          set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated } : t) }))
+          return updated
+        } catch (e) {
+          console.error('fetchTicket error', e)
+        }
+      },
+
       addTimelineEvent: async (uuid, event) => {
         const data = await api.post(`/tickets/${uuid}/comments`, { text: event.text })
         const updated = normalizeTicket(data)
