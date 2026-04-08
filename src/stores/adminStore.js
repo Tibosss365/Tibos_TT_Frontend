@@ -114,6 +114,24 @@ export const useAdminStore = create(
     }
   },
 
+  fetchGroups: async () => {
+    try {
+      const data = await api.get('/groups')
+      if (!Array.isArray(data) || data.length === 0) return
+      const grps = data.map(g => ({
+        id:          String(g.id),          // use the backend numeric ID as string
+        name:        g.name,
+        description: g.description || '',
+        color:       g.color || '#6B7280',
+        isBuiltin:   g.is_builtin ?? true,
+      }))
+      set({ groups: grps })
+    } catch (e) {
+      // Non-fatal: fall back to DEFAULT_GROUPS already in state
+      console.error('fetchGroups error', e)
+    }
+  },
+
   addAgent: async (agentData) => {
     const initials = agentData.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     const body = {

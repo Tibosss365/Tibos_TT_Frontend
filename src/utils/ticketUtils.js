@@ -1,3 +1,5 @@
+import { useAdminStore } from '../stores/adminStore'
+
 export const STATUSES      = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
 export const PRIORITIES    = ['critical', 'high', 'medium', 'low']
 export const TICKET_TYPES  = ['request', 'incident']
@@ -114,8 +116,13 @@ export function getSlaInfo(ticket) {
 
   if (slaStatus === 'not_started') {
     const dueIso = ticket.slaDueTime || ticket.slaDueAt
-    if (!dueIso && !ticket.assignee) {
+    const slaSettings = useAdminStore.getState().slaSettings
+    const startsOnAssign = slaSettings?.timerStart === 'on_assignment'
+    if (!dueIso && (!ticket.assignee && startsOnAssign)) {
       return { label: 'Awaiting assignment', overdue: false, paused: false, done: false, notStarted: true, warning: false, remainingSeconds: null, overdueSeconds: 0 }
+    }
+    if (!dueIso) {
+      return { label: 'Not started', overdue: false, paused: false, done: false, notStarted: true, warning: false, remainingSeconds: null, overdueSeconds: 0 }
     }
     return null
   }
@@ -147,10 +154,11 @@ export function getSlaInfo(ticket) {
   }
 
   // Warning: less than 25% of the SLA window remains
-  // We approximate by checking if < 1h for medium/high or < 15m for critical
   const priority = ticket.priority || 'medium'
-  const warningThresholds = { critical: 900, high: 1800, medium: 3600, low: 7200 }
-  const warning = remaining < (warningThresholds[priority] || 3600)
+  const slaSettings = useAdminStore.getState().slaSettings
+  const slaHrs = slaSettings?.[priority] || 8
+  const warnThresh = slaHrs * 3600 * 0.25
+  const warning = remaining < warnThresh
 
   return {
     label: `${fmtSlaSeconds(remaining)} left`,

@@ -68,7 +68,7 @@ export function normalizeTicket(t) {
     contactName: t.contact_name || '',
     assignee:    t.assignee_id ? String(t.assignee_id) : (t.assignee?.id ? String(t.assignee.id) : null),
     assigneeObj: t.assignee || null,
-    group:       t.group_id ? String(t.group_id) : '',
+    group:       t.group_id ? String(t.group_id) : (t.group?.id ? String(t.group.id) : ''),
     resolution:  t.resolution || '',
     // ── SLA v2 fields ─────────────────────────────────────────────────
     slaStatus:        t.sla_status        || 'not_started',

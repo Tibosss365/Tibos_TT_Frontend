@@ -13,7 +13,7 @@ import { TicketDetailModal } from '../tickets/TicketDetailModal'
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
   const { fetchTickets } = useTicketStore()
-  const { fetchAgents, fetchSla, fetchEmailConfig, fetchCategories } = useAdminStore()
+  const { fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
   const { activeModal, closeModal } = useUiStore()
   const sseRef = useRef(null)
@@ -27,6 +27,7 @@ export function Layout() {
     fetchSla()
     fetchEmailConfig()
     fetchCategories()
+    fetchGroups()
     fetchNotifications()
 
     // Open SSE connection

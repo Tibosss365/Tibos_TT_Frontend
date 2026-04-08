@@ -49,7 +49,7 @@ const labelCls  = 'block text-[10px] font-bold t-sub uppercase tracking-wider mb
  *   overdue     → pulsing red + overdue duration ticking up
  *   completed   → green "SLA Met" with recorded due time
  */
-function SlaCountdown({ ticket }) {
+function SlaCountdown({ ticket, slaSettings }) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick(n => n + 1), 1000)
@@ -61,17 +61,15 @@ function SlaCountdown({ ticket }) {
   const startIso   = ticket.slaStartTime
   const pausedSecs = ticket.slaPausedSeconds || 0
 
-  // ── Not started ───────────────────────────────────────────────────────
+  // ── Not started (legacy tickets only — new tickets always start SLA) ──
   if (slaStatus === 'not_started') {
     return (
       <div className="space-y-1">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
-          <span className="text-xs text-slate-400 font-medium">
-            {!ticket.assignee ? 'Awaiting assignment' : 'SLA not started'}
-          </span>
+          <span className="text-xs text-slate-400 font-medium">SLA not started</span>
         </div>
-        <div className="text-[10px] t-sub">SLA starts when ticket is assigned</div>
+        <div className="text-[10px] t-sub">Run backfill to activate for existing tickets</div>
       </div>
     )
   }
@@ -139,8 +137,9 @@ function SlaCountdown({ ticket }) {
     : 'bg-emerald-400'
 
   const priority   = ticket.priority || 'medium'
-  const warnThresh = { critical: 900, high: 1800, medium: 3600, low: 7200 }
-  const warning    = !isOverdue && remaining < (warnThresh[priority] || 3600)
+  const slaHrs     = slaSettings?.[priority] || 8
+  const warnThresh = slaHrs * 3600 * 0.25 // warning at 25% remaining time
+  const warning    = !isOverdue && remaining < warnThresh
 
   if (isOverdue) return (
     <div className="space-y-1.5">
@@ -244,7 +243,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
         </div>
         <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
           <div className={labelCls + ' mb-2'}>SLA Status</div>
-          <SlaCountdown ticket={ticket} />
+          <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
         </div>
         <div>
           <div className={labelCls}>Category</div>
@@ -316,6 +315,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
 
+
   const [activeTab, setActiveTab] = useState('details')
   const [resolverId, setResolverId] = useState(currentUser?.id || '')
 
@@ -345,20 +345,68 @@ export function TicketDetailModal({ ticket, onClose }) {
   // ── Live ticket data ────────────────────────────────────────────────────────
   const liveTicket = useTicketStore(s => s.tickets.find(t => t.id === ticket.id)) || ticket
 
+  // Sync edits whenever liveTicket changes (e.g. after save or SSE push) so the
+  // sidebar/SLA panel always reflects the latest backend values.
+  useEffect(() => {
+    if (isEditing) return             // don't clobber in-progress edits
+    setEdits({
+      subject:     liveTicket.subject     || '',
+      status:      liveTicket.status      || 'open',
+      priority:    liveTicket.priority    || 'medium',
+      type:        liveTicket.type        || 'request',
+      assignee:    liveTicket.assignee    || '',
+      group:       liveTicket.group       || '',
+      description: liveTicket.description || '',
+      submitter:   liveTicket.submitter   || '',
+      company:     liveTicket.company     || '',
+      email:       liveTicket.email       || '',
+      category:    liveTicket.category    || '',
+      asset:       liveTicket.asset       || '',
+      resolution:  liveTicket.resolution  || '',
+    })
+  }, [liveTicket, isEditing]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
   const handleEdit   = () => setIsEditing(true)
-  const handleCancel = () => { setEdits({ subject: ticket.subject||'', status: ticket.status||'open', priority: ticket.priority||'medium', type: ticket.type||'request', assignee: ticket.assignee||'', group: ticket.group||'', description: ticket.description||'', submitter: ticket.submitter||'', company: ticket.company||'', email: ticket.email||'', category: ticket.category||'', asset: ticket.asset||'', resolution: ticket.resolution||'' }); setIsEditing(false) }
+  const handleCancel = () => {
+    setEdits({
+      subject:     liveTicket.subject     || '',
+      status:      liveTicket.status      || 'open',
+      priority:    liveTicket.priority    || 'medium',
+      type:        liveTicket.type        || 'request',
+      assignee:    liveTicket.assignee    || '',
+      group:       liveTicket.group       || '',
+      description: liveTicket.description || '',
+      submitter:   liveTicket.submitter   || '',
+      company:     liveTicket.company     || '',
+      email:       liveTicket.email       || '',
+      category:    liveTicket.category    || '',
+      asset:       liveTicket.asset       || '',
+      resolution:  liveTicket.resolution  || '',
+    })
+    setIsEditing(false)
+  }
 
-  const handleSave = (overrides = {}) => {
+  const handleSave = async (overrides = {}) => {
     const merged = { ...edits, ...overrides }
     const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
     const changes = {}
-    fields.forEach(k => { if ((merged[k]||'') !== (ticket[k]||'')) changes[k] = merged[k] })
+    // Compare against liveTicket so we catch changes the backend already applied
+    fields.forEach(k => { if ((merged[k]||'') !== (liveTicket[k]||'')) changes[k] = merged[k] })
     if (changes.status && changes.status !== 'resolved' && changes.status !== 'closed')
       addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
     if (changes.assignee) addTimelineEvent(ticket._uuid, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })
     if (Object.keys(changes).length > 0) {
-      updateTicket(ticket._uuid, changes)
+      try {
+        await updateTicket(ticket._uuid, changes)
+        // Re-fetch the ticket so SLA status, group, and all backend-computed
+        // fields are refreshed immediately (e.g. sla_status becomes 'active'
+        // after the first agent assignment).
+        await fetchTicket(ticket._uuid)
+      } catch (err) {
+        addToast(`Save failed: ${err.message}`, 'error')
+        return
+      }
       let msg = 'Ticket Updated'
       if (changes.status === 'resolved') msg = 'Ticket Resolved'
       else if (changes.status === 'closed') msg = 'Ticket Closed'

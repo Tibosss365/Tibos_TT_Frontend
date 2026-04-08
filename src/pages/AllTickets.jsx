@@ -190,7 +190,7 @@ export default function AllTickets() {
                       // not_started or no SLA configured
                       if (!sla) {
                         if (ticket.slaStatus === 'not_started')
-                          return <span className="text-[11px] t-muted">Awaiting assign</span>
+                          return <span className="text-[11px] t-muted">Not started</span>
                         return <span className="text-xs t-muted">—</span>
                       }
                       if (sla.done) return (

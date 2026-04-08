@@ -4,21 +4,36 @@ import {
   LineChart, Line, CartesianGrid
 } from 'recharts'
 import { useAdminStore } from '../stores/adminStore'
-import { api } from '../api/client'
+import { api, normalizeTicket } from '../api/client'
 import { Card, CardHeader } from '../components/ui/Card'
+import { fmtSlaSeconds, getSlaRemainingSeconds } from '../utils/ticketUtils'
 
 const STATUS_FILL = { open:'#3b82f6','in-progress':'#a855f7','on-hold':'#f59e0b',resolved:'#10b981',closed:'#64748b' }
 const slaColors = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#64748b' }
 
+const PRIORITY_BADGE = {
+  critical: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+  high:     'bg-orange-500/15 text-orange-400 border border-orange-500/30',
+  medium:   'bg-amber-500/15 text-amber-400 border border-amber-500/30',
+  low:      'bg-slate-500/15 text-slate-400 border border-slate-500/30',
+}
+
 export default function Analytics() {
-  const { slaSettings, getCategoryName } = useAdminStore()
+  const { slaSettings, getCategoryName, getAgentName } = useAdminStore()
   const [data, setData] = useState(null)
+  const [overdueTickets, setOverdueTickets] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.get('/analytics')
-      .then(d => { setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
+    Promise.all([
+      api.get('/analytics'),
+      api.get('/tickets?sla_status=overdue&limit=100').catch(() => []),
+    ]).then(([analytics, overdue]) => {
+      setData(analytics)
+      const raw = Array.isArray(overdue) ? overdue : (overdue?.tickets || overdue?.items || [])
+      setOverdueTickets(raw.map(normalizeTicket))
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
   const categoryLabel = getCategoryName
