@@ -3,7 +3,7 @@ import {
   Trash2, Save, MessageSquare, Pencil, X, CheckSquare, Square,
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
-  CalendarDays, Briefcase,
+  CalendarDays, Briefcase, Mail, MailOpen, Send,
 } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { PriorityBadge, StatusBadge } from '../ui/Badge'
@@ -12,14 +12,16 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
-import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo } from '../../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 
 const TIMELINE_STYLES = {
-  created:  { dot: 'bg-blue-500',    label: 'Opened' },
-  assign:   { dot: 'bg-violet-500',  label: 'Assigned' },
-  status:   { dot: 'bg-amber-500',   label: 'Updated' },
-  comment:  { dot: 'bg-indigo-500',  label: 'Comment' },
-  resolved: { dot: 'bg-emerald-500', label: 'Resolved' },
+  created:   { dot: 'bg-blue-500',    label: 'Opened' },
+  assign:    { dot: 'bg-violet-500',  label: 'Assigned' },
+  status:    { dot: 'bg-amber-500',   label: 'Updated' },
+  comment:   { dot: 'bg-indigo-500',  label: 'Comment' },
+  resolved:  { dot: 'bg-emerald-500', label: 'Resolved' },
+  email_out: { dot: 'bg-sky-500',     label: 'Email Sent' },
+  email_in:  { dot: 'bg-teal-500',    label: 'Email Received' },
 }
 
 const MODAL_TABS = [
@@ -36,126 +38,152 @@ const inputCls  = 'glass-input w-full text-sm py-1.5'
 const labelCls  = 'block text-[10px] font-bold t-sub uppercase tracking-wider mb-1'
 
 // ── Live SLA Countdown ────────────────────────────────────────────────────────
-function SlaCountdown({ ticket, slaSettings }) {
-  const [now, setNow] = useState(Date.now())
+/**
+ * Enterprise-grade SLA countdown panel.
+ * Reads slaStatus from the ticket (v2 model) and ticks every second.
+ *
+ * States:
+ *   not_started → "Awaiting assignment" or "SLA not started"
+ *   active      → live countdown + progress bar (green→amber→red)
+ *   paused      → frozen remaining time with ⏸ badge
+ *   overdue     → pulsing red + overdue duration ticking up
+ *   completed   → green "SLA Met" with recorded due time
+ */
+function SlaCountdown({ ticket }) {
+  const [, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000)
+    const id = setInterval(() => setTick(n => n + 1), 1000)
     return () => clearInterval(id)
   }, [])
 
-  const status    = ticket.status
-  const dueAt     = ticket.slaDueAt
-  const pausedAt  = ticket.slaPausedAt
-  const pauseOn   = slaSettings?.pauseOn || ['on-hold']
-  const bizMode   = slaSettings?.countdownMode === 'business_hours'
-  const workDays  = slaSettings?.workDays  || [0,1,2,3,4]
-  const workStart = slaSettings?.workStart || '09:00'
-  const workEnd   = slaSettings?.workEnd   || '20:00'
+  const slaStatus  = ticket.slaStatus || 'not_started'
+  const dueIso     = ticket.slaDueTime || ticket.slaDueAt
+  const startIso   = ticket.slaStartTime
+  const pausedSecs = ticket.slaPausedSeconds || 0
 
-  if (!dueAt) return (
-    <div className="text-xs t-muted py-1">
-      {slaSettings?.timerStart === 'on_assignment' && !ticket.assignee
-        ? 'Starts when assigned'
-        : 'No SLA configured'}
-    </div>
-  )
-
-  if (status === 'resolved' || status === 'closed') return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-        <span className="text-xs text-emerald-500 font-semibold">SLA Met — Completed</span>
+  // ── Not started ───────────────────────────────────────────────────────
+  if (slaStatus === 'not_started') {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
+          <span className="text-xs text-slate-400 font-medium">
+            {!ticket.assignee ? 'Awaiting assignment' : 'SLA not started'}
+          </span>
+        </div>
+        <div className="text-[10px] t-sub">SLA starts when ticket is assigned</div>
       </div>
-      <div className="text-[10px] t-sub">Deadline was {new Date(dueAt).toLocaleString()}</div>
-    </div>
-  )
-
-  const isPaused = pauseOn.includes(status)
-  if (isPaused) return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-        <span className="text-xs text-amber-500 font-semibold">⏸ Paused — {status}</span>
-      </div>
-      <div className="text-[10px] t-sub">Deadline: {new Date(dueAt).toLocaleString()}</div>
-      {bizMode && <div className="text-[10px] t-sub">Mode: Business Hours</div>}
-    </div>
-  )
-
-  // For business-hours mode, compute effective remaining time (minutes inside biz hours)
-  function bizRemaining(dueMs) {
-    if (!bizMode) return dueMs - now
-    const [wsH, wsM] = workStart.split(':').map(Number)
-    const [weH, weM] = workEnd.split(':').map(Number)
-    const bizMsPerDay = ((weH * 60 + weM) - (wsH * 60 + wsM)) * 60000
-    if (bizMsPerDay <= 0) return dueMs - now
-    let remaining = 0
-    let cursor = now
-    const limit = dueMs
-    while (cursor < limit) {
-      const d = new Date(cursor)
-      const wd = d.getDay() === 0 ? 6 : d.getDay() - 1  // convert JS Sun=0 → Mon=0
-      if (!workDays.includes(wd)) { cursor += 86400000; continue }
-      const dayStart = new Date(d).setHours(wsH, wsM, 0, 0)
-      const dayEnd   = new Date(d).setHours(weH, weM, 0, 0)
-      const s = Math.max(cursor, dayStart)
-      const e = Math.min(limit, dayEnd)
-      if (e > s) remaining += e - s
-      cursor = dayEnd > cursor ? dayEnd : cursor + 86400000
-    }
-    return remaining
+    )
   }
 
-  const diff     = new Date(dueAt).getTime() - now
-  const effDiff  = bizMode ? bizRemaining(new Date(dueAt).getTime()) : diff
-  const overdue  = diff < 0
-  const abs      = Math.abs(effDiff)
-  const d        = Math.floor(abs / 86400000)
-  const h        = Math.floor((abs % 86400000) / 3600000)
-  const m        = Math.floor((abs % 3600000) / 60000)
-  const s        = Math.floor((abs % 60000) / 1000)
-  const timeStr  = d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`
+  // ── Completed ─────────────────────────────────────────────────────────
+  if (slaStatus === 'completed') {
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+          <span className="text-xs text-emerald-500 font-bold">SLA Met — Completed</span>
+        </div>
+        {dueIso && <div className="text-[10px] t-sub">Deadline was {new Date(dueIso).toLocaleString()}</div>}
+        {pausedSecs > 0 && (
+          <div className="text-[10px] t-sub">Total paused: {fmtSlaSeconds(pausedSecs)}</div>
+        )}
+      </div>
+    )
+  }
 
-  // Colour thresholds: green → yellow (≤25% time left) → red (overdue)
-  const total    = ticket.created ? new Date(dueAt).getTime() - new Date(ticket.created).getTime() : null
-  const pct      = total ? Math.min(100, Math.max(0, ((now - new Date(ticket.created).getTime()) / total) * 100)) : null
-  const warning  = !overdue && (effDiff < 3600000 || (pct !== null && pct > 75))
+  // ── Paused ────────────────────────────────────────────────────────────
+  if (slaStatus === 'paused') {
+    const remaining = ticket.slaPausedAt && dueIso
+      ? Math.floor((new Date(dueIso).getTime() - new Date(ticket.slaPausedAt).getTime()) / 1000)
+      : null
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0" />
+          <span className="text-xs text-amber-500 font-bold">⏸ SLA Paused</span>
+        </div>
+        {remaining !== null && (
+          <div className="text-sm font-mono font-semibold text-amber-500">
+            {fmtSlaSeconds(remaining)} remaining
+          </div>
+        )}
+        {dueIso && <div className="text-[10px] t-sub">Deadline: {new Date(dueIso).toLocaleString()}</div>}
+        <div className="text-[10px] t-sub">Timer paused — resume by changing status</div>
+      </div>
+    )
+  }
 
-  if (overdue) return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1">
+  // ── Active / Overdue ──────────────────────────────────────────────────
+  if (!dueIso) return <div className="text-xs t-muted">No deadline set</div>
+
+  const dueMs       = new Date(dueIso).getTime()
+  const startMs     = startIso ? new Date(startIso).getTime() : null
+  const nowMs       = Date.now()
+  const remaining   = Math.floor((dueMs - nowMs) / 1000)  // can be negative
+  const isOverdue   = slaStatus === 'overdue' || remaining < 0
+  const overduesSecs = isOverdue ? Math.abs(remaining) : 0
+
+  // Progress bar: 0% = just started, 100% = at/past deadline
+  let pct = 0
+  if (startMs) {
+    const totalSecs = (dueMs - startMs) / 1000
+    const elapsedSecs = (nowMs - startMs) / 1000
+    pct = totalSecs > 0 ? Math.min(100, Math.max(0, (elapsedSecs / totalSecs) * 100)) : 100
+  }
+
+  const barColor = isOverdue
+    ? 'bg-rose-500'
+    : pct > 80 ? 'bg-rose-500'
+    : pct > 60 ? 'bg-amber-400'
+    : 'bg-emerald-400'
+
+  const priority   = ticket.priority || 'medium'
+  const warnThresh = { critical: 900, high: 1800, medium: 3600, low: 7200 }
+  const warning    = !isOverdue && remaining < (warnThresh[priority] || 3600)
+
+  if (isOverdue) return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
         <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
         <span className="text-xs font-bold text-rose-500 uppercase tracking-wide">Overdue</span>
       </div>
-      <div className="text-xs text-rose-400 font-medium">by {timeStr}{bizMode ? ' (business time)' : ''}</div>
-      <div className="text-[10px] t-sub mt-0.5">Deadline: {new Date(dueAt).toLocaleString()}</div>
-      <div className="mt-2 h-1.5 rounded-full bg-rose-500/20 overflow-hidden">
+      <div className="text-base font-mono font-bold text-rose-500 tabular-nums">
+        +{fmtSlaSeconds(overduesSecs)}
+      </div>
+      <div className="text-[10px] t-sub">Deadline was {new Date(dueIso).toLocaleString()}</div>
+      <div className="h-1.5 rounded-full bg-rose-500/20 overflow-hidden">
         <div className="h-full w-full rounded-full bg-rose-500 animate-pulse" />
       </div>
     </div>
   )
 
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1">
-        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${warning ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-        <span className={`text-xs font-bold ${warning ? 'text-amber-400' : 'text-emerald-500'}`}>
-          {timeStr} left{bizMode ? ' (biz)' : ''}
-        </span>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${warning ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+          <span className={`text-[10px] font-bold uppercase tracking-wide ${warning ? 'text-amber-500' : 'text-emerald-500'}`}>
+            Active
+          </span>
+        </div>
+        <span className="text-[10px] t-sub">{Math.round(pct)}% elapsed</span>
       </div>
-      <div className="text-[10px] t-sub">Deadline: {new Date(dueAt).toLocaleString()}</div>
-      {bizMode && (
-        <div className="text-[10px] t-sub">
-          Working: {workDays.map(i => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]).join(', ')} · {workStart}–{workEnd}
-        </div>
+      <div className={`text-base font-mono font-bold tabular-nums ${warning ? 'text-amber-500' : 'text-emerald-500'}`}>
+        {fmtSlaSeconds(remaining)}
+      </div>
+      <div className="text-[10px] t-sub">Due: {new Date(dueIso).toLocaleString()}</div>
+      <div className="h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {startIso && (
+        <div className="text-[10px] t-sub">Started: {new Date(startIso).toLocaleString()}</div>
       )}
-      {pct !== null && (
-        <div className="mt-2 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-1000 ${pct > 85 ? 'bg-rose-500' : pct > 60 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+      {pausedSecs > 0 && (
+        <div className="text-[10px] t-sub">Paused total: {fmtSlaSeconds(pausedSecs)}</div>
       )}
     </div>
   )
@@ -216,7 +244,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
         </div>
         <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
           <div className={labelCls + ' mb-2'}>SLA Status</div>
-          <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
+          <SlaCountdown ticket={ticket} />
         </div>
         <div>
           <div className={labelCls}>Category</div>
@@ -353,10 +381,17 @@ export function TicketDetailModal({ ticket, onClose }) {
 
   // ── Comment ────────────────────────────────────────────────────────────────
   const [comment, setComment] = useState('')
+  const [sendToCustomer, setSendToCustomer] = useState(false)
   const handleComment = () => {
     if (!comment.trim()) return
-    addTimelineEvent(ticket._uuid, { type: 'comment', text: comment, author: currentUser?.name || 'Agent' })
-    setComment(''); addToast('Comment added', 'success')
+    addTimelineEvent(ticket._uuid, {
+      type: 'comment',
+      text: comment,
+      author: currentUser?.name || 'Agent',
+      sendToCustomer,
+    })
+    setComment('')
+    addToast(sendToCustomer ? 'Comment added & emailed to customer' : 'Comment added', 'success')
   }
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
@@ -503,31 +538,82 @@ export function TicketDetailModal({ ticket, onClose }) {
               {/* ── Conversations ── */}
               {activeTab === 'conversations' && (
                 <div className="space-y-4">
-                  <div className="space-y-3">
+                  <div className="space-y-2">
+                    {(liveTicket.timeline || []).length === 0 && (
+                      <div className="text-sm t-muted text-center py-6">No activity yet</div>
+                    )}
                     {(liveTicket.timeline || []).map((ev, i) => {
-                      const style = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30' }
+                      const style = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30', label: '' }
+                      const isEmailOut = ev.type === 'email_out'
+                      const isEmailIn  = ev.type === 'email_in'
+                      const isComment  = ev.type === 'comment'
+                      const isEmail    = isEmailOut || isEmailIn
+
+                      if (isEmail) {
+                        return (
+                          <div key={i} className={`rounded-xl border p-3 space-y-1.5 ${
+                            isEmailOut
+                              ? 'border-sky-500/30 bg-sky-500/5'
+                              : 'border-teal-500/30 bg-teal-500/5'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              {isEmailOut
+                                ? <Send size={12} className="text-sky-500 flex-shrink-0" />
+                                : <MailOpen size={12} className="text-teal-500 flex-shrink-0" />
+                              }
+                              <span className={`text-[10px] font-bold uppercase tracking-wider ${isEmailOut ? 'text-sky-500' : 'text-teal-500'}`}>
+                                {style.label}
+                              </span>
+                              <span className="text-[10px] t-sub ml-auto">{timeAgo(ev.ts)}</span>
+                            </div>
+                            <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.text }} />
+                          </div>
+                        )
+                      }
+
                       return (
                         <div key={i} className="flex gap-3">
                           <div className="flex flex-col items-center">
                             <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${style.dot}`} />
-                            {i < (liveTicket.timeline||[]).length - 1 && <div className="w-px flex-1 bg-black/5 dark:bg-white/6 mt-1 min-h-[12px]" />}
+                            {i < (liveTicket.timeline||[]).length - 1 && (
+                              <div className="w-px flex-1 bg-black/5 dark:bg-white/6 mt-1 min-h-[12px]" />
+                            )}
                           </div>
-                          <div className="pb-3 flex-1 min-w-0">
-                            {ev.author && <div className="text-[10px] font-bold t-sub mb-0.5">{ev.author}</div>}
+                          <div className={`pb-3 flex-1 min-w-0 ${isComment ? 'bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3 -mt-0.5' : ''}`}>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              {ev.author && <span className="text-[10px] font-bold t-sub">{ev.author}</span>}
+                              {style.label && <span className="text-[10px] t-sub opacity-60">· {style.label}</span>}
+                              <span className="text-[10px] t-sub opacity-60 ml-auto">{timeAgo(ev.ts)}</span>
+                            </div>
                             <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.text }} />
-                            <div className="text-[10px] t-sub opacity-70 mt-0.5">{timeAgo(ev.ts)}</div>
                           </div>
                         </div>
                       )
                     })}
                   </div>
-                  <div className="pt-3 border-t border-glass">
+
+                  {/* ── Add Comment ── */}
+                  <div className="pt-3 border-t border-glass space-y-2">
                     <div className={labelCls}>Add Comment</div>
-                    <div className="flex gap-2">
-                      <textarea value={comment} onChange={e => setComment(e.target.value)}
-                        className="glass-input flex-1 text-sm resize-none" rows={2} placeholder="Write a comment…" />
-                      <Button variant="ghost" size="sm" onClick={handleComment} className="self-end flex-shrink-0">
-                        <MessageSquare size={13} /> Post
+                    <textarea value={comment} onChange={e => setComment(e.target.value)}
+                      className="glass-input w-full text-sm resize-none" rows={3}
+                      placeholder="Write an internal comment or reply to customer…" />
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <div
+                          onClick={() => setSendToCustomer(v => !v)}
+                          className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${sendToCustomer ? 'bg-sky-500' : 'bg-black/15 dark:bg-white/15'}`}
+                        >
+                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${sendToCustomer ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </div>
+                        <span className="text-xs t-sub flex items-center gap-1">
+                          <Mail size={11} className={sendToCustomer ? 'text-sky-500' : ''} />
+                          {sendToCustomer ? <span className="text-sky-500 font-medium">Send to customer</span> : 'Internal only'}
+                        </span>
+                      </label>
+                      <Button variant={sendToCustomer ? 'primary' : 'ghost'} size="sm" onClick={handleComment} className="flex-shrink-0">
+                        {sendToCustomer ? <Send size={13} /> : <MessageSquare size={13} />}
+                        {sendToCustomer ? 'Send Email' : 'Post'}
                       </Button>
                     </div>
                   </div>

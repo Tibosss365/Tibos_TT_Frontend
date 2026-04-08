@@ -187,20 +187,33 @@ export default function AllTickets() {
                   <td className="py-3 px-3 whitespace-nowrap">
                     {(() => {
                       const sla = getSlaInfo(ticket)
-                      if (!sla) return <span className="text-xs t-muted">—</span>
-                      if (sla.done) return <span className="text-[11px] text-emerald-500 font-medium">Done</span>
+                      // not_started or no SLA configured
+                      if (!sla) {
+                        if (ticket.slaStatus === 'not_started')
+                          return <span className="text-[11px] t-muted">Awaiting assign</span>
+                        return <span className="text-xs t-muted">—</span>
+                      }
+                      if (sla.done) return (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-500 border border-emerald-500/25">
+                          ✓ Done
+                        </span>
+                      )
                       if (sla.paused) return (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                          ⏸ Paused
+                          ⏸ {sla.label}
                         </span>
                       )
                       if (sla.overdue) return (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 text-rose-500 border border-rose-500/30 animate-pulse">
                           ⚠ {sla.label}
                         </span>
                       )
                       return (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${sla.warning ? 'bg-amber-500/15 text-amber-500 border-amber-500/30' : 'bg-slate-500/10 text-slate-500 border-slate-500/20 dark:text-slate-400'}`}>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                          sla.warning
+                            ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                            : 'bg-slate-500/10 text-slate-500 border-slate-500/20 dark:text-slate-400'
+                        }`}>
                           ⏱ {sla.label}
                         </span>
                       )

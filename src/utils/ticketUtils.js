@@ -60,30 +60,103 @@ export function timeAgo(iso) {
 
 // ── SLA Utilities ─────────────────────────────────────────────────────────────
 
-function _fmtDuration(ms) {
-  const totalSec = Math.floor(Math.abs(ms) / 1000)
-  const d = Math.floor(totalSec / 86400)
-  const h = Math.floor((totalSec % 86400) / 3600)
-  const m = Math.floor((totalSec % 3600) / 60)
-  if (d > 0) return `${d}d ${h}h`
-  if (h > 0) return `${h}h ${m}m`
-  return `${m}m`
+/**
+ * Format seconds into a short human-readable string.
+ * e.g.  7815 → "2h 10m"   |  45 → "45s"  |  86400 → "1d 00h"
+ */
+export function fmtSlaSeconds(totalSeconds) {
+  totalSeconds = Math.abs(totalSeconds)
+  const days  = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const mins  = Math.floor((totalSeconds % 3600) / 60)
+  const secs  = totalSeconds % 60
+  if (days)  return `${days}d ${String(hours).padStart(2,'0')}h`
+  if (hours) return `${hours}h ${String(mins).padStart(2,'0')}m`
+  if (mins)  return `${mins}m ${String(secs).padStart(2,'0')}s`
+  return `${secs}s`
 }
 
 /**
- * Returns SLA status info for a ticket.
- * @returns {{ label: string, overdue: boolean, paused: boolean, done: boolean } | null}
+ * Compute remaining SLA seconds from a normalized ticket object.
+ * Returns a positive number while time remains, negative when overdue.
+ * Returns null when SLA has not started or is completed.
+ */
+export function getSlaRemainingSeconds(ticket) {
+  const slaStatus = ticket.slaStatus || 'not_started'
+  if (slaStatus === 'not_started' || slaStatus === 'completed') return null
+  const dueIso = ticket.slaDueTime || ticket.slaDueAt
+  if (!dueIso) return null
+  const dueMs = new Date(dueIso).getTime()
+
+  // When paused, remaining is measured from the pause moment
+  if (slaStatus === 'paused' && ticket.slaPausedAt) {
+    return Math.floor((dueMs - new Date(ticket.slaPausedAt).getTime()) / 1000)
+  }
+  return Math.floor((dueMs - Date.now()) / 1000)
+}
+
+/**
+ * Returns SLA display info for a ticket.
+ *
+ * @returns {{
+ *   label: string,           // e.g. "2h 15m left" | "30m overdue" | "Paused" | "Completed"
+ *   overdue: boolean,
+ *   paused: boolean,
+ *   done: boolean,
+ *   notStarted: boolean,
+ *   warning: boolean,        // < 25% time remaining
+ *   remainingSeconds: number | null,
+ *   overdueSeconds: number,
+ * } | null}
  */
 export function getSlaInfo(ticket) {
-  if (!ticket.slaDueAt) return null
-  const status = ticket.status
-  if (status === 'resolved' || status === 'closed') return { label: 'Completed', overdue: false, paused: false, done: true }
-  if (status === 'on-hold') return { label: 'SLA Paused', overdue: false, paused: true, done: false }
-  const diff = new Date(ticket.slaDueAt).getTime() - Date.now()
-  if (diff < 0) return { label: `Overdue by ${_fmtDuration(diff)}`, overdue: true, paused: false, done: false }
-  // Warning zone: less than 25% of total SLA time remains (approximate with < 1h for now)
-  const warning = diff < 3600_000
-  return { label: `${_fmtDuration(diff)} left`, overdue: false, paused: false, done: false, warning }
+  const slaStatus = ticket.slaStatus || 'not_started'
+
+  if (slaStatus === 'not_started') {
+    const dueIso = ticket.slaDueTime || ticket.slaDueAt
+    if (!dueIso && !ticket.assignee) {
+      return { label: 'Awaiting assignment', overdue: false, paused: false, done: false, notStarted: true, warning: false, remainingSeconds: null, overdueSeconds: 0 }
+    }
+    return null
+  }
+
+  if (slaStatus === 'completed') {
+    return { label: 'Completed', overdue: false, paused: false, done: true, notStarted: false, warning: false, remainingSeconds: null, overdueSeconds: 0 }
+  }
+
+  const remaining = getSlaRemainingSeconds(ticket)
+  if (remaining === null) return null
+
+  const overdueSeconds = remaining < 0 ? Math.abs(remaining) : 0
+
+  if (slaStatus === 'paused') {
+    return {
+      label: `Paused — ${remaining > 0 ? fmtSlaSeconds(remaining) + ' left' : fmtSlaSeconds(overdueSeconds) + ' overdue'}`,
+      overdue: false, paused: true, done: false, notStarted: false,
+      warning: false, remainingSeconds: remaining, overdueSeconds,
+    }
+  }
+
+  // Active or overdue
+  if (remaining < 0 || slaStatus === 'overdue') {
+    return {
+      label: `${fmtSlaSeconds(overdueSeconds)} overdue`,
+      overdue: true, paused: false, done: false, notStarted: false,
+      warning: false, remainingSeconds: remaining, overdueSeconds,
+    }
+  }
+
+  // Warning: less than 25% of the SLA window remains
+  // We approximate by checking if < 1h for medium/high or < 15m for critical
+  const priority = ticket.priority || 'medium'
+  const warningThresholds = { critical: 900, high: 1800, medium: 3600, low: 7200 }
+  const warning = remaining < (warningThresholds[priority] || 3600)
+
+  return {
+    label: `${fmtSlaSeconds(remaining)} left`,
+    overdue: false, paused: false, done: false, notStarted: false,
+    warning, remainingSeconds: remaining, overdueSeconds: 0,
+  }
 }
 
 export const PRIORITY_COLORS = {

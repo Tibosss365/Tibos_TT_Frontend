@@ -88,7 +88,10 @@ export const useTicketStore = create(
       },
 
       addTimelineEvent: async (uuid, event) => {
-        const data = await api.post(`/tickets/${uuid}/comments`, { text: event.text })
+        const data = await api.post(`/tickets/${uuid}/comments`, {
+          text: event.text,
+          send_to_customer: event.sendToCustomer ?? false,
+        })
         const updated = normalizeTicket(data)
         set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
         return updated

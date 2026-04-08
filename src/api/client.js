@@ -70,9 +70,16 @@ export function normalizeTicket(t) {
     assigneeObj: t.assignee || null,
     group:       t.group_id ? String(t.group_id) : '',
     resolution:  t.resolution || '',
-    slaDueAt:    t.sla_due_at || null,
-    slaPausedAt: t.sla_paused_at || null,
-    isOverdue:   t.is_overdue || false,
+    // ── SLA v2 fields ─────────────────────────────────────────────────
+    slaStatus:        t.sla_status        || 'not_started',
+    slaStartTime:     t.sla_start_time    || null,
+    slaDueTime:       t.sla_due_time      || t.sla_due_at || null,  // prefer v2
+    slaPausedAt:      t.sla_paused_at     || null,
+    slaPausedSeconds: t.sla_paused_seconds || 0,
+    isOverdue:        t.is_overdue        || false,
+    // Legacy alias (used by older components)
+    slaDueAt:         t.sla_due_time      || t.sla_due_at || null,
+    // ──────────────────────────────────────────────────────────────────
     created:     t.created_at,
     updated:     t.updated_at,
     timeline: (t.timeline || []).map(ev => ({
