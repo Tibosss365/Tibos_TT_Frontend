@@ -208,12 +208,10 @@ function CategoriesTab({ categories, onAdd, onUpdate, onDelete, inputCls }) {
                       className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 hover:text-indigo-500 hover:border-indigo-500/20 border border-transparent transition-all">
                       <Pencil size={12}/>
                     </button>
-                    {!cat.isBuiltin && (
-                      <button onClick={() => onDelete(cat.id)}
-                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-500 hover:border-rose-500/20 border border-transparent transition-all">
-                        <Trash2 size={12}/>
-                      </button>
-                    )}
+                    <button onClick={() => onDelete(cat.id)}
+                      className="p-1.5 rounded-lg hover:bg-rose-500/10 text-rose-400 hover:text-rose-500 hover:border-rose-500/20 border border-transparent transition-all">
+                      <Trash2 size={12}/>
+                    </button>
                   </div>
                 </>
               )}
@@ -1788,12 +1786,10 @@ export default function Admin() {
                             className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 t-sub hover:t-main transition-all">
                             <Pencil size={12}/>
                           </button>
-                          {!group.isBuiltin && (
-                            <button onClick={() => { deleteGroup(group.id); addToast('Group deleted', 'info') }}
-                              className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 transition-all">
-                              <Trash2 size={12}/>
-                            </button>
-                          )}
+                          <button onClick={() => { deleteGroup(group.id); addToast('Group deleted', 'info') }}
+                            className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 transition-all">
+                            <Trash2 size={12}/>
+                          </button>
                           <button onClick={() => toggleGroupExpand(group.id)} className="p-1.5 t-sub hover:t-main transition-all">
                             <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}/>
                           </button>
@@ -1886,12 +1882,10 @@ export default function Admin() {
                                     className="p-1.5 rounded-lg hover:bg-indigo-500/15 text-indigo-400 hover:text-indigo-500 transition-all">
                                     <Pencil size={12}/>
                                   </button>
-                                  {!cat.isBuiltin && (
-                                    <button onClick={() => { deleteCategory(cat.id); addToast('Category deleted','info') }}
-                                      className="p-1.5 rounded-lg hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
-                                      <Trash2 size={12}/>
-                                    </button>
-                                  )}
+                                  <button onClick={() => { deleteCategory(cat.id); addToast('Category deleted','info') }}
+                                    className="p-1.5 rounded-lg hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
+                                    <Trash2 size={12}/>
+                                  </button>
                                 </div>
                               </>
                             )}
@@ -1933,6 +1927,11 @@ export default function Admin() {
                           </div>
                           {cat.description && <div className="text-[10px] t-muted mt-0.5">{cat.description}</div>}
                         </div>
+                        <button
+                          onClick={() => { deleteCategory(cat.id); addToast('Category deleted', 'info') }}
+                          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
+                          <Trash2 size={12}/>
+                        </button>
                       </div>
                     ))}
                   </div>

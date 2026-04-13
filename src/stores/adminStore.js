@@ -30,7 +30,7 @@ export const useAdminStore = create(
         set(s => ({ groups: s.groups.map(g => g.id === id ? { ...g, ...changes } : g) }))
       },
       deleteGroup: (id) => {
-        set(s => ({ groups: s.groups.filter(g => g.id !== id || g.isBuiltin) }))
+        set(s => ({ groups: s.groups.filter(g => g.id !== id) }))
       },
       getGroupById:  (id) => get().groups.find(g => g.id === id),
       getGroupName:  (id) => { const g = get().groups.find(g => g.id === id); return g ? g.name : '—' },
@@ -226,10 +226,13 @@ export const useAdminStore = create(
         }))
       },
 
-      deleteCategory: (id) => {
-        set(s => ({
-          categories: s.categories.filter(c => c.id !== id || c.isBuiltin)
-        }))
+      deleteCategory: async (id) => {
+        try {
+          await api.delete('/categories/' + id)
+        } catch (e) {
+          console.error('deleteCategory error', e)
+        }
+        set(s => ({ categories: s.categories.filter(c => c.id !== id) }))
       },
 
       getCategoryById: (id) => get().categories.find(c => c.id === id),
