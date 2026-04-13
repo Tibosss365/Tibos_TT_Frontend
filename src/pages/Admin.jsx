@@ -1898,52 +1898,36 @@ export default function Admin() {
               )
             })}
 
-            {/* Ungrouped categories */}
+            {/* Ungrouped categories — shown only as a cleanup warning if any exist */}
             {(() => {
               const ungrouped = categories.filter(c => !c.groupId)
               if (!ungrouped.length) return null
-
-              const handleRemoveAll = async () => {
-                for (const cat of ungrouped) {
-                  await deleteCategory(cat.id)
-                }
-                addToast(`${ungrouped.length} ungrouped categor${ungrouped.length !== 1 ? 'ies' : 'y'} removed`, 'info')
-              }
-
               return (
-                <div className="rounded-2xl border border-dashed border-rose-500/30 overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/5">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-black/10 dark:bg-white/10">
-                      <Tag size={14} className="t-sub" />
-                    </div>
+                <div className="rounded-2xl border border-dashed border-rose-400/40 overflow-hidden bg-rose-500/3">
+                  <div className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1">
-                      <span className="text-sm font-bold t-muted">Ungrouped</span>
-                      <div className="text-[10px] t-sub mt-0.5">{ungrouped.length} categor{ungrouped.length !== 1 ? 'ies' : 'y'} not assigned to a group</div>
+                      <span className="text-xs font-bold text-rose-500">
+                        {ungrouped.length} ungrouped categor{ungrouped.length !== 1 ? 'ies' : 'y'} — assign them to a group or delete
+                      </span>
                     </div>
                     <button
-                      onClick={handleRemoveAll}
+                      onClick={async () => {
+                        for (const cat of ungrouped) await deleteCategory(cat.id)
+                        addToast('All ungrouped categories removed', 'info')
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-500 hover:text-rose-400 border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg transition-all">
-                      <Trash2 size={11}/> Remove All
+                      <Trash2 size={11}/> Delete All
                     </button>
                   </div>
-                  <div className="px-4 py-3 space-y-2">
+                  <div className="px-4 pb-3 space-y-1.5">
                     {ungrouped.map(cat => (
-                      <div key={cat.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-glass hover:bg-black/5 dark:hover:bg-white/3 transition-all group">
-                        <div className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center"
-                          style={{ background: cat.color+'22', border: `1.5px solid ${cat.color}50` }}>
-                          <span className="w-2 h-2 rounded-full" style={{ background: cat.color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium t-main">{cat.name}</span>
-                            {cat.isBuiltin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 t-sub font-bold uppercase">Built-in</span>}
-                          </div>
-                          {cat.description && <div className="text-[10px] t-muted mt-0.5">{cat.description}</div>}
-                        </div>
+                      <div key={cat.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-rose-200/30 dark:border-rose-500/10 bg-white/50 dark:bg-white/3 group">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: cat.color }} />
+                        <span className="text-xs font-medium t-main flex-1">{cat.name}</span>
                         <button
                           onClick={() => { deleteCategory(cat.id); addToast('Category deleted', 'info') }}
-                          className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
-                          <Trash2 size={12}/>
+                          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-500/15 t-sub hover:text-rose-500 transition-all">
+                          <Trash2 size={11}/>
                         </button>
                       </div>
                     ))}
