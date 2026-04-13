@@ -1902,9 +1902,17 @@ export default function Admin() {
             {(() => {
               const ungrouped = categories.filter(c => !c.groupId)
               if (!ungrouped.length) return null
+
+              const handleRemoveAll = async () => {
+                for (const cat of ungrouped) {
+                  await deleteCategory(cat.id)
+                }
+                addToast(`${ungrouped.length} ungrouped categor${ungrouped.length !== 1 ? 'ies' : 'y'} removed`, 'info')
+              }
+
               return (
-                <div className="rounded-2xl border border-dashed border-glass overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-black/3 dark:bg-white/3">
+                <div className="rounded-2xl border border-dashed border-rose-500/30 overflow-hidden">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/5">
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-black/10 dark:bg-white/10">
                       <Tag size={14} className="t-sub" />
                     </div>
@@ -1912,6 +1920,11 @@ export default function Admin() {
                       <span className="text-sm font-bold t-muted">Ungrouped</span>
                       <div className="text-[10px] t-sub mt-0.5">{ungrouped.length} categor{ungrouped.length !== 1 ? 'ies' : 'y'} not assigned to a group</div>
                     </div>
+                    <button
+                      onClick={handleRemoveAll}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-500 hover:text-rose-400 border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg transition-all">
+                      <Trash2 size={11}/> Remove All
+                    </button>
                   </div>
                   <div className="px-4 py-3 space-y-2">
                     {ungrouped.map(cat => (
