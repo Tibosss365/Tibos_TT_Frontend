@@ -106,7 +106,7 @@ export const useAdminStore = create(
         description: c.description || '',
         isBuiltin:   c.is_builtin,
         sortOrder:   c.sort_order ?? (i + 1) * 10,
-        groupId:     c.group_id || null,
+        groupId:     c.group_id ?? null,
       }))
       set({ categories: cats })
     } catch (e) {
@@ -117,18 +117,22 @@ export const useAdminStore = create(
   fetchGroups: async () => {
     try {
       const data = await api.get('/groups')
-      if (!Array.isArray(data) || data.length === 0) return
+      if (!Array.isArray(data) || data.length === 0) {
+        set({ groups: DEFAULT_GROUPS })
+        return
+      }
       const grps = data.map(g => ({
-        id:          String(g.id),          // use the backend numeric ID as string
+        id:          String(g.id),
         name:        g.name,
         description: g.description || '',
         color:       g.color || '#6B7280',
         isBuiltin:   g.is_builtin ?? true,
       }))
       set({ groups: grps })
-    } catch (e) {
-      // Non-fatal: fall back to DEFAULT_GROUPS already in state
-      console.error('fetchGroups error', e)
+    } catch {
+      // No groups backend yet — always reset to current defaults so group IDs
+      // match the group_id values that fetchCategories returns from the backend.
+      set({ groups: DEFAULT_GROUPS })
     }
   },
 
@@ -208,16 +212,37 @@ export const useAdminStore = create(
       clearEmailLog: () => set({ emailLog: [] }),
 
       // ── Category actions ──────────────────────────────────────────────
-      addCategory: (cat) => {
-        const id = cat.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      addCategory: async (cat) => {
         const maxOrder = get().categories.reduce((m, c) => Math.max(m, c.sortOrder), 0)
-        set(s => ({
-          categories: [
-            ...s.categories,
-            { ...cat, id, isBuiltin: false, sortOrder: maxOrder + 10 }
-          ]
-        }))
-        return id
+        const body = {
+          name:        cat.name,
+          color:       cat.color || '#6B7280',
+          description: cat.description || null,
+          sort_order:  maxOrder + 10,
+          group_id:    cat.groupId || null,
+        }
+        try {
+          const data = await api.post('/categories', body)
+          const newCat = {
+            id:          data.slug,
+            name:        data.name,
+            color:       data.color,
+            description: data.description || '',
+            isBuiltin:   data.is_builtin,
+            sortOrder:   data.sort_order,
+            groupId:     data.group_id ?? null,
+          }
+          set(s => ({ categories: [...s.categories, newCat] }))
+          return newCat.id
+        } catch (e) {
+          console.error('addCategory error', e)
+          // Optimistic local fallback
+          const id = cat.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+          set(s => ({
+            categories: [...s.categories, { ...cat, id, isBuiltin: false, sortOrder: maxOrder + 10 }]
+          }))
+          return id
+        }
       },
 
       updateCategory: (id, changes) => {
@@ -250,6 +275,14 @@ export const useAdminStore = create(
         return a ? a.name : '—'
       },
     }),
-    { name: 'helpdesk-admin' }
+    {
+      name: 'helpdesk-admin',
+      // categories and groups come from the backend / DEFAULT_GROUPS on every
+      // login — never persist them so stale data can't block fresh data.
+      partialize: (state) => {
+        const { categories, groups, ...rest } = state
+        return rest
+      },
+    }
   )
 )

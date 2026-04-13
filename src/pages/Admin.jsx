@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2 } from 'lucide-react'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
@@ -1119,7 +1119,7 @@ export default function Admin() {
     updateInboundEmail, addEmailLogEntry, clearEmailLog,
     addCategory, updateCategory, deleteCategory,
     resetAgents,
-    fetchAgents, fetchSla, fetchEmailConfig,
+    fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
   } = useAdminStore()
 
   const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
@@ -1133,6 +1133,14 @@ export default function Admin() {
   })
 
   const formatPreview = `${tktEdits.numberPrefix}-${'0'.repeat(Math.max(1, Number(tktEdits.numberDigits) - 1))}1`
+
+  // Fetch fresh categories + groups whenever the Groups tab is opened
+  useEffect(() => {
+    if (tab === 'groups') {
+      fetchCategories()
+      fetchGroups()
+    }
+  }, [tab])
 
   const handleSaveTicketSettings = () => {
     updateTicketSettings(tktEdits)
@@ -1208,6 +1216,8 @@ export default function Admin() {
     fetchAgents()
     fetchSla()
     fetchEmailConfig()
+    fetchCategories()
+    fetchGroups()
     addToast('Data refreshed', 'success')
   }
   const [selectedTicket, setSelectedTicket] = useState(null)

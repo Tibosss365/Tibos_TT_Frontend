@@ -246,21 +246,12 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
         </div>
         <div>
-          <div className={labelCls}>Category</div>
-          {isEditing ? (
-            <select className={inputCls} value={edits.category} onChange={e => set('category', e.target.value)}>
-              {[...categories].sort((a,b)=>a.sortOrder-b.sortOrder).map(c =>
-                <option key={c.id} value={c.id}>{c.name}</option>
-              )}
-            </select>
-          ) : (
-            <div className="text-xs t-main py-1">{categories.find(c=>c.id===edits.category)?.name || edits.category || '—'}</div>
-          )}
-        </div>
-        <div>
           <div className={labelCls}>Group</div>
           {isEditing ? (
-            <select className={inputCls} value={edits.group||''} onChange={e => set('group', e.target.value)}>
+            <select className={inputCls} value={edits.group||''} onChange={e => {
+              set('group', e.target.value)
+              set('category', '')   // reset category when group changes
+            }}>
               <option value="">— Unassigned —</option>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
@@ -274,6 +265,24 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
                 </span>
               ) : <div className="text-xs t-main py-1 opacity-40">—</div>
             })()
+          )}
+        </div>
+        <div>
+          <div className={labelCls}>Category</div>
+          {isEditing ? (
+            (() => {
+              const groupCats = edits.group
+                ? [...categories].filter(c => c.groupId === edits.group).sort((a,b) => a.sortOrder - b.sortOrder)
+                : [...categories].sort((a,b) => a.sortOrder - b.sortOrder)
+              return (
+                <select className={inputCls} value={edits.category} onChange={e => set('category', e.target.value)}>
+                  <option value="">— Select category —</option>
+                  {groupCats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )
+            })()
+          ) : (
+            <div className="text-xs t-main py-1">{categories.find(c=>c.id===edits.category)?.name || edits.category || '—'}</div>
           )}
         </div>
         <div>

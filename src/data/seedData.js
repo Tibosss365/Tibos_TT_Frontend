@@ -52,13 +52,47 @@ export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: fals
 
 // ── Dynamic categories ────────────────────────────────────────────────────────
 export const DEFAULT_CATEGORIES = [
-  { id: 'hardware',  name: 'Hardware',      color: '#8B5CF6', isBuiltin: true,  sortOrder: 1,  description: 'Physical equipment issues' },
-  { id: 'software',  name: 'Software',      color: '#3B82F6', isBuiltin: true,  sortOrder: 2,  description: 'Application and OS issues' },
-  { id: 'network',   name: 'Network',       color: '#10B981', isBuiltin: true,  sortOrder: 3,  description: 'Connectivity and network issues' },
-  { id: 'access',    name: 'Access',        color: '#F59E0B', isBuiltin: true,  sortOrder: 4,  description: 'Permissions and login issues' },
-  { id: 'email',     name: 'Email',         color: '#EF4444', isBuiltin: true,  sortOrder: 5,  description: 'Email and messaging issues' },
-  { id: 'security',  name: 'Security',      color: '#EC4899', isBuiltin: true,  sortOrder: 6,  description: 'Security incidents and threats' },
-  { id: 'other',     name: 'Other',         color: '#6B7280', isBuiltin: true,  sortOrder: 7,  description: 'Uncategorised requests' },
+  // ── Microsoft 365
+  { id: 'exchange-outlook',         name: 'Exchange & Outlook',        color: '#0078D4', isBuiltin: false, sortOrder: 10,  groupId: 'microsoft-365',        description: 'Mailbox issues, email rules, calendar and Outlook client' },
+  { id: 'teams-collaboration',      name: 'Teams & Collaboration',     color: '#464EB8', isBuiltin: false, sortOrder: 20,  groupId: 'microsoft-365',        description: 'Teams setup, meetings, channels and collaboration issues' },
+  { id: 'sharepoint-onedrive',      name: 'SharePoint & OneDrive',     color: '#038387', isBuiltin: false, sortOrder: 30,  groupId: 'microsoft-365',        description: 'SharePoint sites, document libraries and OneDrive sync issues' },
+  { id: 'licensing-subscriptions',  name: 'Licensing & Subscriptions', color: '#0078D4', isBuiltin: false, sortOrder: 40,  groupId: 'microsoft-365',        description: 'Licence assignment, renewals and subscription upgrades' },
+  { id: 'intune-device-management', name: 'Intune & Device Management',color: '#00A4EF', isBuiltin: false, sortOrder: 50,  groupId: 'microsoft-365',        description: 'MDM enrolment, device policy and compliance management' },
+  { id: 'azure-ad-entra-id',        name: 'Azure AD / Entra ID',       color: '#5C2D91', isBuiltin: false, sortOrder: 60,  groupId: 'microsoft-365',        description: 'User accounts, SSO, Conditional Access and Entra ID settings' },
+  { id: 'm365-admin-centre',        name: 'M365 Admin Centre',         color: '#D83B01', isBuiltin: false, sortOrder: 70,  groupId: 'microsoft-365',        description: 'Tenant configuration, domain management and global admin tasks' },
+  { id: 'mobile-apps-m365',         name: 'Mobile Apps (M365)',        color: '#742774', isBuiltin: false, sortOrder: 80,  groupId: 'microsoft-365',        description: 'Outlook mobile, Teams mobile, MFA app setup and troubleshooting' },
+  // ── Migration Services
+  { id: 'imap-email-migration',       name: 'IMAP Email Migration',       color: '#7C3AED', isBuiltin: false, sortOrder: 110, groupId: 'migration-services',  description: 'Migrating mailboxes from IMAP servers to Exchange Online' },
+  { id: 'google-workspace-m365',      name: 'Google Workspace to M365',   color: '#6D28D9', isBuiltin: false, sortOrder: 120, groupId: 'migration-services',  description: 'Gmail, Google Drive and Google Calendar migration to Microsoft 365' },
+  { id: 'avepoint-migration',         name: 'AvePoint Migration',         color: '#5B21B6', isBuiltin: false, sortOrder: 130, groupId: 'migration-services',  description: 'AvePoint-managed file and content migration projects' },
+  { id: 'tenant-to-tenant-migration', name: 'Tenant-to-Tenant Migration', color: '#4C1D95', isBuiltin: false, sortOrder: 140, groupId: 'migration-services',  description: 'Cross-tenant mailbox and data moves between M365 tenants' },
+  { id: 'file-share-migration',       name: 'File Share Migration',       color: '#8B5CF6', isBuiltin: false, sortOrder: 150, groupId: 'migration-services',  description: 'On-premises file shares migrated to SharePoint Online or OneDrive' },
+  { id: 'user-onboarding',            name: 'User Onboarding',            color: '#A78BFA', isBuiltin: false, sortOrder: 160, groupId: 'migration-services',  description: 'New user setup, account provisioning and welcome-pack tasks' },
+  // ── Security & Compliance
+  { id: 'mfa-conditional-access', name: 'MFA & Conditional Access', color: '#DC2626', isBuiltin: false, sortOrder: 210, groupId: 'security-compliance', description: 'Multi-factor authentication setup and Conditional Access policy issues' },
+  { id: 'microsoft-defender',     name: 'Microsoft Defender',       color: '#B91C1C', isBuiltin: false, sortOrder: 220, groupId: 'security-compliance', description: 'Endpoint, email and identity protection via Microsoft Defender' },
+  { id: 'permissions-access',     name: 'Permissions & Access',     color: '#991B1B', isBuiltin: false, sortOrder: 230, groupId: 'security-compliance', description: 'Role assignments, access reviews and permission management' },
+  { id: 'compliance-dlp',         name: 'Compliance & DLP',         color: '#7F1D1D', isBuiltin: false, sortOrder: 240, groupId: 'security-compliance', description: 'Retention policies, eDiscovery and data loss prevention configuration' },
+  { id: 'security-incidents',     name: 'Security Incidents',       color: '#EF4444', isBuiltin: false, sortOrder: 250, groupId: 'security-compliance', description: 'Breach response, suspicious activity and security incident handling' },
+  { id: 'azure-ad-identity',      name: 'Azure AD / Identity',      color: '#F87171', isBuiltin: false, sortOrder: 260, groupId: 'security-compliance', description: 'Identity governance, self-service password reset and Azure AD issues' },
+  // ── Infrastructure & Network
+  { id: 'firewall-network',     name: 'Firewall & Network',     color: '#059669', isBuiltin: false, sortOrder: 310, groupId: 'infrastructure-network', description: 'Firewall rules, routing, switching and network infrastructure' },
+  { id: 'vpn-remote-access',    name: 'VPN & Remote Access',    color: '#047857', isBuiltin: false, sortOrder: 320, groupId: 'infrastructure-network', description: 'VPN setup, client issues and secure remote connectivity' },
+  { id: 'dns-domains',          name: 'DNS & Domains',          color: '#065F46', isBuiltin: false, sortOrder: 330, groupId: 'infrastructure-network', description: 'Domain configuration, DNS records and SSL certificate management' },
+  { id: 'servers-storage',      name: 'Servers & Storage',      color: '#10B981', isBuiltin: false, sortOrder: 340, groupId: 'infrastructure-network', description: 'On-premises servers, NAS devices and storage management' },
+  { id: 'backup-recovery',      name: 'Backup & Recovery',      color: '#34D399', isBuiltin: false, sortOrder: 350, groupId: 'infrastructure-network', description: 'Backup job monitoring, restore requests and disaster recovery tests' },
+  { id: 'internet-connectivity',name: 'Internet & Connectivity', color: '#6EE7B7', isBuiltin: false, sortOrder: 360, groupId: 'infrastructure-network', description: 'ISP issues, bandwidth problems and office connectivity outages' },
+  // ── End User Support L1
+  { id: 'password-account-reset', name: 'Password & Account Reset', color: '#D97706', isBuiltin: false, sortOrder: 410, groupId: 'end-user-support', description: 'Password resets, account lockouts and self-service recovery' },
+  { id: 'hardware-devices',       name: 'Hardware & Devices',       color: '#B45309', isBuiltin: false, sortOrder: 420, groupId: 'end-user-support', description: 'Laptops, desktops, monitors and peripheral hardware issues' },
+  { id: 'software-installation',  name: 'Software Installation',    color: '#92400E', isBuiltin: false, sortOrder: 430, groupId: 'end-user-support', description: 'Application installs, updates and software licence requests' },
+  { id: 'printing-peripherals',   name: 'Printing & Peripherals',   color: '#F59E0B', isBuiltin: false, sortOrder: 440, groupId: 'end-user-support', description: 'Printers, scanners, drivers and peripheral device support' },
+  { id: 'how-to-training',        name: 'How-to & Training',        color: '#FCD34D', isBuiltin: false, sortOrder: 450, groupId: 'end-user-support', description: 'User guidance, feature walkthroughs and self-service how-to requests' },
+  // ── Azure & Cloud
+  { id: 'azure-virtual-machines', name: 'Azure Virtual Machines', color: '#2563EB', isBuiltin: false, sortOrder: 510, groupId: 'azure-cloud', description: 'VM provisioning, sizing, patching and virtual machine management' },
+  { id: 'azure-storage',          name: 'Azure Storage',          color: '#1D4ED8', isBuiltin: false, sortOrder: 520, groupId: 'azure-cloud', description: 'Blob storage, Azure Files and Recovery Services vault management' },
+  { id: 'azure-networking',       name: 'Azure Networking',       color: '#1E40AF', isBuiltin: false, sortOrder: 530, groupId: 'azure-cloud', description: 'Virtual networks, NSGs, ExpressRoute and Azure network configuration' },
+  { id: 'cost-management',        name: 'Cost Management',        color: '#1E3A8A', isBuiltin: false, sortOrder: 540, groupId: 'azure-cloud', description: 'Azure budgets, cost alerts and resource cost optimisation' },
 ]
 
 export const DEFAULT_INBOUND_EMAIL = {
@@ -89,14 +123,14 @@ export const DEFAULT_INBOUND_EMAIL = {
 // Demo email log entries (shown in the UI log table)
 export const DEFAULT_EMAIL_LOG = []
 
-// ── Ticket Groups ─────────────────────────────────────────────────────────────
+// ── Ticket Groups (agent support teams) ──────────────────────────────────────
 export const DEFAULT_GROUPS = [
-  { id: 'security',    name: 'Security',     description: 'Security incidents and threats',    color: '#EC4899', isBuiltin: true },
-  { id: 'network',     name: 'Network',      description: 'Network and connectivity issues',    color: '#10B981', isBuiltin: true },
-  { id: 'l1-support',  name: 'L1 Support',   description: 'First-line general support',         color: '#3B82F6', isBuiltin: true },
-  { id: 'application', name: 'Application',  description: 'Software and application support',   color: '#8B5CF6', isBuiltin: true },
-  { id: 'it-admin',    name: 'IT Admin',      description: 'IT administration and management',  color: '#F59E0B', isBuiltin: true },
-  { id: 'hardware',    name: 'Hardware',      description: 'Physical equipment and devices',    color: '#EF4444', isBuiltin: true },
+  { id: 'microsoft-365',        name: 'Microsoft 365',          description: 'Exchange Online, Teams, SharePoint, Intune and all M365 workloads', color: '#0078D4', isBuiltin: false },
+  { id: 'migration-services',   name: 'Migration Services',     description: 'Mailbox, tenant-to-tenant and file-share migration projects',        color: '#7C3AED', isBuiltin: false },
+  { id: 'security-compliance',  name: 'Security & Compliance',  description: 'Defender, Conditional Access, DLP, Purview and threat response',     color: '#DC2626', isBuiltin: false },
+  { id: 'infrastructure-network', name: 'Infrastructure & Network', description: 'Active Directory, networking, servers and virtualisation',       color: '#059669', isBuiltin: false },
+  { id: 'end-user-support',     name: 'End User Support L1',    description: 'First-line support for accounts, hardware, software and email',      color: '#D97706', isBuiltin: false },
+  { id: 'azure-cloud',          name: 'Azure & Cloud',          description: 'Azure infrastructure, Entra ID, backup and cloud cost management',   color: '#2563EB', isBuiltin: false },
 ]
 
 // ── Ticket Settings ───────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
 
-const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: 'software', priority: 'medium', description: '', asset: '', group: '', type: 'request', assignee: '' }
+const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group: '', type: 'request', assignee: '' }
 
 const TICKET_TYPE_CONFIG = {
   request:  {
@@ -157,16 +157,20 @@ export default function NewTicket() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Category</label>
-                  <select className="glass-input w-full text-sm" value={form.category} onChange={e => set('category', e.target.value)}>
-                    {[...categories].sort((a, b) => a.sortOrder - b.sortOrder).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <label className={labelCls}>Group / Team</label>
+                  <select className="glass-input w-full text-sm" value={form.group} onChange={e => { set('group', e.target.value); set('category', '') }}>
+                    <option value="">— Select Group —</option>
+                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Group / Team</label>
-                  <select className="glass-input w-full text-sm" value={form.group} onChange={e => set('group', e.target.value)}>
-                    <option value="">— Select Group —</option>
-                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  <label className={labelCls}>Category</label>
+                  <select className="glass-input w-full text-sm" value={form.category} onChange={e => set('category', e.target.value)}>
+                    <option value="">— Select Category —</option>
+                    {(form.group
+                      ? [...categories].filter(c => c.groupId === form.group)
+                      : [...categories]
+                    ).sort((a, b) => a.sortOrder - b.sortOrder).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
