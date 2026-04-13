@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
-  AlarmClock, ArrowRight, ChevronRight, Filter, X,
+  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
@@ -134,13 +134,14 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const open       = displayTickets.filter(t => t.status === 'open').length
     const inProgress = displayTickets.filter(t => t.status === 'in-progress').length
+    const onHold     = displayTickets.filter(t => t.status === 'on-hold').length
     const resolved   = displayTickets.filter(t => t.status === 'resolved').length
     const critical   = displayTickets.filter(t => t.priority === 'critical').length
     const slaOverdue = displayTickets.filter(t =>
       t.slaStatus === 'overdue' ||
       (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())
     ).length
-    return { open, inProgress, resolved, critical, slaOverdue, total: displayTickets.length }
+    return { open, inProgress, onHold, resolved, critical, slaOverdue, total: displayTickets.length }
   }, [displayTickets])
 
   // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
@@ -362,9 +363,10 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  />
         <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  />
+        <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   />
         <StatsCard label="Resolved"      value={loading ? '…' : stats.resolved}    icon={CheckCircle}   color="emerald" />
         <StatsCard label="Critical"      value={loading ? '…' : stats.critical}    icon={AlertTriangle} color="rose"    />
         <StatsCard label="SLA Overdue"   value={loading ? '…' : stats.slaOverdue}  icon={AlarmClock}    color={stats.slaOverdue > 0 ? 'rose' : 'emerald'} />
