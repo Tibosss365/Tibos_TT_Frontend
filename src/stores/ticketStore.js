@@ -44,6 +44,7 @@ export const useTicketStore = create(
           asset:          formData.asset || null,
           description:    formData.description,
           assignee_id:    formData.assignee || null,
+          group_id:       formData.group_id || null
         }
         const data = await api.post('/tickets', body)
         const ticket = normalizeTicket(data)
