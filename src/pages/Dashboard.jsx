@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
-  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle,
+  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
@@ -63,7 +63,7 @@ function OverdueDuration({ slaDueTime }) {
 
 export default function Dashboard() {
   const { tickets, loading } = useTicketStore()
-  const { getAgentName, getCategoryName, categories, groups } = useAdminStore()
+  const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
 
   // ── Filter state ────────────────────────────────────────────────────────────
@@ -194,6 +194,26 @@ export default function Dashboard() {
     })
     return events.sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8)
   }, [displayTickets])
+
+  // ── Agent wise ticket counts ────────────────────────────────────────────────
+  const agentData = useMemo(() => {
+    return agents
+      .filter(a => a.id !== 'unassigned')
+      .map(agent => {
+        const agentTickets = displayTickets.filter(t => t.assignee === String(agent.id))
+        return {
+          id:         agent.id,
+          name:       agent.name,
+          initials:   agent.initials || agent.name.slice(0, 2).toUpperCase(),
+          total:      agentTickets.length,
+          open:       agentTickets.filter(t => t.status === 'open').length,
+          inProgress: agentTickets.filter(t => t.status === 'in-progress').length,
+          onHold:     agentTickets.filter(t => t.status === 'on-hold').length,
+          resolved:   agentTickets.filter(t => t.status === 'resolved').length,
+        }
+      })
+      .sort((a, b) => b.total - a.total)
+  }, [displayTickets, agents])
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
@@ -523,6 +543,80 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* ── Agent Wise Ticket Count ────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title={
+            <div className="flex items-center gap-2">
+              <Users size={15} className="text-indigo-500" />
+              <span>Agent Wise Ticket Count</span>
+            </div>
+          }
+          subtitle="Ticket distribution per agent"
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-glass">
+                {['Agent', 'Created', 'Open', 'In Progress', 'On Hold', 'Resolved'].map(h => (
+                  <th
+                    key={h}
+                    className={`py-2.5 px-4 text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap ${
+                      h === 'Agent' ? 'text-left' : 'text-center'
+                    }`}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} className="py-8 text-center text-sm t-sub">Loading…</td></tr>
+              ) : agentData.length === 0 ? (
+                <tr><td colSpan={6} className="py-8 text-center text-sm t-muted">No agents found</td></tr>
+              ) : agentData.map(agent => (
+                <tr key={agent.id} className="border-b border-glass/50 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[10px] font-bold text-white">{agent.initials}</span>
+                      </div>
+                      <span className="font-medium t-main">{agent.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold">
+                      {agent.total}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">
+                      {agent.open}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 font-bold">
+                      {agent.inProgress}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold">
+                      {agent.onHold}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold">
+                      {agent.resolved}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* ── Recent tickets + activity ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
