@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { PriorityBadge } from '../components/ui/Badge'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { PRIORITIES } from '../utils/ticketUtils'
+import { api } from '../api/client'
 
 const TABS = [
   { id: 'overview',  icon: LayoutGrid,        label: 'Overview' },
@@ -663,30 +664,53 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
     return null
   }
 
-  const handleSendTest = () => {
+  const handleSendTest = async () => {
     if (!testTo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testTo)) {
-      setTestStatus('error'); setTestMsg('Enter a valid recipient email address'); return
+      setTestStatus('error')
+      setTestMsg('Enter a valid recipient email address')
+      return
     }
-    const err = validateConfig()
-    if (err) { setTestStatus('error'); setTestMsg(err); return }
 
     setTestStatus('loading')
     setTestMsg('')
-    // Simulate async send (in real app: API call to backend)
-    setTimeout(() => {
-      const fromAddr =
-        emailType === 'smtp'  ? smtp.from  :
-        emailType === 'm365'  ? m365.from  :
-        oauth.from
+
+    // Build payload with ALL current form credentials
+    // so the backend can use them directly without reading the DB
+    const payload = {
+      to_email: testTo,
+      type: emailType,
+    }
+
+    if (emailType === 'smtp') {
+      payload.smtp_host     = smtp.host     || ''
+      payload.smtp_port     = smtp.port     || '587'
+      payload.smtp_security = smtp.security || 'tls'
+      payload.smtp_from     = smtp.from     || ''
+      payload.smtp_user     = smtp.user     || ''
+      payload.smtp_pass     = smtp.pass     || ''
+    } else if (emailType === 'm365') {
+      payload.m365_tenant_id     = m365.tenantId     || ''
+      payload.m365_client_id     = m365.clientId     || ''
+      payload.m365_client_secret = m365.clientSecret || ''
+      payload.m365_from          = m365.from         || ''
+    } else if (emailType === 'oauth') {
+      payload.oauth_provider     = oauth.provider     || 'google'
+      payload.oauth_from         = oauth.from         || ''
+      payload.oauth_access_token = oauth.accessToken  || oauth.connectedEmail || ''
+    }
+
+    try {
+      const result = await api.post('/admin/email/test', payload)
       setTestStatus('success')
-      setTestMsg(`Test email sent successfully to ${testTo} from ${fromAddr}`)
+      setTestMsg(result?.message || `Test email sent successfully to ${testTo}`)
       addToast('Test email sent!', 'success')
-    }, 2200)
+    } catch (e) {
+      setTestStatus('error')
+      setTestMsg(e.message || 'Failed to send test email. Check your configuration.')
+    }
   }
 
   const openTestPanel = () => {
-    const err = validateConfig()
-    if (err) { addToast(err, 'error'); return }
     setTestPanel(true)
     setTestStatus(null)
     setTestMsg('')

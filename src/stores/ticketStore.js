@@ -7,7 +7,7 @@ export const useTicketStore = create(
     (set, get) => ({
       tickets: [],
       loading: false,
-      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' },
+      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' },
       selectedIds: [],
 
       // ── API Methods ────────────────────────────────────────────────────────
@@ -178,7 +178,7 @@ export const useTicketStore = create(
       },
 
       resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '' } })
+        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' } })
       },
 
       toggleSelect: (uuid) => {
@@ -208,6 +208,18 @@ export const useTicketStore = create(
             (t.submitter || '').toLowerCase().includes(q) ||
             (t.category || '').toLowerCase().includes(q)
           )
+        }
+        if (filters.assignee) result = result.filter(t => t.assignee === filters.assignee)
+        if (filters.dateFrom || filters.dateTo) {
+          const field = filters.dateField || 'created'
+          const from = filters.dateFrom ? new Date(filters.dateFrom) : null
+          const to   = filters.dateTo   ? new Date(filters.dateTo + 'T23:59:59') : null
+          result = result.filter(t => {
+            const d = new Date(t[field])
+            if (from && d < from) return false
+            if (to   && d > to)   return false
+            return true
+          })
         }
         switch (filters.sort) {
           case 'oldest':   result.sort((a, b) => new Date(a.created) - new Date(b.created)); break
