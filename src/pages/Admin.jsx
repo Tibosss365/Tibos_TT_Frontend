@@ -10,6 +10,7 @@ import { PriorityBadge } from '../components/ui/Badge'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { PRIORITIES } from '../utils/ticketUtils'
 import { api } from '../api/client'
+import { DEFAULT_EMAIL_TEMPLATES } from '../data/seedData'
 
 const TABS = [
   { id: 'overview',  icon: LayoutGrid,        label: 'Overview' },
@@ -630,7 +631,7 @@ function TestEmailPanel({ open, testTo, setTestTo, status, message, onSend, onCl
 }
 
 // ─── Email Tab Component ──────────────────────────────────────────────────────
-function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, inboundEdits, setInboundEdits, agents, emailLog, categories, inputCls, onSave, onTest, onSaveInbound, onPollNow, onClearLog, addToast }) {
+function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, inboundEdits, setInboundEdits, agents, emailLog, categories, inputCls, onSave, onTest, onSaveInbound, onPollNow, onClearLog, addToast, tplEdits, setTplEdits, onSaveTemplate, insertVar }) {
   const [emailSubTab, setEmailSubTab] = useState('outbound')
   const emailType = emailEdits.type || 'smtp'
   const [oauthShowSecret, setOauthShowSecret] = useState(false)
@@ -775,11 +776,12 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
 
   return (
     <div className="space-y-4">
-      {/* Sub-tab switcher: Outbound | Inbound */}
+      {/* Sub-tab switcher: Outbound | Inbound | Templates */}
       <div className="flex gap-1 p-1 glass-card w-fit border border-glass rounded-xl">
         {[
-          { id: 'outbound', icon: Mail,  label: 'Outbound Mail' },
-          { id: 'inbound',  icon: Inbox, label: 'Inbound → Ticket' },
+          { id: 'outbound',   icon: Mail,     label: 'Outbound Mail' },
+          { id: 'inbound',    icon: Inbox,    label: 'Inbound → Ticket' },
+          { id: 'templates',  icon: FileText, label: 'Templates' },
         ].map(({ id, icon: Icon, label }) => (
           <button key={id} onClick={() => setEmailSubTab(id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -799,6 +801,101 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
           onSaveInbound={onSaveInbound} onPollNow={onPollNow} onClearLog={onClearLog}
           addToast={addToast} inputCls={inputCls}
         />
+      )}
+
+      {/* Templates sub-tab */}
+      {emailSubTab === 'templates' && tplEdits && (
+        <div className="space-y-4">
+          {/* Variable reference */}
+          <div className="p-3 rounded-xl border border-indigo-500/20 bg-indigo-500/5 flex flex-wrap gap-2 items-center">
+            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Available Variables:</span>
+            {TEMPLATE_VARS.map(v => (
+              <span key={v.tag} title={v.desc}
+                className="text-[10px] font-mono px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                {v.tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {[
+              { key: 'ticketOpen',       label: 'New Ticket Created',    color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25', dot: 'bg-emerald-500', desc: 'Sent when a new ticket is submitted' },
+              { key: 'ticketInProgress', label: 'Ticket In Progress',    color: 'text-violet-600 dark:text-violet-400',   bg: 'bg-violet-500/10 border-violet-500/25',   dot: 'bg-violet-500',  desc: 'Sent when work starts on the ticket' },
+              { key: 'ticketOnHold',     label: 'Ticket On Hold',        color: 'text-amber-600 dark:text-amber-400',     bg: 'bg-amber-500/10 border-amber-500/25',     dot: 'bg-amber-500',   desc: 'Sent when ticket is placed on hold' },
+              { key: 'ticketResolved',   label: 'Ticket Resolved',       color: 'text-sky-600 dark:text-sky-400',         bg: 'bg-sky-500/10 border-sky-500/25',         dot: 'bg-sky-500',     desc: 'Sent when ticket is marked resolved' },
+              { key: 'ticketClosed',     label: 'Ticket Closed',         color: 'text-slate-600 dark:text-slate-400',     bg: 'bg-slate-500/10 border-slate-500/25',     dot: 'bg-slate-400',   desc: 'Sent when ticket is closed' },
+              { key: 'agentReply',       label: 'Agent Reply to Customer', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/25',   dot: 'bg-indigo-500',  desc: 'Sent when agent posts a comment to customer' },
+            ].map(({ key, label, color, bg, dot, desc }) => {
+              const tpl = tplEdits?.[key]
+              if (!tpl) return null
+              return (
+                <div key={key} className="glass-card rounded-2xl border border-glass p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${dot}`} />
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${bg} ${color}`}>{label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] t-muted">{desc}</span>
+                      <button
+                        onClick={() => setTplEdits(p => ({ ...p, [key]: { ...p[key], enabled: !p[key].enabled } }))}
+                        className={`flex items-center gap-1 text-xs font-medium transition-colors ${tpl.enabled ? 'text-emerald-600 dark:text-emerald-400' : 't-muted'}`}
+                      >
+                        {tpl.enabled
+                          ? <TogOn  size={20} className="text-emerald-500" />
+                          : <TogOff size={20} className="t-muted" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Subject */}
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Subject Line</label>
+                    <input
+                      className={inputCls}
+                      value={tpl.subject || ''}
+                      onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], subject: e.target.value } }))}
+                      placeholder="Email subject..."
+                    />
+                  </div>
+
+                  {/* Body */}
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Email Body</label>
+                    <textarea
+                      rows={8}
+                      className={inputCls + ' resize-y font-mono text-[11px] leading-relaxed'}
+                      value={tpl.body || ''}
+                      onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], body: e.target.value } }))}
+                    />
+                  </div>
+
+                  {/* Insert variable chips */}
+                  <div>
+                    <p className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Insert Variable</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TEMPLATE_VARS.map(v => (
+                        <button
+                          key={v.tag}
+                          title={v.desc}
+                          onClick={() => insertVar && insertVar(key, 'body', v.tag)}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all"
+                        >
+                          {v.tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button variant="primary" size="sm" onClick={() => onSaveTemplate && onSaveTemplate(key)}>
+                    <Save size={13} /> Save Template
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* Outbound sub-tab */}
@@ -1152,8 +1249,12 @@ export default function Admin() {
   // ── Ticket Settings local state ──────────────────────────────────────────
   const [tktEdits, setTktEdits] = useState({ ...ticketSettings })
   const [tplEdits, setTplEdits] = useState({
-    ticketOpen:   { ...emailTemplates.ticketOpen },
-    ticketClosed: { ...emailTemplates.ticketClosed },
+    ticketOpen:       { ...(emailTemplates.ticketOpen       || DEFAULT_EMAIL_TEMPLATES.ticketOpen) },
+    ticketInProgress: { ...(emailTemplates.ticketInProgress || DEFAULT_EMAIL_TEMPLATES.ticketInProgress) },
+    ticketOnHold:     { ...(emailTemplates.ticketOnHold     || DEFAULT_EMAIL_TEMPLATES.ticketOnHold) },
+    ticketResolved:   { ...(emailTemplates.ticketResolved   || DEFAULT_EMAIL_TEMPLATES.ticketResolved) },
+    ticketClosed:     { ...(emailTemplates.ticketClosed     || DEFAULT_EMAIL_TEMPLATES.ticketClosed) },
+    agentReply:       { ...(emailTemplates.agentReply       || DEFAULT_EMAIL_TEMPLATES.agentReply) },
   })
 
   const formatPreview = `${tktEdits.numberPrefix}-${'0'.repeat(Math.max(1, Number(tktEdits.numberDigits) - 1))}1`
@@ -1291,6 +1392,10 @@ export default function Admin() {
   const [triggersEdits, setTriggersEdits] = useState({ ...emailTriggers })
   const [inboundEdits, setInboundEdits] = useState({ ...inboundEmail })
 
+  // Sync local edits when store values change (e.g. after fetchEmailConfig)
+  useEffect(() => { setEmailEdits(prev => ({ ...emailConfig, smtp: { ...emailConfig.smtp, pass: prev.smtp?.pass || emailConfig.smtp?.pass || '' }, m365: { ...emailConfig.m365, clientSecret: prev.m365?.clientSecret || emailConfig.m365?.clientSecret || '' } })) }, [emailConfig])
+  useEffect(() => { setTriggersEdits({ ...emailTriggers }) }, [emailTriggers])
+
   const handleAddAgent = async (e) => {
     e.preventDefault()
     if (!newAgent.name || !newAgent.group || !newAgent.username || !newAgent.password) {
@@ -1317,21 +1422,42 @@ export default function Admin() {
 
   const handleSaveEmail = async () => {
     try {
+      const type = emailEdits.type || 'smtp'
       const payload = {
-        type: 'smtp',
+        type,
         triggers: {
-          trigger_new:    emailEdits.new,
-          trigger_assign: emailEdits.assign,
-          trigger_resolve: emailEdits.resolve,
+          trigger_new:     triggersEdits.new     ?? false,
+          trigger_assign:  triggersEdits.assign  ?? false,
+          trigger_resolve: triggersEdits.resolve ?? false,
         },
-        smtp: {
-          host:         emailEdits.smtp.host,
-          port:         emailEdits.smtp.port,
-          from_address: emailEdits.smtp.from,
-          user:         emailEdits.smtp.user,
-          password:     emailEdits.smtp.pass,
-          security:     'tls',
-        },
+      }
+      if (type === 'smtp') {
+        payload.smtp = {
+          host:         emailEdits.smtp?.host     || '',
+          port:         emailEdits.smtp?.port     || '587',
+          security:     emailEdits.smtp?.security || 'tls',
+          from_address: emailEdits.smtp?.from     || '',
+          user:         emailEdits.smtp?.user     || '',
+          password:     emailEdits.smtp?.pass     || '',
+        }
+      } else if (type === 'm365') {
+        payload.m365 = {
+          tenant_id:     emailEdits.m365?.tenantId     || '',
+          client_id:     emailEdits.m365?.clientId     || '',
+          client_secret: emailEdits.m365?.clientSecret || '',
+          from_address:  emailEdits.m365?.from         || '',
+        }
+      } else if (type === 'oauth') {
+        payload.oauth = {
+          provider:       emailEdits.oauth?.provider      || 'google',
+          client_id:      emailEdits.oauth?.clientId      || '',
+          client_secret:  emailEdits.oauth?.clientSecret  || '',
+          redirect_uri:   emailEdits.oauth?.redirectUri   || '',
+          scopes:         emailEdits.oauth?.scopes        || '',
+          auth_endpoint:  emailEdits.oauth?.authEndpoint  || '',
+          token_endpoint: emailEdits.oauth?.tokenEndpoint || '',
+          from_address:   emailEdits.oauth?.from          || '',
+        }
       }
       await updateEmailConfig(payload)
       addToast('Email settings saved', 'success')
@@ -1628,88 +1754,6 @@ export default function Admin() {
             </div>
           </Card>
 
-          {/* ── Email Templates ────────────────────────────────────────── */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <FileText size={15} className="text-indigo-500" />
-              <h2 className="text-sm font-bold t-main">Email Template Sets</h2>
-              <span className="text-[10px] t-sub ml-1">Sent automatically to the requester</span>
-            </div>
-
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {[
-                { key: 'ticketOpen',   label: 'Ticket Opened', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                { key: 'ticketClosed', label: 'Ticket Closed',  color: 'text-slate-600 dark:text-slate-400',    bg: 'bg-slate-500/10 border-slate-500/20' },
-              ].map(({ key, label, color, bg }) => (
-                <Card key={key}>
-                  {/* Header with enable toggle */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${bg} ${color}`}>{label}</span>
-                    </div>
-                    <button
-                      onClick={() => setTplEdits(p => ({ ...p, [key]: { ...p[key], enabled: !p[key].enabled } }))}
-                      className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${tplEdits[key].enabled ? 'text-emerald-600 dark:text-emerald-400' : 't-muted'}`}
-                    >
-                      {tplEdits[key].enabled
-                        ? <ToggleRight size={20} className="text-emerald-500" />
-                        : <ToggleLeft  size={20} className="t-muted" />}
-                      {tplEdits[key].enabled ? 'Enabled' : 'Disabled'}
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    {/* Subject */}
-                    <div>
-                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                        Subject Line
-                      </label>
-                      <input
-                        className={inputCls}
-                        value={tplEdits[key].subject}
-                        onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], subject: e.target.value } }))}
-                        placeholder="Enter email subject..."
-                      />
-                    </div>
-
-                    {/* Body */}
-                    <div>
-                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                        Email Body
-                      </label>
-                      <textarea
-                        rows={10}
-                        className={inputCls + ' resize-y font-mono text-[11px] leading-relaxed'}
-                        value={tplEdits[key].body}
-                        onChange={e => setTplEdits(p => ({ ...p, [key]: { ...p[key], body: e.target.value } }))}
-                      />
-                    </div>
-
-                    {/* Variable chips */}
-                    <div>
-                      <p className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Insert Variable</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {TEMPLATE_VARS.map(v => (
-                          <button
-                            key={v.tag}
-                            title={v.desc}
-                            onClick={() => insertVar(key, 'body', v.tag)}
-                            className="text-[10px] font-mono px-2 py-0.5 rounded-md border border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all"
-                          >
-                            {v.tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Button variant="primary" size="sm" onClick={() => handleSaveTemplate(key)}>
-                      <Save size={13} /> Save Template
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 
@@ -2237,6 +2281,9 @@ export default function Admin() {
         onPollNow={handlePollNow}
         onClearLog={handleClearLog}
         addToast={addToast}
+        tplEdits={tplEdits} setTplEdits={setTplEdits}
+        onSaveTemplate={handleSaveTemplate}
+        insertVar={insertVar}
       />}
 
       {/* Categories */}

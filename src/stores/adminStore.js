@@ -90,7 +90,45 @@ export const useAdminStore = create(
   fetchEmailConfig: async () => {
     try {
       const data = await api.get('/admin/email')
-      set({ emailConfig: data })
+      // Normalize flat backend response → nested frontend structure
+      const normalized = {
+        type: data.type || 'smtp',
+        smtp: {
+          host:     data.smtp_host     || '',
+          port:     data.smtp_port     || '587',
+          security: data.smtp_security || 'tls',
+          from:     data.smtp_from     || '',
+          user:     data.smtp_user     || '',
+          pass:     '',  // password never returned from backend
+        },
+        m365: {
+          tenantId:     data.m365_tenant_id || '',
+          clientId:     data.m365_client_id || '',
+          clientSecret: '',  // secret never returned from backend
+          from:         data.m365_from      || '',
+        },
+        oauth: {
+          provider:      data.oauth_provider      || 'google',
+          clientId:      data.oauth_client_id     || '',
+          clientSecret:  '',
+          redirectUri:   data.oauth_redirect_uri  || '',
+          scopes:        data.oauth_scopes        || '',
+          authEndpoint:  data.oauth_auth_endpoint  || '',
+          tokenEndpoint: data.oauth_token_endpoint || '',
+          from:          data.oauth_from           || '',
+          connected:     !!(data.oauth_token_expiry),
+          connectedEmail: data.oauth_from          || '',
+          tokenExpiry:   data.oauth_token_expiry   || null,
+        },
+      }
+      set({
+        emailConfig: normalized,
+        emailTriggers: {
+          new:     data.trigger_new     ?? false,
+          assign:  data.trigger_assign  ?? false,
+          resolve: data.trigger_resolve ?? false,
+        },
+      })
     } catch (e) {
       console.error('fetchEmailConfig error', e)
     }
@@ -194,7 +232,45 @@ export const useAdminStore = create(
 
   updateEmailConfig: async (payload) => {
     const data = await api.put('/admin/email', payload)
-    set({ emailConfig: data })
+    // Normalize flat backend response → nested frontend structure
+    const normalized = {
+      type: data.type || 'smtp',
+      smtp: {
+        host:     data.smtp_host     || '',
+        port:     data.smtp_port     || '587',
+        security: data.smtp_security || 'tls',
+        from:     data.smtp_from     || '',
+        user:     data.smtp_user     || '',
+        pass:     payload.smtp?.password || '',  // keep what was sent (not returned by backend)
+      },
+      m365: {
+        tenantId:     data.m365_tenant_id || '',
+        clientId:     data.m365_client_id || '',
+        clientSecret: payload.m365?.client_secret || '',
+        from:         data.m365_from      || '',
+      },
+      oauth: {
+        provider:      data.oauth_provider      || 'google',
+        clientId:      data.oauth_client_id     || '',
+        clientSecret:  payload.oauth?.client_secret || '',
+        redirectUri:   data.oauth_redirect_uri  || '',
+        scopes:        data.oauth_scopes        || '',
+        authEndpoint:  data.oauth_auth_endpoint  || '',
+        tokenEndpoint: data.oauth_token_endpoint || '',
+        from:          data.oauth_from           || '',
+        connected:     !!(data.oauth_token_expiry),
+        connectedEmail: data.oauth_from          || '',
+        tokenExpiry:   data.oauth_token_expiry   || null,
+      },
+    }
+    set({
+      emailConfig: normalized,
+      emailTriggers: {
+        new:     data.trigger_new     ?? false,
+        assign:  data.trigger_assign  ?? false,
+        resolve: data.trigger_resolve ?? false,
+      },
+    })
   },
 
       updateEmailTriggers: (changes) => {

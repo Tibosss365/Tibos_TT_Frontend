@@ -145,7 +145,7 @@ export const DEFAULT_TICKET_SETTINGS = {
 export const DEFAULT_EMAIL_TEMPLATES = {
   ticketOpen: {
     enabled: true,
-    subject: 'Ticket [{ticket_id}] Opened: {ticket_subject}',
+    subject: '[{ticket_id}] Your ticket has been received: {ticket_subject}',
     body:
 `Hi {contact_name},
 
@@ -159,17 +159,78 @@ Status     : {ticket_status}
 ────────────────────────────
 
 Our support team will review your request and respond as soon as possible.
+You can reply to this email to add more information.
+
+Regards,
+{company_name} IT Support`,
+  },
+  ticketInProgress: {
+    enabled: true,
+    subject: '[{ticket_id}] Work has started on your ticket',
+    body:
+`Hi {contact_name},
+
+Good news! Our team has started working on your ticket.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Assigned To: {agent_name}
+Status     : In Progress
+────────────────────────────
+
+We will keep you updated on the progress.
+Reply to this email if you have additional information.
+
+Regards,
+{company_name} IT Support`,
+  },
+  ticketOnHold: {
+    enabled: true,
+    subject: '[{ticket_id}] Your ticket is on hold',
+    body:
+`Hi {contact_name},
+
+Your ticket has been temporarily placed on hold.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Status     : On Hold
+────────────────────────────
+
+We will resume work on it as soon as possible.
+Reply to this email if you have additional information.
+
+Regards,
+{company_name} IT Support`,
+  },
+  ticketResolved: {
+    enabled: true,
+    subject: '[{ticket_id}] Your ticket has been resolved',
+    body:
+`Hi {contact_name},
+
+We are pleased to let you know that your ticket has been resolved.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Resolved By: {agent_name}
+────────────────────────────
+
+If the issue recurs or you need further help, please reply to this email and we will reopen the ticket.
 
 Regards,
 {company_name} IT Support`,
   },
   ticketClosed: {
     enabled: true,
-    subject: 'Ticket [{ticket_id}] Closed: {ticket_subject}',
+    subject: '[{ticket_id}] Your ticket has been closed',
     body:
 `Hi {contact_name},
 
-We are pleased to let you know that your support ticket has been resolved and closed.
+Your support ticket has been closed. Thank you for contacting us.
 
 ────────────────────────────
 Ticket ID  : {ticket_id}
@@ -178,7 +239,28 @@ Closed By  : {agent_name}
 Closed On  : {closed_date}
 ────────────────────────────
 
-If the issue recurs or you need further help, please open a new ticket.
+If you need further assistance, please submit a new ticket.
+
+Regards,
+{company_name} IT Support`,
+  },
+  agentReply: {
+    enabled: true,
+    subject: '[{ticket_id}] Update on your ticket: {ticket_subject}',
+    body:
+`Hi {contact_name},
+
+A support agent has sent you a message regarding your ticket.
+
+────────────────────────────
+Ticket ID  : {ticket_id}
+Subject    : {ticket_subject}
+Agent      : {agent_name}
+────────────────────────────
+
+{agent_message}
+
+You can reply to this email to respond to the agent.
 
 Regards,
 {company_name} IT Support`,
