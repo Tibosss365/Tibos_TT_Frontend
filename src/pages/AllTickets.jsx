@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Search, Download, Trash2, CheckSquare, Square, X, Check,
-  SlidersHorizontal, Calendar, Filter, RotateCcw
+  SlidersHorizontal, Filter, RotateCcw
 } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
@@ -30,10 +30,36 @@ const ALL_COLUMNS = [
 ]
 const DEFAULT_COLS = ['id','type','subject','priority','status','sla','group','category','assignee','updated']
 
-// ── Staged filter defaults (excludes search + sort which are always instant) ──
+// ── Staged filter defaults ────────────────────────────────────────────────────
 const STAGED_DEFAULTS = {
-  status: '', priority: '', category: '', group: '', type: '',
+  dateRange: 'all', priority: '', category: '', group: '', type: '',
   assignee: '', dateFrom: '', dateTo: '', dateField: 'created',
+}
+
+const DATE_RANGES = [
+  { key: 'all',    label: 'All Time'   },
+  { key: 'today',  label: 'Today'      },
+  { key: 'week',   label: 'This Week'  },
+  { key: 'month',  label: 'This Month' },
+  { key: 'custom', label: 'Custom'     },
+]
+
+const STATUS_OPTIONS = [
+  { key: '',            label: 'All'         },
+  { key: 'open',        label: 'Open'        },
+  { key: 'in-progress', label: 'In Progress' },
+  { key: 'on-hold',     label: 'On Hold'     },
+  { key: 'resolved',    label: 'Resolved'    },
+  { key: 'closed',      label: 'Closed'      },
+]
+
+const STATUS_ACTIVE_CLS = {
+  '':             'bg-indigo-500/15 text-indigo-500 border-indigo-500/40',
+  'open':         'bg-blue-500/15 text-blue-500 border-blue-500/40',
+  'in-progress':  'bg-violet-500/15 text-violet-500 border-violet-500/40',
+  'on-hold':      'bg-amber-500/15 text-amber-500 border-amber-500/40',
+  'resolved':     'bg-emerald-500/15 text-emerald-500 border-emerald-500/40',
+  'closed':       'bg-slate-500/15 text-slate-400 border-slate-500/40',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -54,14 +80,14 @@ export default function AllTickets() {
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
   const [staged, setStaged]                   = useState(() => ({
-    status:    filters.status,
-    priority:  filters.priority,
-    category:  filters.category,
-    group:     filters.group,
-    type:      filters.type,
-    assignee:  filters.assignee,
-    dateFrom:  filters.dateFrom,
-    dateTo:    filters.dateTo,
+    dateRange: 'all',
+    priority:  filters.priority  || '',
+    category:  filters.category  || '',
+    group:     filters.group     || '',
+    type:      filters.type      || '',
+    assignee:  filters.assignee  || '',
+    dateFrom:  filters.dateFrom  || '',
+    dateTo:    filters.dateTo    || '',
     dateField: filters.dateField || 'created',
   }))
   const [visibleCols, setVisibleCols]         = useState(DEFAULT_COLS)
@@ -88,9 +114,18 @@ export default function AllTickets() {
 
   const setSF = (key, val) => setStaged(s => ({ ...s, [key]: val }))
 
-  // Apply staged → store
+  // Apply staged → store (converting dateRange to dateFrom/dateTo)
   const applyFilters = () => {
-    Object.entries(staged).forEach(([k, v]) => setFilter(k, v))
+    const toApply = { ...staged }
+    if (staged.dateRange === 'all')   { toApply.dateFrom = ''; toApply.dateTo = '' }
+    else if (staged.dateRange === 'today') { toApply.dateFrom = todayStr(); toApply.dateTo = todayStr() }
+    else if (staged.dateRange === 'week')  { toApply.dateFrom = daysAgoStr(7); toApply.dateTo = todayStr() }
+    else if (staged.dateRange === 'month') {
+      const d = new Date()
+      toApply.dateFrom = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
+      toApply.dateTo = todayStr()
+    }
+    Object.entries(toApply).forEach(([k, v]) => { if (k !== 'dateRange') setFilter(k, v) })
   }
 
   // Clear everything
@@ -99,15 +134,10 @@ export default function AllTickets() {
     setStaged(STAGED_DEFAULTS)
   }
 
-  // Remove a single applied chip immediately
-  const removeChip = (key) => {
-    if (key === 'dateRange') {
-      setFilter('dateFrom', ''); setFilter('dateTo', '')
-      setStaged(s => ({ ...s, dateFrom: '', dateTo: '' }))
-    } else {
-      setFilter(key, '')
-      setStaged(s => ({ ...s, [key]: '' }))
-    }
+  // Status chips apply instantly
+  const handleStatusChip = (key) => {
+    const val = filters.status === key && key !== '' ? '' : key
+    setFilter('status', val)
   }
 
   // Column customization
@@ -147,48 +177,57 @@ export default function AllTickets() {
     a.download = 'tickets.csv'; a.click()
   }
 
-  // Build active filter chips from APPLIED (store) filters
-  const filterChips = [
-    filters.status   && { key: 'status',   label: 'Status',   value: fmtStatus(filters.status), color: 'violet' },
-    filters.priority && { key: 'priority', label: 'Priority', value: cap(filters.priority),      color: 'orange' },
-    filters.category && { key: 'category', label: 'Category', value: getCategoryName(filters.category), color: 'blue' },
-    filters.group    && { key: 'group',    label: 'Group',    value: getGroupName(filters.group), color: 'teal' },
-    filters.type     && { key: 'type',     label: 'Type',     value: cap(filters.type),           color: 'rose' },
-    filters.assignee && { key: 'assignee', label: 'Assignee', value: getAgentName(filters.assignee), color: 'indigo' },
-    (filters.dateFrom || filters.dateTo) && {
-      key: 'dateRange',
-      label: filters.dateField === 'updated' ? 'Updated' : 'Created',
-      value: [filters.dateFrom, filters.dateTo].filter(Boolean).join(' → '),
-      color: 'emerald',
-    },
-  ].filter(Boolean)
-
-  const appliedCount = filterChips.length
   const hasSearch    = !!filters.search
-  const hasAnyFilter = appliedCount > 0 || hasSearch
+  const hasAnyFilter = !!(filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || hasSearch)
 
-  // Detect unsaved staged changes (show indicator on Apply button)
+  // Detect unsaved staged changes
   const hasPending = (
-    staged.status    !== filters.status    ||
-    staged.priority  !== filters.priority  ||
-    staged.category  !== filters.category  ||
-    staged.group     !== filters.group     ||
-    staged.type      !== filters.type      ||
-    staged.assignee  !== filters.assignee  ||
-    staged.dateFrom  !== filters.dateFrom  ||
-    staged.dateTo    !== filters.dateTo
+    staged.priority  !== (filters.priority  || '') ||
+    staged.category  !== (filters.category  || '') ||
+    staged.group     !== (filters.group     || '') ||
+    staged.type      !== (filters.type      || '') ||
+    staged.assignee  !== (filters.assignee  || '') ||
+    staged.dateFrom  !== (filters.dateFrom  || '') ||
+    staged.dateTo    !== (filters.dateTo    || '') ||
+    staged.dateRange !== 'all'
   )
 
-  // chip color map → tailwind classes
-  const chipColors = {
-    violet:  'bg-violet-500/12 border-violet-400/30 text-violet-700 dark:text-violet-300',
-    orange:  'bg-orange-500/12 border-orange-400/30 text-orange-700 dark:text-orange-300',
-    blue:    'bg-blue-500/12 border-blue-400/30 text-blue-700 dark:text-blue-300',
-    teal:    'bg-teal-500/12 border-teal-400/30 text-teal-700 dark:text-teal-300',
-    rose:    'bg-rose-500/12 border-rose-400/30 text-rose-700 dark:text-rose-300',
-    indigo:  'bg-indigo-500/12 border-indigo-400/30 text-indigo-700 dark:text-indigo-300',
-    emerald: 'bg-emerald-500/12 border-emerald-400/30 text-emerald-700 dark:text-emerald-300',
-  }
+  // Status chip counts (pre-status filter for accurate per-status numbers)
+  const statusCounts = (() => {
+    let result = [...tickets]
+    if (filters.priority) result = result.filter(t => t.priority === filters.priority)
+    if (filters.category) result = result.filter(t => t.category === filters.category)
+    if (filters.group)    result = result.filter(t => t.group === filters.group)
+    if (filters.type)     result = result.filter(t => t.type === filters.type)
+    if (filters.assignee) {
+      if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
+      else result = result.filter(t => String(t.assignee) === String(filters.assignee))
+    }
+    if (filters.search) {
+      const q = filters.search.toLowerCase()
+      result = result.filter(t =>
+        (t.subject||'').toLowerCase().includes(q) ||
+        (t.id||'').toLowerCase().includes(q) ||
+        (t.submitter||'').toLowerCase().includes(q)
+      )
+    }
+    if (filters.dateFrom || filters.dateTo) {
+      const field = filters.dateField || 'created'
+      const from  = filters.dateFrom ? new Date(filters.dateFrom) : null
+      const to    = filters.dateTo   ? new Date(filters.dateTo + 'T23:59:59') : null
+      result = result.filter(t => {
+        const d = new Date(t[field])
+        if (from && d < from) return false
+        if (to   && d > to)   return false
+        return true
+      })
+    }
+    const counts = { '': result.length }
+    result.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1 })
+    return counts
+  })()
+
+  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer"
 
   // Cell renderer
   const cellValue = (ticket, key) => {
@@ -296,210 +335,120 @@ export default function AllTickets() {
       </div>
 
       {/* ── Filter card ───────────────────────────────────────────────────── */}
-      <Card className="p-0 overflow-hidden">
+      <Card>
+        <div className="p-4 space-y-3">
 
-        {/* Search + sort bar */}
-        <div className="flex flex-wrap items-center gap-2 p-4 pb-3">
-          <div className="relative flex-1 min-w-52">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 t-sub" />
-            <input
-              type="text" placeholder="Search tickets by subject, ID, submitter…"
-              value={filters.search} onChange={e => setFilter('search', e.target.value)}
-              className="glass-input w-full pl-9 pr-3 py-2 text-sm"
-            />
-            {filters.search && (
-              <button onClick={() => setFilter('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 t-sub hover:t-main">
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          <select value={filters.sort} onChange={e => setFilter('sort', e.target.value)}
-            className="glass-input text-sm py-2 font-medium min-w-36">
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="priority">By priority</option>
-            <option value="updated">Recently updated</option>
-          </select>
-          {/* Active filter count badge */}
-          {appliedCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/12 border border-indigo-400/30 text-indigo-600 dark:text-indigo-400 text-xs font-medium">
-              <Filter size={12} />
-              {appliedCount} filter{appliedCount > 1 ? 's' : ''} active
-            </span>
-          )}
-        </div>
+          {/* Row 1: Date range tabs + dropdowns + Clear + Apply */}
+          <div className="flex flex-wrap items-center gap-2">
 
-        {/* Active filter chips */}
-        {filterChips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Active:</span>
-            {filterChips.map(chip => (
-              <span key={chip.key}
-                className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium border ${chipColors[chip.color]}`}>
-                <span className="opacity-60 font-semibold">{chip.label}:</span>
-                <span>{chip.value}</span>
-                <button onClick={() => removeChip(chip.key)}
-                  className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-                  <X size={10} />
+            {/* Date range tabs */}
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass">
+              {DATE_RANGES.map(({ key, label }) => (
+                <button key={key} onClick={() => setSF('dateRange', key)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap
+                    ${staged.dateRange === key ? 'bg-indigo-500 text-white shadow-sm' : 't-muted hover:t-main'}`}>
+                  {label}
                 </button>
-              </span>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* ── Always-visible filter panel ───────────────────────────────────── */}
-        <div className="border-t border-glass">
-          <div className="p-4 space-y-5">
-
-              {/* Section: Value filters */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Filter By</span>
-                  <div className="flex-1 h-px bg-glass" />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {[
-                    {
-                      key: 'status', label: 'Status', placeholder: 'Any Status',
-                      options: STATUSES.map(s => ({ value: s, label: fmtStatus(s) })),
-                    },
-                    {
-                      key: 'priority', label: 'Priority', placeholder: 'Any Priority',
-                      options: PRIORITIES.map(p => ({ value: p, label: cap(p) })),
-                    },
-                    {
-                      key: 'category', label: 'Category', placeholder: 'Any Category',
-                      options: [...categories].sort((a,b)=>a.sortOrder-b.sortOrder).map(c => ({ value: c.id, label: getCategoryName(c.id) })),
-                    },
-                    {
-                      key: 'group', label: 'Group', placeholder: 'Any Group',
-                      options: groups.map(g => ({ value: g.id, label: g.name })),
-                    },
-                    {
-                      key: 'type', label: 'Ticket Type', placeholder: 'Any Type',
-                      options: TICKET_TYPES.map(t => ({ value: t, label: cap(t) })),
-                    },
-                    {
-                      key: 'assignee', label: 'Assignee', placeholder: 'All Assignees',
-                      options: [
-                        { value: 'unassigned', label: 'Unassigned' },
-                        ...(agents || []).map(a => ({ value: String(a.id), label: a.name })),
-                      ],
-                    },
-                  ].map(({ key, label, placeholder, options }) => (
-                    <div key={key} className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">{label}</label>
-                      <select
-                        value={staged[key]}
-                        onChange={e => setSF(key, e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium transition-all
-                          ${staged[key] ? 'border-indigo-400/50 bg-indigo-500/5 text-indigo-700 dark:text-indigo-300' : ''}`}
-                      >
-                        <option value="">{placeholder}</option>
-                        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                    </div>
-                  ))}
-                </div>
+            {/* Custom date inputs */}
+            {staged.dateRange === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls} />
+                <span className="text-xs t-muted">to</span>
+                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls} />
               </div>
+            )}
 
-              {/* Section: Date range */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar size={12} className="t-sub" />
-                  <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Date Range</span>
-                  <div className="flex-1 h-px bg-glass" />
-                </div>
-                <div className="p-3 rounded-xl border border-glass/60 bg-black/[0.02] dark:bg-white/[0.02] space-y-3">
-                  <div className="flex flex-wrap gap-3 items-end">
-                    {/* Field selector */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">Apply To</label>
-                      <select value={staged.dateField} onChange={e => setSF('dateField', e.target.value)}
-                        className="glass-input text-sm py-2 font-medium min-w-36">
-                        <option value="created">Created Date</option>
-                        <option value="updated">Last Updated</option>
-                      </select>
-                    </div>
-                    {/* From */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">From</label>
-                      <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium ${staged.dateFrom ? 'border-indigo-400/50 bg-indigo-500/5' : ''}`} />
-                    </div>
-                    {/* To */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">To</label>
-                      <input type="date" value={staged.dateTo} onChange={e => setSF('dateTo', e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium ${staged.dateTo ? 'border-indigo-400/50 bg-indigo-500/5' : ''}`} />
-                    </div>
-                    {/* Clear dates */}
-                    {(staged.dateFrom || staged.dateTo) && (
-                      <button onClick={() => { setSF('dateFrom',''); setSF('dateTo','') }}
-                        className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-400 transition-colors pb-2">
-                        <X size={11} /> Clear dates
-                      </button>
-                    )}
-                  </div>
-                  {/* Quick range presets */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-medium t-muted">Quick:</span>
-                    {[
-                      { label: 'Today',    days: 0 },
-                      { label: '7 days',   days: 7 },
-                      { label: '30 days',  days: 30 },
-                      { label: '90 days',  days: 90 },
-                      { label: 'This year', days: 365 },
-                    ].map(({ label, days }) => {
-                      const from = daysAgoStr(days)
-                      const to   = todayStr()
-                      const isActive = staged.dateFrom === from && staged.dateTo === to
-                      return (
-                        <button key={label}
-                          onClick={() => {
-                            if (isActive) { setSF('dateFrom',''); setSF('dateTo','') }
-                            else { setSF('dateFrom', from); setSF('dateTo', to) }
-                          }}
-                          className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all
-                            ${isActive
-                              ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-400'
-                              : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}
-                        >
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
+            {/* Right-side dropdowns + buttons */}
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              <select value={staged.priority} onChange={e => setSF('priority', e.target.value)} className={selectCls}>
+                <option value="">All Priorities</option>
+                {PRIORITIES.map(p => <option key={p} value={p}>{cap(p)}</option>)}
+              </select>
 
-              {/* Panel action buttons */}
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-[11px] t-muted">
-                  {hasPending
-                    ? <span className="text-amber-500 font-medium">Unsaved changes — click Apply to filter</span>
-                    : filterChips.length > 0
-                      ? `${filterChips.length} filter${filterChips.length > 1 ? 's' : ''} applied`
-                      : 'No filters applied'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button onClick={clearAllFilters}
-                    className="px-4 py-2 rounded-lg border border-glass text-sm font-medium t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center gap-1.5">
-                    <RotateCcw size={13} /> Clear All
-                  </button>
-                  <button onClick={applyFilters}
-                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 shadow-sm
-                      ${hasPending
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/25'
-                        : 'bg-indigo-500/80 hover:bg-indigo-500 text-white'}`}
-                  >
-                    <Check size={14} /> Apply Filters
-                  </button>
-                </div>
-              </div>
+              <select value={staged.category} onChange={e => setSF('category', e.target.value)} className={selectCls}>
+                <option value="">All Categories</option>
+                {[...categories].sort((a,b) => a.sortOrder - b.sortOrder).map(c => (
+                  <option key={c.id} value={c.id}>{getCategoryName(c.id)}</option>
+                ))}
+              </select>
 
+              <select value={staged.group} onChange={e => setSF('group', e.target.value)} className={selectCls}>
+                <option value="">All Groups</option>
+                {(groups||[]).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+
+              <select value={staged.type} onChange={e => setSF('type', e.target.value)} className={selectCls}>
+                <option value="">All Types</option>
+                {TICKET_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
+              </select>
+
+              <select value={staged.assignee} onChange={e => setSF('assignee', e.target.value)} className={selectCls}>
+                <option value="">All Assignees</option>
+                <option value="unassigned">Unassigned</option>
+                {(agents||[]).map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+              </select>
+
+              <button onClick={clearAllFilters}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold t-muted hover:text-rose-500 border border-glass hover:border-rose-500/40 rounded-lg transition-all whitespace-nowrap">
+                <X size={12} /> Clear
+              </button>
+
+              <button onClick={applyFilters}
+                className={`flex items-center gap-1.5 h-8 px-4 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
+                  ${hasPending
+                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                    : 'bg-indigo-500/80 hover:bg-indigo-500 text-white'}`}>
+                <Filter size={12} /> Apply
+              </button>
             </div>
           </div>
+
+          {/* Row 2: Status chips + Search + Sort */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
+            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Status</span>
+            {STATUS_OPTIONS.map(({ key, label }) => {
+              const count = statusCounts[key] ?? 0
+              const isActive = filters.status === key
+              return (
+                <button key={key} onClick={() => handleStatusChip(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
+                    ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
+                  {label}
+                  <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
+                    ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+
+            {/* Search + Sort pushed to right */}
+            <div className="ml-auto flex items-center gap-2">
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
+                <input type="text" placeholder="Search tickets…"
+                  value={filters.search} onChange={e => setFilter('search', e.target.value)}
+                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-52" />
+                {filters.search && (
+                  <button onClick={() => setFilter('search', '')} className="absolute right-2 top-1/2 -translate-y-1/2 t-sub hover:t-main">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+              <select value={filters.sort} onChange={e => setFilter('sort', e.target.value)}
+                className={selectCls + ' min-w-32'}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="priority">By priority</option>
+                <option value="updated">Recently updated</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
       </Card>
 
       {/* ── Bulk action bar ───────────────────────────────────────────────── */}

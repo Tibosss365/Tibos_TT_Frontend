@@ -1241,6 +1241,8 @@ export default function Admin() {
     addCategory, updateCategory, deleteCategory,
     resetAgents,
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
+    fetchInboundConfig, saveInboundConfig, pollInbound,
+    fetchInboundLogs, clearInboundLogs,
   } = useAdminStore()
 
   const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
@@ -1341,6 +1343,8 @@ export default function Admin() {
     fetchAgents()
     fetchSla()
     fetchEmailConfig()
+    fetchInboundConfig()
+    fetchInboundLogs()
     fetchCategories()
     fetchGroups()
     addToast('Data refreshed', 'success')
@@ -1395,6 +1399,7 @@ export default function Admin() {
   // Sync local edits when store values change (e.g. after fetchEmailConfig)
   useEffect(() => { setEmailEdits(prev => ({ ...emailConfig, smtp: { ...emailConfig.smtp, pass: prev.smtp?.pass || emailConfig.smtp?.pass || '' }, m365: { ...emailConfig.m365, clientSecret: prev.m365?.clientSecret || emailConfig.m365?.clientSecret || '' } })) }, [emailConfig])
   useEffect(() => { setTriggersEdits({ ...emailTriggers }) }, [emailTriggers])
+  useEffect(() => { setInboundEdits(prev => ({ ...inboundEmail, imapPass: prev.imapPass || '' })) }, [inboundEmail])
 
   const handleAddAgent = async (e) => {
     e.preventDefault()
@@ -1468,13 +1473,42 @@ export default function Admin() {
 
   const handleTestEmail = () => addToast('Test email sent successfully', 'success')
 
-  const handleSaveInbound = () => {
-    updateInboundEmail(inboundEdits)
-    addToast('Inbound email settings saved', 'success')
+  const handleSaveInbound = async () => {
+    try {
+      await saveInboundConfig(inboundEdits)
+      addToast('Inbound email settings saved', 'success')
+    } catch (err) {
+      addToast(err.message || 'Failed to save inbound email config', 'error')
+    }
   }
 
-  const handlePollNow = (entry) => addEmailLogEntry(entry)
-  const handleClearLog = () => { clearEmailLog(); addToast('Log cleared', 'info') }
+  const handlePollNow = async () => {
+    try {
+      const result = await pollInbound()
+      await fetchInboundLogs()   // reload the log table with real DB entries
+      if (result.error) {
+        addToast(`Poll completed with error: ${result.error}`, 'error')
+      } else {
+        addToast(
+          result.processed > 0
+            ? `${result.processed} email${result.processed > 1 ? 's' : ''} converted to ticket${result.processed > 1 ? 's' : ''}`
+            : 'Poll complete — no new emails',
+          result.processed > 0 ? 'success' : 'info'
+        )
+      }
+    } catch (err) {
+      addToast(err.message || 'Poll failed — check inbound email config', 'error')
+    }
+  }
+
+  const handleClearLog = async () => {
+    try {
+      await clearInboundLogs()
+      addToast('Log cleared', 'info')
+    } catch (err) {
+      addToast(err.message || 'Failed to clear log', 'error')
+    }
+  }
 
   const agentWorkload = agents.map(a => ({
     ...a,

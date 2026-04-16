@@ -42,7 +42,7 @@ const STATUS_ACTIVE_CLS = {
 
 const EMPTY_FILTERS = {
   dateRange: 'all', dateFrom: '', dateTo: '',
-  status: '', priority: '', category: '', group: '', type: '',
+  status: '', priority: '', category: '', group: '', type: '', sla: '',
 }
 
 // ── Overdue duration (live ticking) ──────────────────────────────────────────
@@ -66,12 +66,15 @@ export default function Dashboard() {
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
 
-  // ── Filter state ────────────────────────────────────────────────────────────
-  const [dashFilters, setDashFilters] = useState(EMPTY_FILTERS)
+  // ── Filter state (staged → applied on click) ────────────────────────────────
+  const [dashFilters, setDashFilters] = useState(EMPTY_FILTERS)  // applied
+  const [staged, setStaged]           = useState(EMPTY_FILTERS)  // in-progress
 
-  const setFilter = (key, val) => setDashFilters(f => ({ ...f, [key]: val }))
+  const setSF     = (key, val) => setStaged(f => ({ ...f, [key]: val }))
+  const applyFilters = () => setDashFilters({ ...staged })
+  const clearFilters = () => { setDashFilters(EMPTY_FILTERS); setStaged(EMPTY_FILTERS) }
 
-  const clearFilters = () => setDashFilters(EMPTY_FILTERS)
+  const hasPending = JSON.stringify(staged) !== JSON.stringify(dashFilters)
 
   const activeFilterCount = [
     dashFilters.dateRange !== 'all',
@@ -80,6 +83,7 @@ export default function Dashboard() {
     dashFilters.category,
     dashFilters.group,
     dashFilters.type,
+    dashFilters.sla,
   ].filter(Boolean).length
 
   // ── Filtered tickets (without status — used for status chip counts) ─────────
@@ -111,6 +115,14 @@ export default function Dashboard() {
     if (dashFilters.category) result = result.filter(t => t.category === dashFilters.category)
     if (dashFilters.group)    result = result.filter(t => t.group === dashFilters.group)
     if (dashFilters.type)     result = result.filter(t => t.type === dashFilters.type)
+    if (dashFilters.sla === 'open')        result = result.filter(t => t.status === 'open')
+    else if (dashFilters.sla === 'in-progress') result = result.filter(t => t.status === 'in-progress')
+    else if (dashFilters.sla === 'on-hold')     result = result.filter(t => t.status === 'on-hold')
+    else if (dashFilters.sla === 'resolved')    result = result.filter(t => t.status === 'resolved')
+    else if (dashFilters.sla === 'critical')    result = result.filter(t => t.priority === 'critical')
+    else if (dashFilters.sla === 'overdue')     result = result.filter(t =>
+      t.slaStatus === 'overdue' || (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())
+    )
 
     return result
   }, [tickets, dashFilters])
@@ -256,9 +268,9 @@ export default function Dashboard() {
               {DATE_RANGES.map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setFilter('dateRange', key)}
+                  onClick={() => setSF('dateRange', key)}
                   className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
-                    dashFilters.dateRange === key
+                    staged.dateRange === key
                       ? 'bg-indigo-500 text-white shadow-sm'
                       : 't-muted hover:t-main'
                   }`}
@@ -269,19 +281,19 @@ export default function Dashboard() {
             </div>
 
             {/* Custom date inputs */}
-            {dashFilters.dateRange === 'custom' && (
+            {staged.dateRange === 'custom' && (
               <div className="flex items-center gap-2">
                 <input
                   type="date"
-                  value={dashFilters.dateFrom}
-                  onChange={e => setFilter('dateFrom', e.target.value)}
+                  value={staged.dateFrom}
+                  onChange={e => setSF('dateFrom', e.target.value)}
                   className={selectCls}
                 />
                 <span className="text-xs t-muted">to</span>
                 <input
                   type="date"
-                  value={dashFilters.dateTo}
-                  onChange={e => setFilter('dateTo', e.target.value)}
+                  value={staged.dateTo}
+                  onChange={e => setSF('dateTo', e.target.value)}
                   className={selectCls}
                 />
               </div>
@@ -290,8 +302,8 @@ export default function Dashboard() {
             {/* Right-side dropdowns */}
             <div className="flex flex-wrap items-center gap-2 ml-auto">
               <select
-                value={dashFilters.priority}
-                onChange={e => setFilter('priority', e.target.value)}
+                value={staged.priority}
+                onChange={e => setSF('priority', e.target.value)}
                 className={selectCls}
               >
                 <option value="">All Priorities</option>
@@ -302,8 +314,8 @@ export default function Dashboard() {
               </select>
 
               <select
-                value={dashFilters.category}
-                onChange={e => setFilter('category', e.target.value)}
+                value={staged.category}
+                onChange={e => setSF('category', e.target.value)}
                 className={selectCls}
               >
                 <option value="">All Categories</option>
@@ -313,8 +325,8 @@ export default function Dashboard() {
               </select>
 
               <select
-                value={dashFilters.group}
-                onChange={e => setFilter('group', e.target.value)}
+                value={staged.group}
+                onChange={e => setSF('group', e.target.value)}
                 className={selectCls}
               >
                 <option value="">All Groups</option>
@@ -324,8 +336,8 @@ export default function Dashboard() {
               </select>
 
               <select
-                value={dashFilters.type}
-                onChange={e => setFilter('type', e.target.value)}
+                value={staged.type}
+                onChange={e => setSF('type', e.target.value)}
                 className={selectCls}
               >
                 <option value="">All Types</option>
@@ -333,15 +345,38 @@ export default function Dashboard() {
                 <option value="incident">Incident</option>
               </select>
 
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-rose-500 hover:text-rose-400 border border-rose-500/30 hover:border-rose-500/50 bg-rose-500/5 hover:bg-rose-500/10 rounded-lg transition-all"
-                >
-                  <X size={12} />
-                  Clear ({activeFilterCount})
-                </button>
-              )}
+              <select
+                value={staged.sla}
+                onChange={e => setSF('sla', e.target.value)}
+                className={selectCls}
+              >
+                <option value="">Ticket Status</option>
+                <option value="open">Open Tickets</option>
+                <option value="in-progress">In Progress</option>
+                <option value="on-hold">On Hold</option>
+                <option value="resolved">Resolved</option>
+                <option value="critical">Critical</option>
+                <option value="overdue">SLA Overdue</option>
+              </select>
+
+              {/* Clear button — always visible */}
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold t-muted hover:t-main border border-glass hover:border-rose-500/40 hover:text-rose-500 rounded-lg transition-all whitespace-nowrap"
+              >
+                <X size={12} /> Clear{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+              </button>
+
+              {/* Apply button — always visible, highlights when pending */}
+              <button
+                onClick={applyFilters}
+                className={`flex items-center gap-1.5 h-8 px-4 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
+                  ${hasPending
+                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                    : 'bg-indigo-500/80 hover:bg-indigo-500 text-white'}`}
+              >
+                <Filter size={12} /> Apply
+              </button>
             </div>
           </div>
 
@@ -350,11 +385,11 @@ export default function Dashboard() {
             <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Status</span>
             {STATUS_OPTIONS.map(({ key, label }) => {
               const count = statusCounts[key] ?? 0
-              const isActive = dashFilters.status === key
+              const isActive = dashFilters.status === key && staged.status === key
               return (
                 <button
                   key={key}
-                  onClick={() => setFilter('status', dashFilters.status === key && key !== '' ? '' : key)}
+                  onClick={() => { const val = dashFilters.status === key && key !== '' ? '' : key; setSF('status', val); setDashFilters(f => ({ ...f, status: val })) }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     isActive
                       ? STATUS_ACTIVE_CLS[key]

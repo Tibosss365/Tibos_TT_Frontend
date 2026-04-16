@@ -6,7 +6,7 @@ import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
 import { useAdminStore } from '../stores/adminStore'
-import { SlidersHorizontal, Check, Search, X, Filter, Calendar, RotateCcw } from 'lucide-react'
+import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw } from 'lucide-react'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -23,33 +23,52 @@ const ALL_COLUMNS = [
 const DEFAULT_COLS = ['id','subject','assignedTo','priority','status','category','updated']
 
 // ── Staged filter defaults ────────────────────────────────────────────────────
-const STAGED_DEFAULTS = { status: '', priority: '', category: '', group: '', type: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' }
+const STAGED_DEFAULTS = {
+  dateRange: 'all', priority: '', category: '', group: '', type: '',
+  assignee: '', dateFrom: '', dateTo: '', dateField: 'created',
+}
+
+const DATE_RANGES = [
+  { key: 'all',    label: 'All Time'   },
+  { key: 'today',  label: 'Today'      },
+  { key: 'week',   label: 'This Week'  },
+  { key: 'month',  label: 'This Month' },
+  { key: 'custom', label: 'Custom'     },
+]
+
+const STATUS_OPTIONS = [
+  { key: '',            label: 'All'         },
+  { key: 'open',        label: 'Open'        },
+  { key: 'in-progress', label: 'In Progress' },
+  { key: 'on-hold',     label: 'On Hold'     },
+  { key: 'resolved',    label: 'Resolved'    },
+  { key: 'closed',      label: 'Closed'      },
+]
+
+const STATUS_ACTIVE_CLS = {
+  '':             'bg-indigo-500/15 text-indigo-500 border-indigo-500/40',
+  'open':         'bg-blue-500/15 text-blue-500 border-blue-500/40',
+  'in-progress':  'bg-violet-500/15 text-violet-500 border-violet-500/40',
+  'on-hold':      'bg-amber-500/15 text-amber-500 border-amber-500/40',
+  'resolved':     'bg-emerald-500/15 text-emerald-500 border-emerald-500/40',
+  'closed':       'bg-slate-500/15 text-slate-400 border-slate-500/40',
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
-const fmtStatus = (s) => s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' ')
-const todayStr  = () => new Date().toISOString().split('T')[0]
+const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
-
-const chipColors = {
-  violet:  'bg-violet-500/12 border-violet-400/30 text-violet-700 dark:text-violet-300',
-  orange:  'bg-orange-500/12 border-orange-400/30 text-orange-700 dark:text-orange-300',
-  emerald: 'bg-emerald-500/12 border-emerald-400/30 text-emerald-700 dark:text-emerald-300',
-  blue:    'bg-blue-500/12 border-blue-400/30 text-blue-700 dark:text-blue-300',
-  teal:    'bg-teal-500/12 border-teal-400/30 text-teal-700 dark:text-teal-300',
-  rose:    'bg-rose-500/12 border-rose-400/30 text-rose-700 dark:text-rose-300',
-  indigo:  'bg-indigo-500/12 border-indigo-400/30 text-indigo-700 dark:text-indigo-300',
-}
 
 export default function MyTickets() {
   const { tickets, loading }   = useTicketStore()
   const { currentUser }        = useUserStore()
-  const { getCategoryName, getAgentName, getGroupName, categories, groups, agents } = useAdminStore()
+  const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
 
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [visibleCols, setVisibleCols]       = useState(DEFAULT_COLS)
   const [showColPicker, setShowColPicker]   = useState(false)
   const [search, setSearch]                 = useState('')
+  const [activeStatus, setActiveStatus]     = useState('')   // instant chip filter
   const [applied, setApplied]               = useState(STAGED_DEFAULTS)
   const [staged, setStaged]                 = useState(STAGED_DEFAULTS)
   const pickerRef = useRef(null)
@@ -63,58 +82,88 @@ export default function MyTickets() {
     return () => document.removeEventListener('mousedown', h)
   }, [])
 
-  // ── Filter logic ──────────────────────────────────────────────────────────
-  const baseTickets = tickets.filter(t =>
-    t.assignee === String(currentUser?.id) && t.status !== 'resolved' && t.status !== 'closed'
-  )
+  // ── Apply / Clear ─────────────────────────────────────────────────────────
+  const applyFilters = () => {
+    const toApply = { ...staged }
+    if (staged.dateRange === 'all')        { toApply.dateFrom = ''; toApply.dateTo = '' }
+    else if (staged.dateRange === 'today') { toApply.dateFrom = todayStr(); toApply.dateTo = todayStr() }
+    else if (staged.dateRange === 'week')  { toApply.dateFrom = daysAgoStr(7); toApply.dateTo = todayStr() }
+    else if (staged.dateRange === 'month') {
+      const d = new Date()
+      toApply.dateFrom = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`
+      toApply.dateTo = todayStr()
+    }
+    setApplied(toApply)
+  }
 
-  let myTickets = [...baseTickets]
+  const clearAllFilters = () => {
+    setApplied(STAGED_DEFAULTS); setStaged(STAGED_DEFAULTS)
+    setSearch(''); setActiveStatus('')
+  }
+
+  const handleStatusChip = (key) => {
+    setActiveStatus(prev => prev === key && key !== '' ? '' : key)
+  }
+
+  // ── Filter logic ──────────────────────────────────────────────────────────
+  // Base: only my assigned tickets
+  let baseTickets = tickets.filter(t => t.assignee === String(currentUser?.id))
+
+  // Apply search
   if (search) {
     const q = search.toLowerCase()
-    myTickets = myTickets.filter(t =>
+    baseTickets = baseTickets.filter(t =>
       (t.subject||'').toLowerCase().includes(q) ||
       (t.id||'').toLowerCase().includes(q) ||
       (t.submitter||'').toLowerCase().includes(q)
     )
   }
-  if (applied.status)   myTickets = myTickets.filter(t => t.status === applied.status)
-  if (applied.priority) myTickets = myTickets.filter(t => t.priority === applied.priority)
-  if (applied.category) myTickets = myTickets.filter(t => t.category === applied.category)
-  if (applied.group)    myTickets = myTickets.filter(t => String(t.group) === String(applied.group))
-  if (applied.type)     myTickets = myTickets.filter(t => t.type === applied.type)
+
+  // Apply non-status staged filters
+  if (applied.priority) baseTickets = baseTickets.filter(t => t.priority === applied.priority)
+  if (applied.category) baseTickets = baseTickets.filter(t => t.category === applied.category)
+  if (applied.group)    baseTickets = baseTickets.filter(t => String(t.group) === String(applied.group))
+  if (applied.type)     baseTickets = baseTickets.filter(t => t.type === applied.type)
   if (applied.assignee) {
-    if (applied.assignee === 'unassigned') myTickets = myTickets.filter(t => !t.assignee)
-    else myTickets = myTickets.filter(t => String(t.assignee) === String(applied.assignee))
+    if (applied.assignee === 'unassigned') baseTickets = baseTickets.filter(t => !t.assignee)
+    else baseTickets = baseTickets.filter(t => String(t.assignee) === String(applied.assignee))
   }
   if (applied.dateFrom || applied.dateTo) {
     const field = applied.dateField || 'created'
     const from  = applied.dateFrom ? new Date(applied.dateFrom) : null
     const to    = applied.dateTo   ? new Date(applied.dateTo + 'T23:59:59') : null
-    myTickets = myTickets.filter(t => {
+    baseTickets = baseTickets.filter(t => {
       const d = new Date(t[field])
       if (from && d < from) return false
       if (to   && d > to)   return false
       return true
     })
   }
-  myTickets.sort((a, b) => new Date(b.updated) - new Date(a.updated))
 
-  // ── Apply / Clear ─────────────────────────────────────────────────────────
-  const applyFilters = () => { setApplied({ ...staged }) }
+  // Status counts (pre-status filter)
+  const statusCounts = { '': baseTickets.length }
+  baseTickets.forEach(t => { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1 })
 
-  const clearAllFilters = () => {
-    setApplied(STAGED_DEFAULTS); setStaged(STAGED_DEFAULTS); setSearch('')
-  }
+  // Apply status chip
+  let myTickets = activeStatus ? baseTickets.filter(t => t.status === activeStatus) : baseTickets
+  myTickets = [...myTickets].sort((a, b) => new Date(b.updated) - new Date(a.updated))
 
-  const removeChip = (key) => {
-    if (key === 'dateRange') {
-      setApplied(s => ({ ...s, dateFrom: '', dateTo: '' }))
-      setStaged(s => ({ ...s, dateFrom: '', dateTo: '' }))
-    } else {
-      setApplied(s => ({ ...s, [key]: '' }))
-      setStaged(s => ({ ...s, [key]: '' }))
-    }
-  }
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const hasAnyFilter = !!(activeStatus || applied.priority || applied.category || applied.group ||
+    applied.type || applied.assignee || applied.dateFrom || applied.dateTo || search)
+
+  const hasPending = (
+    staged.priority  !== (applied.priority  || '') ||
+    staged.category  !== (applied.category  || '') ||
+    staged.group     !== (applied.group     || '') ||
+    staged.type      !== (applied.type      || '') ||
+    staged.assignee  !== (applied.assignee  || '') ||
+    staged.dateFrom  !== (applied.dateFrom  || '') ||
+    staged.dateTo    !== (applied.dateTo    || '') ||
+    staged.dateRange !== 'all'
+  )
+
+  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer"
 
   // ── Column customization ──────────────────────────────────────────────────
   const toggleCol = (key) => {
@@ -125,37 +174,6 @@ export default function MyTickets() {
     )
   }
   const cols = ALL_COLUMNS.filter(c => visibleCols.includes(c.key))
-
-  // ── Active filter chips ───────────────────────────────────────────────────
-  const filterChips = [
-    applied.status   && { key: 'status',    label: 'Status',   value: fmtStatus(applied.status),        color: 'violet' },
-    applied.priority && { key: 'priority',  label: 'Priority', value: cap(applied.priority),             color: 'orange' },
-    applied.category && { key: 'category',  label: 'Category', value: getCategoryName(applied.category), color: 'blue' },
-    applied.group    && { key: 'group',     label: 'Group',    value: getGroupName(applied.group),       color: 'teal' },
-    applied.type     && { key: 'type',      label: 'Type',     value: cap(applied.type),                 color: 'rose' },
-    applied.assignee && { key: 'assignee',  label: 'Assignee', value: applied.assignee === 'unassigned' ? 'Unassigned' : getAgentName(applied.assignee), color: 'indigo' },
-    (applied.dateFrom || applied.dateTo) && {
-      key: 'dateRange',
-      label: applied.dateField === 'updated' ? 'Updated' : 'Created',
-      value: [applied.dateFrom, applied.dateTo].filter(Boolean).join(' → '),
-      color: 'emerald',
-    },
-  ].filter(Boolean)
-
-  const appliedCount = filterChips.length
-  const hasSearch = !!search
-  const hasAnyFilter = appliedCount > 0 || hasSearch
-
-  const hasPending = (
-    staged.status    !== applied.status    ||
-    staged.priority  !== applied.priority  ||
-    staged.category  !== applied.category  ||
-    staged.group     !== applied.group     ||
-    staged.type      !== applied.type      ||
-    staged.assignee  !== applied.assignee  ||
-    staged.dateFrom  !== applied.dateFrom  ||
-    staged.dateTo    !== applied.dateTo
-  )
 
   // ── Cell renderer ─────────────────────────────────────────────────────────
   const cellValue = (ticket, key) => {
@@ -244,195 +262,113 @@ export default function MyTickets() {
       </div>
 
       {/* ── Filter card ───────────────────────────────────────────────────── */}
-      <Card className="p-0 overflow-hidden">
+      <Card>
+        <div className="p-4 space-y-3">
 
-        {/* Search + active badge bar */}
-        <div className="flex flex-wrap items-center gap-2 p-4 pb-3">
-          <div className="relative flex-1 min-w-52">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 t-sub" />
-            <input
-              type="text" placeholder="Search my tickets by subject, ID…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              className="glass-input w-full pl-9 pr-3 py-2 text-sm"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 t-sub hover:t-main">
-                <X size={13} />
-              </button>
-            )}
-          </div>
-          {appliedCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-500/12 border border-indigo-400/30 text-indigo-600 dark:text-indigo-400 text-xs font-medium">
-              <Filter size={12} />
-              {appliedCount} filter{appliedCount > 1 ? 's' : ''} active
-            </span>
-          )}
-        </div>
+          {/* Row 1: Date range tabs + dropdowns + Clear + Apply */}
+          <div className="flex flex-wrap items-center gap-2">
 
-        {/* Active filter chips */}
-        {filterChips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Active:</span>
-            {filterChips.map(chip => (
-              <span key={chip.key}
-                className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-medium border ${chipColors[chip.color]}`}>
-                <span className="opacity-60 font-semibold">{chip.label}:</span>
-                <span>{chip.value}</span>
-                <button onClick={() => removeChip(chip.key)}
-                  className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
-                  <X size={10} />
+            {/* Date range tabs */}
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass">
+              {DATE_RANGES.map(({ key, label }) => (
+                <button key={key} onClick={() => setSF('dateRange', key)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap
+                    ${staged.dateRange === key ? 'bg-indigo-500 text-white shadow-sm' : 't-muted hover:t-main'}`}>
+                  {label}
                 </button>
-              </span>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* ── Always-visible filter panel ───────────────────────────────────── */}
-        <div className="border-t border-glass">
-          <div className="p-4 space-y-5">
-
-              {/* Value filters */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Filter By</span>
-                  <div className="flex-1 h-px bg-glass" />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {[
-                    {
-                      key: 'status', label: 'Status', placeholder: 'Any Status',
-                      options: ['open','in-progress','on-hold','resolved','closed'].map(s => ({ value: s, label: fmtStatus(s) })),
-                    },
-                    {
-                      key: 'priority', label: 'Priority', placeholder: 'Any Priority',
-                      options: PRIORITIES.map(p => ({ value: p, label: cap(p) })),
-                    },
-                    {
-                      key: 'category', label: 'Category', placeholder: 'Any Category',
-                      options: [...categories].sort((a,b) => a.sortOrder - b.sortOrder).map(c => ({ value: c.id, label: getCategoryName(c.id) })),
-                    },
-                    {
-                      key: 'group', label: 'Group', placeholder: 'Any Group',
-                      options: groups.map(g => ({ value: g.id, label: g.name })),
-                    },
-                    {
-                      key: 'type', label: 'Ticket Type', placeholder: 'Any Type',
-                      options: TICKET_TYPES.map(t => ({ value: t, label: cap(t) })),
-                    },
-                    {
-                      key: 'assignee', label: 'Agent', placeholder: 'All Agents',
-                      options: [
-                        { value: 'unassigned', label: 'Unassigned' },
-                        ...(agents || []).map(a => ({ value: String(a.id), label: a.name })),
-                      ],
-                    },
-                  ].map(({ key, label, placeholder, options }) => (
-                    <div key={key} className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">{label}</label>
-                      <select
-                        value={staged[key]}
-                        onChange={e => setSF(key, e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium transition-all
-                          ${staged[key] ? 'border-indigo-400/50 bg-indigo-500/5 text-indigo-700 dark:text-indigo-300' : ''}`}
-                      >
-                        <option value="">{placeholder}</option>
-                        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                    </div>
-                  ))}
-                </div>
+            {/* Custom date inputs */}
+            {staged.dateRange === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls} />
+                <span className="text-xs t-muted">to</span>
+                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls} />
               </div>
+            )}
 
-              {/* Date range */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar size={12} className="t-sub" />
-                  <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Date Range</span>
-                  <div className="flex-1 h-px bg-glass" />
-                </div>
-                <div className="p-3 rounded-xl border border-glass/60 bg-black/[0.02] dark:bg-white/[0.02] space-y-3">
-                  <div className="flex flex-wrap gap-3 items-end">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">Apply To</label>
-                      <select value={staged.dateField} onChange={e => setSF('dateField', e.target.value)}
-                        className="glass-input text-sm py-2 font-medium min-w-36">
-                        <option value="created">Created Date</option>
-                        <option value="updated">Last Updated</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">From</label>
-                      <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium ${staged.dateFrom ? 'border-indigo-400/50 bg-indigo-500/5' : ''}`} />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[11px] font-semibold t-sub uppercase tracking-wider">To</label>
-                      <input type="date" value={staged.dateTo} onChange={e => setSF('dateTo', e.target.value)}
-                        className={`glass-input text-sm py-2 font-medium ${staged.dateTo ? 'border-indigo-400/50 bg-indigo-500/5' : ''}`} />
-                    </div>
-                    {(staged.dateFrom || staged.dateTo) && (
-                      <button onClick={() => { setSF('dateFrom',''); setSF('dateTo','') }}
-                        className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-400 transition-colors pb-2">
-                        <X size={11} /> Clear dates
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-medium t-muted">Quick:</span>
-                    {[
-                      { label: 'Today',   days: 0 },
-                      { label: '7 days',  days: 7 },
-                      { label: '30 days', days: 30 },
-                      { label: '90 days', days: 90 },
-                    ].map(({ label, days }) => {
-                      const from = daysAgoStr(days), to = todayStr()
-                      const isActive = staged.dateFrom === from && staged.dateTo === to
-                      return (
-                        <button key={label}
-                          onClick={() => {
-                            if (isActive) { setSF('dateFrom',''); setSF('dateTo','') }
-                            else { setSF('dateFrom', from); setSF('dateTo', to) }
-                          }}
-                          className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all
-                            ${isActive
-                              ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-600 dark:text-indigo-400'
-                              : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}
-                        >
-                          {label}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
+            {/* Right-side dropdowns + buttons */}
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              <select value={staged.priority} onChange={e => setSF('priority', e.target.value)} className={selectCls}>
+                <option value="">All Priorities</option>
+                {PRIORITIES.map(p => <option key={p} value={p}>{cap(p)}</option>)}
+              </select>
 
-              {/* Panel action buttons */}
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-[11px] t-muted">
-                  {hasPending
-                    ? <span className="text-amber-500 font-medium">Unsaved changes — click Apply to filter</span>
-                    : filterChips.length > 0
-                      ? `${filterChips.length} filter${filterChips.length > 1 ? 's' : ''} applied`
-                      : 'No filters applied'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button onClick={clearAllFilters}
-                    className="px-4 py-2 rounded-lg border border-glass text-sm font-medium t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center gap-1.5">
-                    <RotateCcw size={13} /> Clear All
-                  </button>
-                  <button onClick={applyFilters}
-                    className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-1.5 shadow-sm
-                      ${hasPending
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/25'
-                        : 'bg-indigo-500/80 hover:bg-indigo-500 text-white'}`}
-                  >
-                    <Check size={14} /> Apply Filters
-                  </button>
-                </div>
-              </div>
+              <select value={staged.category} onChange={e => setSF('category', e.target.value)} className={selectCls}>
+                <option value="">All Categories</option>
+                {[...categories].sort((a,b) => a.sortOrder - b.sortOrder).map(c => (
+                  <option key={c.id} value={c.id}>{getCategoryName(c.id)}</option>
+                ))}
+              </select>
 
+              <select value={staged.group} onChange={e => setSF('group', e.target.value)} className={selectCls}>
+                <option value="">All Groups</option>
+                {(groups||[]).map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+
+              <select value={staged.type} onChange={e => setSF('type', e.target.value)} className={selectCls}>
+                <option value="">All Types</option>
+                {TICKET_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
+              </select>
+
+              <select value={staged.assignee} onChange={e => setSF('assignee', e.target.value)} className={selectCls}>
+                <option value="">All Agents</option>
+                <option value="unassigned">Unassigned</option>
+                {(agents||[]).map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+              </select>
+
+              <button onClick={clearAllFilters}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold t-muted hover:text-rose-500 border border-glass hover:border-rose-500/40 rounded-lg transition-all whitespace-nowrap">
+                <X size={12} /> Clear
+              </button>
+
+              <button onClick={applyFilters}
+                className={`flex items-center gap-1.5 h-8 px-4 text-xs font-semibold rounded-lg transition-all whitespace-nowrap
+                  ${hasPending
+                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                    : 'bg-indigo-500/80 hover:bg-indigo-500 text-white'}`}>
+                <Filter size={12} /> Apply
+              </button>
             </div>
           </div>
+
+          {/* Row 2: Status chips + Search */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
+            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Status</span>
+            {STATUS_OPTIONS.map(({ key, label }) => {
+              const count = statusCounts[key] ?? 0
+              const isActive = activeStatus === key
+              return (
+                <button key={key} onClick={() => handleStatusChip(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
+                    ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
+                  {label}
+                  <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
+                    ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+
+            {/* Search pushed to right */}
+            <div className="ml-auto">
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
+                <input type="text" placeholder="Search my tickets…"
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-52" />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 t-sub hover:t-main">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+        </div>
       </Card>
 
       {/* ── Ticket table ──────────────────────────────────────────────────── */}

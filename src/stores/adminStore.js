@@ -281,6 +281,110 @@ export const useAdminStore = create(
         set(s => ({ inboundEmail: { ...s.inboundEmail, ...changes } }))
       },
 
+      // ── Inbound email — backend API actions ──────────────────────────────
+      fetchInboundConfig: async () => {
+        try {
+          const data = await api.get('/inbound-email')
+          set({
+            inboundEmail: {
+              enabled:             data.enabled            ?? false,
+              authType:            data.auth_type          || 'basic',
+              imapHost:            data.imap_host          || '',
+              imapPort:            String(data.imap_port   || 993),
+              imapSsl:             data.imap_ssl           ?? true,
+              imapUser:            data.imap_user          || '',
+              imapPass:            '',                        // never returned
+              imapFolder:          data.imap_folder        || 'INBOX',
+              graphMailbox:        data.graph_mailbox      || '',
+              defaultCategory:     data.default_category   || 'email',
+              defaultPriority:     data.default_priority   || 'medium',
+              defaultAssignee:     data.default_assignee_id
+                                     ? String(data.default_assignee_id)
+                                     : 'unassigned',
+              pollIntervalMinutes: data.poll_interval_minutes || 5,
+              markSeen:            data.mark_seen          ?? true,
+              moveToFolder:        data.move_to_folder     || '',
+              lastPolledAt:        data.last_polled_at     || null,
+              processedCount:      data.processed_count    || 0,
+            },
+          })
+        } catch (e) {
+          console.error('fetchInboundConfig error', e)
+        }
+      },
+
+      saveInboundConfig: async (inboundState) => {
+        const body = {
+          enabled:              inboundState.enabled,
+          auth_type:            inboundState.authType,
+          imap_host:            inboundState.imapHost            || null,
+          imap_port:            Number(inboundState.imapPort)    || 993,
+          imap_ssl:             inboundState.imapSsl             ?? true,
+          imap_user:            inboundState.imapUser            || null,
+          imap_folder:          inboundState.imapFolder          || 'INBOX',
+          graph_mailbox:        inboundState.graphMailbox        || null,
+          default_category:     inboundState.defaultCategory     || 'email',
+          default_priority:     inboundState.defaultPriority     || 'medium',
+          default_assignee_id:  inboundState.defaultAssignee !== 'unassigned'
+                                  ? inboundState.defaultAssignee
+                                  : null,
+          poll_interval_minutes: Number(inboundState.pollIntervalMinutes) || 5,
+          mark_seen:            inboundState.markSeen            ?? true,
+          move_to_folder:       inboundState.moveToFolder        || null,
+        }
+        // Only include password if the user actually typed one
+        if (inboundState.imapPass) body.imap_pass = inboundState.imapPass
+
+        const data = await api.put('/inbound-email', body)
+        // Sync local state with confirmed backend values
+        set(s => ({
+          inboundEmail: {
+            ...s.inboundEmail,
+            enabled:             data.enabled,
+            auth_type:           data.auth_type,
+            lastPolledAt:        data.last_polled_at  || null,
+            processedCount:      data.processed_count || 0,
+          },
+        }))
+        return data
+      },
+
+      pollInbound: async () => {
+        const data = await api.post('/inbound-email/poll', {})
+        // Update last-polled stats
+        set(s => ({
+          inboundEmail: {
+            ...s.inboundEmail,
+            lastPolledAt:   data.polled_at,
+            processedCount: (s.inboundEmail.processedCount || 0) + (data.processed || 0),
+          },
+        }))
+        return data   // { polled_at, processed, error, duration_ms }
+      },
+
+      fetchInboundLogs: async (page = 1) => {
+        const data = await api.get(`/inbound-email/logs?page=${page}&page_size=50`)
+        // Normalise snake_case → camelCase for the log table
+        const items = (data.items || []).map(e => ({
+          id:           String(e.id),
+          messageId:    e.message_id,
+          fromEmail:    e.from_email,
+          fromName:     e.from_name,
+          subject:      e.subject,
+          status:       e.status,
+          ticketId:     e.ticket_number || null,
+          errorMessage: e.error_message || null,
+          processedAt:  e.processed_at,
+        }))
+        set({ emailLog: items })
+        return { items, total: data.total }
+      },
+
+      clearInboundLogs: async () => {
+        await api.delete('/inbound-email/logs')
+        set({ emailLog: [] })
+      },
+
       addEmailLogEntry: (entry) => {
         set(s => ({ emailLog: [entry, ...s.emailLog].slice(0, 100) }))
       },

@@ -13,7 +13,10 @@ import { TicketDetailModal } from '../tickets/TicketDetailModal'
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
   const { fetchTickets } = useTicketStore()
-  const { fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups } = useAdminStore()
+  const {
+    fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
+    fetchInboundConfig, fetchInboundLogs,
+  } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
   const { activeModal, closeModal } = useUiStore()
   const sseRef = useRef(null)
@@ -26,6 +29,8 @@ export function Layout() {
     fetchAgents()
     fetchSla()
     fetchEmailConfig()
+    fetchInboundConfig()
+    fetchInboundLogs()
     fetchCategories()
     fetchGroups()
     fetchNotifications()
