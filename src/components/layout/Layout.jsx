@@ -15,7 +15,7 @@ export function Layout() {
   const { fetchTickets } = useTicketStore()
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
-    fetchInboundConfig, fetchInboundLogs,
+    fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
   } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
   const { activeModal, closeModal } = useUiStore()
@@ -33,6 +33,7 @@ export function Layout() {
     fetchInboundLogs()
     fetchCategories()
     fetchGroups()
+    fetchTicketSettings()
     fetchNotifications()
 
     // Open SSE connection

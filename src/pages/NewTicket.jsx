@@ -10,6 +10,7 @@ import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '' }
+// priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
 
 const TICKET_TYPE_CONFIG = {
   request:  {
@@ -39,10 +40,18 @@ export default function NewTicket() {
   const { addTicket } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
-  const { slaSettings, categories, groups, agents } = useAdminStore()
+  const { slaSettings, categories, groups, agents, ticketSettings } = useAdminStore()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({ ...EMPTY, contactName: currentUser?.name || '', company: 'Acme Corp' })
+  // Pre-select the admin-configured default priority
+  const defaultPriority = ticketSettings?.defaultPriority || 'medium'
+
+  const [form, setForm] = useState({
+    ...EMPTY,
+    priority:     defaultPriority,
+    contactName:  currentUser?.name || '',
+    company:      'Acme Corp',
+  })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')

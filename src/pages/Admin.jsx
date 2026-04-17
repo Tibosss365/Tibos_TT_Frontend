@@ -1284,9 +1284,13 @@ export default function Admin() {
     }
   }, [tab])
 
-  const handleSaveTicketSettings = () => {
-    updateTicketSettings(tktEdits)
-    addToast('Ticket settings saved', 'success')
+  const handleSaveTicketSettings = async () => {
+    try {
+      await updateTicketSettings(tktEdits)
+      addToast('Ticket settings saved — new tickets will use this format', 'success')
+    } catch {
+      addToast('Failed to save ticket settings', 'error')
+    }
   }
 
   const handleSaveTemplate = (key) => {

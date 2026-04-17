@@ -47,8 +47,37 @@ export const useAdminStore = create(
       getGroupById:  (id) => get().groups.find(g => g.id === id),
       getGroupName:  (id) => { const g = get().groups.find(g => g.id === id); return g ? g.name : '—' },
 
-      updateTicketSettings: (changes) => {
+      // Persist ticket settings to backend AND local store
+      updateTicketSettings: async (changes) => {
         set(s => ({ ticketSettings: { ...s.ticketSettings, ...changes } }))
+        try {
+          const current = { ...get().ticketSettings, ...changes }
+          await api.put('/admin/ticket-settings', {
+            number_prefix:    current.numberPrefix,
+            number_digits:    current.numberDigits,
+            default_status:   current.defaultStatus,
+            default_priority: current.defaultPriority,
+          })
+        } catch (e) {
+          console.error('updateTicketSettings backend error', e)
+        }
+      },
+
+      fetchTicketSettings: async () => {
+        try {
+          const data = await api.get('/admin/ticket-settings')
+          set(s => ({
+            ticketSettings: {
+              ...s.ticketSettings,
+              numberPrefix:    data.number_prefix    || 'TKT',
+              numberDigits:    data.number_digits    || 4,
+              defaultStatus:   data.default_status   || 'open',
+              defaultPriority: data.default_priority || 'medium',
+            },
+          }))
+        } catch (e) {
+          console.error('fetchTicketSettings error', e)
+        }
       },
 
       updateEmailTemplate: (key, changes) => {
