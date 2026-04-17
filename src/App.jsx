@@ -9,14 +9,28 @@ import NewTicket from './pages/NewTicket'
 import Admin from './pages/Admin'
 import Analytics from './pages/Analytics'
 import { useUiStore } from './stores/uiStore'
+import { useAdminStore } from './stores/adminStore'
+import { useSessionTimeout } from './hooks/useSessionTimeout'
+import { LANGUAGES } from './locales/translations'
 
 export default function App() {
   const { isDark } = useUiStore()
+  const language = useAdminStore(s => s.systemSettings?.language || 'en')
+
+  // Session idle-timeout auto-logout
+  useSessionTimeout()
 
   // Keep <html class="dark"> in sync with Zustand state (including on first load)
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
+
+  // Set text direction + lang attribute for the active language
+  useEffect(() => {
+    const langMeta = LANGUAGES.find(l => l.code === language)
+    document.documentElement.setAttribute('lang', language)
+    document.documentElement.setAttribute('dir', langMeta?.dir || 'ltr')
+  }, [language])
 
   return (
     <Routes>

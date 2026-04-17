@@ -6,6 +6,18 @@ import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGE
 export const useAdminStore = create(
   persist(
     (set, get) => ({
+      // ── System / General settings ──────────────────────────────────────────
+      systemSettings: {
+        language:               'en',           // default: English
+        timezone:               'Asia/Kolkata', // default: IST
+        sessionTimeoutMinutes:  480,            // default: 8 hours (0 = Never)
+      },
+
+      updateSystemSettings: (changes) => {
+        set(s => ({ systemSettings: { ...s.systemSettings, ...changes } }))
+      },
+
+      // ── Company profile ─────────────────────────────────────────────────────
       companyProfile: {
         name: 'HelpdeskPro',
         website: '',

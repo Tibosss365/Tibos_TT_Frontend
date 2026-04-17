@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2 } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer } from 'lucide-react'
+import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUiStore } from '../stores/uiStore'
@@ -13,6 +14,7 @@ import { api } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES } from '../data/seedData'
 
 const TABS = [
+  { id: 'general',   icon: Settings2,         label: 'General' },
   { id: 'overview',  icon: LayoutGrid,        label: 'Overview' },
   { id: 'company',   icon: Building2,         label: 'Company' },
   { id: 'tickets',   icon: Ticket,            label: 'Tickets' },
@@ -1228,6 +1230,7 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
 export default function Admin() {
   const [tab, setTab] = useState('overview')
   const {
+    systemSettings, updateSystemSettings,
     companyProfile, updateCompanyProfile,
     ticketSettings, updateTicketSettings,
     emailTemplates, updateEmailTemplate,
@@ -1244,6 +1247,18 @@ export default function Admin() {
     fetchInboundConfig, saveInboundConfig, pollInbound,
     fetchInboundLogs, clearInboundLogs,
   } = useAdminStore()
+
+  // ── General / System settings state ───────────────────────────────────────
+  const [sysEdits, setSysEdits] = useState({
+    language:              systemSettings?.language              || 'en',
+    timezone:              systemSettings?.timezone              || 'Asia/Kolkata',
+    sessionTimeoutMinutes: systemSettings?.sessionTimeoutMinutes ?? 480,
+  })
+
+  const handleSaveSystem = () => {
+    updateSystemSettings(sysEdits)
+    addToast('General settings saved', 'success')
+  }
 
   const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
   const logoInputRef = useRef(null)
@@ -1539,6 +1554,141 @@ export default function Admin() {
           </button>
         ))}
       </div>
+
+      {/* General / System Settings */}
+      {tab === 'general' && (
+        <div className="space-y-4 max-w-2xl">
+
+          {/* Language & Region */}
+          <Card>
+            <CardHeader
+              title="Language & Region"
+              subtitle="Set the interface language and display timezone for the ticketing tool"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {/* Language picker */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Globe size={11} className="inline mr-1" />Interface Language
+                </label>
+                <select
+                  className={inputCls}
+                  value={sysEdits.language}
+                  onChange={e => setSysEdits(p => ({ ...p, language: e.target.value }))}
+                >
+                  {LANGUAGES.map(l => (
+                    <option key={l.code} value={l.code}>
+                      {l.flag} {l.name} — {l.nativeName}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] t-sub mt-1">
+                  Status labels, navigation, and form fields will display in the selected language.
+                </p>
+              </div>
+
+              {/* Timezone picker */}
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Clock size={11} className="inline mr-1" />Timezone
+                </label>
+                <select
+                  className={inputCls}
+                  value={sysEdits.timezone}
+                  onChange={e => setSysEdits(p => ({ ...p, timezone: e.target.value }))}
+                >
+                  {(() => {
+                    const tzGroups = [...new Set(TIMEZONES.map(z => z.group))]
+                    return tzGroups.map(grp => (
+                      <optgroup key={grp} label={grp}>
+                        {TIMEZONES.filter(z => z.group === grp).map(z => (
+                          <option key={z.value} value={z.value}>{z.label}</option>
+                        ))}
+                      </optgroup>
+                    ))
+                  })()}
+                </select>
+                <p className="text-[10px] t-sub mt-1">
+                  All timestamps (SLA, created, updated) will be displayed in this timezone.
+                </p>
+              </div>
+            </div>
+
+            {/* Live preview */}
+            <div className="mt-4 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/20 flex items-center gap-3">
+              <Globe size={14} className="text-indigo-400 flex-shrink-0" />
+              <div className="text-xs t-sub">
+                <span className="font-semibold t-main">Preview: </span>
+                {(() => {
+                  try {
+                    return new Date().toLocaleString('en-US', {
+                      timeZone: sysEdits.timezone,
+                      weekday: 'short', month: 'short', day: 'numeric',
+                      year: 'numeric', hour: '2-digit', minute: '2-digit',
+                    })
+                  } catch {
+                    return 'Invalid timezone'
+                  }
+                })()}
+                {' '}({TIMEZONES.find(z => z.value === sysEdits.timezone)?.label?.split(' — ')[0] || sysEdits.timezone})
+              </div>
+            </div>
+          </Card>
+
+          {/* Session Management */}
+          <Card>
+            <CardHeader
+              title="Session Management"
+              subtitle="Automatically log out inactive users to keep the system secure"
+            />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  <Timer size={11} className="inline mr-1" />Session Timeout
+                </label>
+                <select
+                  className={`${inputCls} max-w-xs`}
+                  value={sysEdits.sessionTimeoutMinutes}
+                  onChange={e => setSysEdits(p => ({ ...p, sessionTimeoutMinutes: Number(e.target.value) }))}
+                >
+                  {SESSION_TIMEOUTS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <p className="text-[10px] t-sub mt-1.5">
+                  Users will be automatically logged out after the specified period of inactivity
+                  (no mouse movement, keystrokes, or clicks).
+                  {sysEdits.sessionTimeoutMinutes === 0 && (
+                    <span className="text-amber-500 font-medium"> Sessions will never expire — not recommended for shared devices.</span>
+                  )}
+                </p>
+              </div>
+
+              {/* Visual indicator */}
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-black/3 dark:bg-white/3 border border-glass">
+                <ShieldCheck size={15} className="text-emerald-400 flex-shrink-0 mt-0.5" />
+                <div className="text-[11px] t-sub leading-relaxed">
+                  {sysEdits.sessionTimeoutMinutes === 0
+                    ? 'Sessions will persist indefinitely until the user manually logs out.'
+                    : `After ${SESSION_TIMEOUTS.find(o => o.value === sysEdits.sessionTimeoutMinutes)?.label || sysEdits.sessionTimeoutMinutes + ' min'} of inactivity, the user is logged out and all local data is cleared.`
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-glass flex items-center justify-between">
+              <p className="text-[10px] t-muted">
+                Language and timezone changes apply immediately without a page reload.
+              </p>
+              <Button variant="primary" size="sm" onClick={handleSaveSystem}>
+                <Save size={13} /> Save General Settings
+              </Button>
+            </div>
+          </Card>
+
+        </div>
+      )}
 
       {/* Overview */}
       {tab === 'overview' && (

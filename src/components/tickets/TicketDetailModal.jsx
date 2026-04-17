@@ -13,6 +13,7 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
+import { useT } from '../../utils/i18n'
 
 const TIMELINE_STYLES = {
   created:   { dot: 'bg-blue-500',    label: 'Opened' },
@@ -69,7 +70,7 @@ function SlaCountdown({ ticket, slaSettings }) {
           <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
           <span className="text-xs text-slate-400 font-medium">SLA not started</span>
         </div>
-        <div className="text-[10px] t-sub">Run backfill to activate for existing tickets</div>
+        <div className="text-[10px] t-sub">Waiting for agent assignment</div>
       </div>
     )
   }
@@ -82,7 +83,7 @@ function SlaCountdown({ ticket, slaSettings }) {
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
           <span className="text-xs text-emerald-500 font-bold">SLA Met — Completed</span>
         </div>
-        {dueIso && <div className="text-[10px] t-sub">Deadline was {new Date(dueIso).toLocaleString()}</div>}
+        {dueIso && <div className="text-[10px] t-sub">Deadline was {fmtDateTime(dueIso)}</div>}
         {pausedSecs > 0 && (
           <div className="text-[10px] t-sub">Total paused: {fmtSlaSeconds(pausedSecs)}</div>
         )}
@@ -106,7 +107,7 @@ function SlaCountdown({ ticket, slaSettings }) {
             {fmtSlaSeconds(remaining)} remaining
           </div>
         )}
-        {dueIso && <div className="text-[10px] t-sub">Deadline: {new Date(dueIso).toLocaleString()}</div>}
+        {dueIso && <div className="text-[10px] t-sub">Deadline: {fmtDateTime(dueIso)}</div>}
         <div className="text-[10px] t-sub">Timer paused — resume by changing status</div>
       </div>
     )
@@ -150,7 +151,7 @@ function SlaCountdown({ ticket, slaSettings }) {
       <div className="text-base font-mono font-bold text-rose-500 tabular-nums">
         +{fmtSlaSeconds(overduesSecs)}
       </div>
-      <div className="text-[10px] t-sub">Deadline was {new Date(dueIso).toLocaleString()}</div>
+      <div className="text-[10px] t-sub">Deadline was {fmtDateTime(dueIso)}</div>
       <div className="h-1.5 rounded-full bg-rose-500/20 overflow-hidden">
         <div className="h-full w-full rounded-full bg-rose-500 animate-pulse" />
       </div>
@@ -171,7 +172,7 @@ function SlaCountdown({ ticket, slaSettings }) {
       <div className={`text-base font-mono font-bold tabular-nums ${warning ? 'text-amber-500' : 'text-emerald-500'}`}>
         {fmtSlaSeconds(remaining)}
       </div>
-      <div className="text-[10px] t-sub">Due: {new Date(dueIso).toLocaleString()}</div>
+      <div className="text-[10px] t-sub">Due: {fmtDateTime(dueIso)}</div>
       <div className="h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-1000 ${barColor}`}
@@ -179,7 +180,7 @@ function SlaCountdown({ ticket, slaSettings }) {
         />
       </div>
       {startIso && (
-        <div className="text-[10px] t-sub">Started: {new Date(startIso).toLocaleString()}</div>
+        <div className="text-[10px] t-sub">Started: {fmtDateTime(startIso)}</div>
       )}
       {pausedSecs > 0 && (
         <div className="text-[10px] t-sub">Paused total: {fmtSlaSeconds(pausedSecs)}</div>
@@ -190,6 +191,7 @@ function SlaCountdown({ ticket, slaSettings }) {
 
 // ── Requester Details Sidebar ─────────────────────────────────────────────────
 function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete }) {
+  const t = useT()
   const initials = (ticket.submitter || ticket.contactName || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
@@ -197,7 +199,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
     <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col">
       {/* Requester */}
       <div className="p-4 border-b border-glass">
-        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">Requester Details</div>
+        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">{t('requester')}</div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-md">
             {initials}
@@ -230,23 +232,23 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
       {/* Ticket Meta */}
       <div className="p-4 border-b border-glass space-y-3 flex-1">
         <div>
-          <div className={labelCls}>Ticket ID</div>
+          <div className={labelCls}>{t('id')}</div>
           <div className="text-xs font-mono font-semibold t-main">{ticket.id}</div>
         </div>
         <div>
-          <div className={labelCls}>Created</div>
+          <div className={labelCls}>{t('created')}</div>
           <div className="text-xs t-main">{fmtDateTime(ticket.created)}</div>
         </div>
         <div>
-          <div className={labelCls}>Last Updated</div>
+          <div className={labelCls}>{t('updated')}</div>
           <div className="text-xs t-main">{fmtDateTime(ticket.updated)}</div>
         </div>
         <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
-          <div className={labelCls + ' mb-2'}>SLA Status</div>
+          <div className={labelCls + ' mb-2'}>{t('slaStatus')}</div>
           <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
         </div>
         <div>
-          <div className={labelCls}>Group</div>
+          <div className={labelCls}>{t('group')}</div>
           {isEditing ? (
             <select className={inputCls} value={edits.group||''} onChange={e => {
               set('group', e.target.value)
@@ -268,7 +270,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           )}
         </div>
         <div>
-          <div className={labelCls}>Category</div>
+          <div className={labelCls}>{t('category')}</div>
           {isEditing ? (
             (() => {
               const groupCats = edits.group
@@ -286,7 +288,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           )}
         </div>
         <div>
-          <div className={labelCls}>Asset</div>
+          <div className={labelCls}>{t('asset')}</div>
           {isEditing ? (
             <input className={inputCls} value={edits.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. WS-042" />
           ) : (
@@ -299,13 +301,13 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
       <div className="p-4 space-y-2">
         {isEditing ? (
           <>
-            <Button variant="primary" size="sm" className="w-full" onClick={onSave}><Save size={13} /> Save Changes</Button>
-            <Button variant="ghost" size="sm" className="w-full" onClick={onCancel}><X size={13} /> Cancel</Button>
+            <Button variant="primary" size="sm" className="w-full" onClick={onSave}><Save size={13} /> {t('saveChanges')}</Button>
+            <Button variant="ghost" size="sm" className="w-full" onClick={onCancel}><X size={13} /> {t('cancel')}</Button>
           </>
         ) : (
-          <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> Edit Ticket</Button>
+          <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> {t('editTicket')}</Button>
         )}
-        <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> Delete Ticket</Button>
+        <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> {t('delete')}</Button>
       </div>
     </div>
   )
@@ -323,6 +325,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const { agents, getAgentName, getCategoryName, categories, groups, slaSettings } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
+  const t = useT()
 
 
   const [activeTab, setActiveTab] = useState('details')
@@ -529,7 +532,7 @@ export function TicketDetailModal({ ticket, onClose }) {
             </select>
           ) : (
             <span className="text-xs t-muted">
-              <span className="t-sub">Assignee:</span> {edits.assignee ? getAgentName(edits.assignee) : '—'}
+              <span className="t-sub">{t('assignee')}:</span> {edits.assignee ? getAgentName(edits.assignee) : '—'}
             </span>
           )}
           <div className="flex-1" />
@@ -651,7 +654,7 @@ export function TicketDetailModal({ ticket, onClose }) {
 
                   {/* ── Add Comment ── */}
                   <div className="pt-3 border-t border-glass space-y-2">
-                    <div className={labelCls}>Add Comment</div>
+                    <div className={labelCls}>{t('addComment')}</div>
                     <textarea value={comment} onChange={e => setComment(e.target.value)}
                       className="glass-input w-full text-sm resize-none" rows={3}
                       placeholder="Write an internal comment or reply to customer…" />
@@ -824,18 +827,20 @@ export function TicketDetailModal({ ticket, onClose }) {
                         variant="primary"
                         size="sm"
                         disabled={!resolverId}
-                        onClick={() => {
+                        onClick={async () => {
                           if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
                           const resolverAgentName = getAgentName(resolverId)
                           set('status', 'resolved')
-                          handleSave({ status: 'resolved', resolution: edits.resolution })
+                          await handleSave({ status: 'resolved', resolution: edits.resolution })
                           // If resolver is different from current user, record it as a note
                           if (resolverId !== currentUser?.id) {
                             addTimelineEvent(ticket._uuid, { type: 'comment', text: `Resolved by: <strong>${resolverAgentName}</strong>` })
                           }
+                          // Close modal — ticket is now resolved and leaves My Tickets
+                          onClose()
                         }}
                       >
-                        <CheckCircle2 size={13}/> Mark Resolved
+                        <CheckCircle2 size={13}/> {t('markResolved')}
                       </Button>
                     )}
                     <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved', 'success') }}>

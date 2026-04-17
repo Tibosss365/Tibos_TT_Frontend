@@ -3,19 +3,20 @@ import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
   ChevronLeft, ChevronRight, LogOut, Zap, List
 } from 'lucide-react'
-import { useUserStore } from '../../stores/userStore'
-import { useUiStore } from '../../stores/uiStore'
+import { useUserStore }  from '../../stores/userStore'
+import { useUiStore }    from '../../stores/uiStore'
 import { useAdminStore } from '../../stores/adminStore'
+import { useT }          from '../../utils/i18n'
 
-const NAV = [
-  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/tickets',      icon: List,            label: 'All Tickets' },
-  { to: '/tickets/mine', icon: Ticket,          label: 'My Tickets' },
+const NAV_KEYS = [
+  { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard' },
+  { to: '/tickets',      icon: List,            key: 'allTickets' },
+  { to: '/tickets/mine', icon: Ticket,          key: 'myTickets' },
 ]
-const ACTIONS = [
-  { to: '/tickets/new', icon: PlusCircle, label: 'Submit Ticket' },
-  { to: '/analytics',   icon: BarChart3,  label: 'Analytics' },
-  { to: '/admin',       icon: Settings,   label: 'Admin', adminOnly: true },
+const ACTION_KEYS = [
+  { to: '/tickets/new', icon: PlusCircle, key: 'submitTicket' },
+  { to: '/analytics',   icon: BarChart3,  key: 'analytics' },
+  { to: '/admin',       icon: Settings,   key: 'admin', adminOnly: true },
 ]
 
 export function Sidebar() {
@@ -23,6 +24,7 @@ export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUiStore()
   const { companyProfile } = useAdminStore()
   const navigate = useNavigate()
+  const t = useT()
 
   const handleLogout = () => {
     logout()
@@ -71,37 +73,37 @@ export function Sidebar() {
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {sidebarOpen && (
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest t-sub opacity-70">
-            Navigation
+            {t('navigation')}
           </div>
         )}
-        {NAV.map(({ to, icon: Icon, label }) => (
+        {NAV_KEYS.map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
             end
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
-            title={!sidebarOpen ? label : undefined}
+            title={!sidebarOpen ? t(key) : undefined}
           >
             <Icon size={16} className="flex-shrink-0" />
-            {sidebarOpen && <span>{label}</span>}
+            {sidebarOpen && <span>{t(key)}</span>}
           </NavLink>
         ))}
 
         {sidebarOpen && (
           <div className="px-2 pt-4 mb-2 text-[10px] font-semibold uppercase tracking-widest t-sub opacity-70">
-            Actions
+            {t('actions')}
           </div>
         )}
         {!sidebarOpen && <div className="my-2" style={{ borderTop: '1px solid var(--c-border)' }} />}
-        {ACTIONS.filter(a => !a.adminOnly || isAdmin).map(({ to, icon: Icon, label }) => (
+        {ACTION_KEYS.filter(a => !a.adminOnly || isAdmin).map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
-            title={!sidebarOpen ? label : undefined}
+            title={!sidebarOpen ? t(key) : undefined}
           >
             <Icon size={16} className="flex-shrink-0" />
-            {sidebarOpen && <span>{label}</span>}
+            {sidebarOpen && <span>{t(key)}</span>}
           </NavLink>
         ))}
       </nav>
@@ -132,7 +134,7 @@ export function Sidebar() {
               <button
                 onClick={handleLogout}
                 className="p-1.5 rounded-lg transition-all hover:bg-rose-500/20 hover:text-rose-500 dark:hover:text-rose-400 t-sub"
-                title="Logout"
+                title={t('logout')}
               >
                 <LogOut size={14} />
               </button>

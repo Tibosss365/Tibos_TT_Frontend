@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
 import { useAdminStore } from '../stores/adminStore'
+import { useT } from '../utils/i18n'
 import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw } from 'lucide-react'
 
 // ── Column definitions ────────────────────────────────────────────────────────
@@ -36,13 +37,12 @@ const DATE_RANGES = [
   { key: 'custom', label: 'Custom'     },
 ]
 
+// My Tickets only shows active (non-resolved, non-closed) tickets
 const STATUS_OPTIONS = [
   { key: '',            label: 'All'         },
   { key: 'open',        label: 'Open'        },
   { key: 'in-progress', label: 'In Progress' },
   { key: 'on-hold',     label: 'On Hold'     },
-  { key: 'resolved',    label: 'Resolved'    },
-  { key: 'closed',      label: 'Closed'      },
 ]
 
 const STATUS_ACTIVE_CLS = {
@@ -50,8 +50,6 @@ const STATUS_ACTIVE_CLS = {
   'open':         'bg-blue-500/15 text-blue-500 border-blue-500/40',
   'in-progress':  'bg-violet-500/15 text-violet-500 border-violet-500/40',
   'on-hold':      'bg-amber-500/15 text-amber-500 border-amber-500/40',
-  'resolved':     'bg-emerald-500/15 text-emerald-500 border-emerald-500/40',
-  'closed':       'bg-slate-500/15 text-slate-400 border-slate-500/40',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -63,6 +61,7 @@ export default function MyTickets() {
   const { tickets, loading }   = useTicketStore()
   const { currentUser }        = useUserStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
+  const t = useT()
 
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [visibleCols, setVisibleCols]       = useState(DEFAULT_COLS)
@@ -106,8 +105,12 @@ export default function MyTickets() {
   }
 
   // ── Filter logic ──────────────────────────────────────────────────────────
-  // Base: only my assigned tickets
-  let baseTickets = tickets.filter(t => t.assignee === String(currentUser?.id))
+  // Base: my active (non-resolved, non-closed) tickets — resolved tickets live in All Tickets
+  let baseTickets = tickets.filter(t =>
+    t.assignee === String(currentUser?.id) &&
+    t.status !== 'resolved' &&
+    t.status !== 'closed'
+  )
 
   // Apply search
   if (search) {
@@ -335,15 +338,15 @@ export default function MyTickets() {
 
           {/* Row 2: Status chips + Search */}
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Status</span>
-            {STATUS_OPTIONS.map(({ key, label }) => {
+            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">{t('status')}</span>
+            {STATUS_OPTIONS.map(({ key }) => {
               const count = statusCounts[key] ?? 0
               const isActive = activeStatus === key
               return (
                 <button key={key} onClick={() => handleStatusChip(key)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
                     ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
-                  {label}
+                  {key ? t(key) : t('allStatuses')}
                   <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
                     ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
                     {count}
@@ -390,7 +393,7 @@ export default function MyTickets() {
                   <div className="flex flex-col items-center gap-2">
                     <Filter size={28} className="t-sub opacity-30" />
                     <p className="text-sm t-sub">
-                      {hasAnyFilter ? 'No tickets match your filters' : 'No tickets assigned to you'}
+                      {hasAnyFilter ? t('noTickets') : t('noActiveTickets')}
                     </p>
                     {hasAnyFilter && (
                       <button onClick={clearAllFilters} className="text-xs text-indigo-500 hover:text-indigo-400 underline underline-offset-2">

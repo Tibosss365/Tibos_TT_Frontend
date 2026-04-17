@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo } from '../utils/ticketUtils'
+import { useT } from '../utils/i18n'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -77,6 +78,7 @@ export default function AllTickets() {
   } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, getGroupName, agents } = useAdminStore()
   const { addToast } = useUiStore()
+  const t = useT()
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
   const [staged, setStaged]                   = useState(() => ({
@@ -408,15 +410,15 @@ export default function AllTickets() {
 
           {/* Row 2: Status chips + Search + Sort */}
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">Status</span>
-            {STATUS_OPTIONS.map(({ key, label }) => {
+            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">{t('status')}</span>
+            {STATUS_OPTIONS.map(({ key }) => {
               const count = statusCounts[key] ?? 0
               const isActive = filters.status === key
               return (
                 <button key={key} onClick={() => handleStatusChip(key)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
                     ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
-                  {label}
+                  {key ? t(key) : t('allStatuses')}
                   <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
                     ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
                     {count}

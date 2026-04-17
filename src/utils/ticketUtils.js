@@ -35,16 +35,32 @@ export function statusLabel(s) {
   return s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
+/** Get the configured timezone (safe to call outside React). Falls back to local time. */
+function _tz() {
+  try {
+    return useAdminStore.getState().systemSettings?.timezone || undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function fmtDate(iso) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const tz = _tz()
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
+  })
 }
 
 export function fmtDateTime(iso) {
   if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
-    ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  const tz = _tz()
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
+  })
 }
 
 export function timeAgo(iso) {

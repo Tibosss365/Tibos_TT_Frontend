@@ -13,6 +13,14 @@ function getToken() {
   }
 }
 
+/** Clear persisted state and force a fresh login. */
+function forceLogout() {
+  localStorage.removeItem('helpdesk-user')
+  localStorage.removeItem('helpdesk-tickets')
+  localStorage.removeItem('helpdesk-admin')
+  window.location.href = '/login'
+}
+
 async function request(path, options = {}) {
   const token = getToken()
   const headers = { 'Content-Type': 'application/json', ...options.headers }
@@ -21,6 +29,14 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, { ...options, headers })
 
   if (res.status === 204) return null
+
+  // ── Auth error: token expired / invalid ──────────────────────────────────
+  // Only auto-logout when a token was present — not on login failures (no token)
+  if (res.status === 401 && token) {
+    forceLogout()
+    return   // navigation in progress; prevent further processing
+  }
+
   const data = await res.json()
   if (!res.ok) {
     const detail = data?.detail
