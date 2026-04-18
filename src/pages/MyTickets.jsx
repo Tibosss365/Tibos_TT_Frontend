@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
+import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
 import { useAdminStore } from '../stores/adminStore'
 import { useT } from '../utils/i18n'
-import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw } from 'lucide-react'
+import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw, Inbox, HandMetal, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -58,12 +60,15 @@ const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
 
 export default function MyTickets() {
-  const { tickets, loading }   = useTicketStore()
-  const { currentUser }        = useUserStore()
+  const { tickets, loading, updateTicket } = useTicketStore()
+  const { currentUser }                    = useUserStore()
+  const { addToast }                       = useUiStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
   const t = useT()
 
-  const [selectedTicket, setSelectedTicket] = useState(null)
+  const [selectedTicket, setSelectedTicket]   = useState(null)
+  const [claiming, setClaiming]               = useState({})   // { _uuid: true }
+  const [poolCollapsed, setPoolCollapsed]     = useState(false)
   const [visibleCols, setVisibleCols]       = useState(DEFAULT_COLS)
   const [showColPicker, setShowColPicker]   = useState(false)
   const [search, setSearch]                 = useState('')
@@ -103,6 +108,26 @@ export default function MyTickets() {
   const handleStatusChip = (key) => {
     setActiveStatus(prev => prev === key && key !== '' ? '' : key)
   }
+
+  // ── Claim (Pick Up) handler ───────────────────────────────────────────────
+  const handleClaim = async (ticket) => {
+    if (!currentUser?.id) return
+    setClaiming(prev => ({ ...prev, [ticket._uuid]: true }))
+    try {
+      await updateTicket(ticket._uuid, { assignee: String(currentUser.id) })
+      addToast(`${ticket.id} assigned to you`, 'success')
+    } catch (err) {
+      addToast(err.message || 'Failed to claim ticket', 'error')
+    } finally {
+      setClaiming(prev => ({ ...prev, [ticket._uuid]: false }))
+    }
+  }
+
+  // ── Unassigned pool (visible to all agents) ───────────────────────────────
+  const PRIORITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3 }
+  const unassignedPool = tickets
+    .filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed')
+    .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99))
 
   // ── Filter logic ──────────────────────────────────────────────────────────
   // Base: my active (non-resolved, non-closed) tickets — resolved tickets live in All Tickets
@@ -228,7 +253,12 @@ export default function MyTickets() {
         <div>
           <h1 className="text-xl font-bold t-main">My Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
-            {myTickets.length} ticket{myTickets.length !== 1 ? 's' : ''}{hasAnyFilter ? ' (filtered)' : ' assigned to you'}
+            {myTickets.length} ticket{myTickets.length !== 1 ? 's' : ''} assigned to you
+            {unassignedPool.length > 0 && (
+              <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
+                · {unassignedPool.length} unassigned available
+              </span>
+            )}
           </p>
         </div>
 
@@ -263,6 +293,96 @@ export default function MyTickets() {
           )}
         </div>
       </div>
+
+      {/* ── Unassigned ticket pool ────────────────────────────────────────── */}
+      <Card className="overflow-hidden">
+        {/* Section header */}
+        <button
+          onClick={() => setPoolCollapsed(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-3 hover:bg-black/3 dark:hover:bg-white/3 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Inbox size={14} className="text-amber-500" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-bold t-main">Unassigned Tickets</div>
+              <div className="text-[11px] t-muted">Open tickets available for any agent to pick up</div>
+            </div>
+            {unassignedPool.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                {unassignedPool.length}
+              </span>
+            )}
+          </div>
+          {poolCollapsed
+            ? <ChevronDown size={15} className="t-muted flex-shrink-0" />
+            : <ChevronUp   size={15} className="t-muted flex-shrink-0" />}
+        </button>
+
+        {!poolCollapsed && (
+          unassignedPool.length === 0 ? (
+            <div className="px-4 pb-4 pt-1 flex items-center gap-2 text-xs t-muted">
+              <Check size={13} className="text-emerald-500" />
+              No unassigned tickets — all caught up!
+            </div>
+          ) : (
+            <div className="border-t border-glass divide-y divide-glass">
+              {unassignedPool.map(ticket => {
+                const isClaiming = claiming[ticket._uuid]
+                const pri = ticket.priority
+                const PRIORITY_COLOR = {
+                  critical: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/30',
+                  high:     'text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/30',
+                  medium:   'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30',
+                  low:      't-muted bg-slate-500/10 border-slate-500/20',
+                }
+                return (
+                  <div
+                    key={ticket._uuid}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-black/3 dark:hover:bg-white/3 transition-colors"
+                  >
+                    {/* Priority strip */}
+                    <div className={`flex-shrink-0 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide ${PRIORITY_COLOR[pri]}`}>
+                      {pri}
+                    </div>
+
+                    {/* Ticket info */}
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedTicket(ticket)}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] t-sub flex-shrink-0">{ticket.id}</span>
+                        <span className="text-sm font-medium t-main truncate group-hover:text-indigo-500">{ticket.subject}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] t-muted truncate">{getCategoryName(ticket.category)}</span>
+                        <span className="text-[10px] t-muted">·</span>
+                        <span className="text-[10px] t-muted">{ticket.company}</span>
+                        <span className="text-[10px] t-muted">·</span>
+                        <span className="text-[10px] t-muted">{timeAgo(ticket.created)}</span>
+                      </div>
+                    </div>
+
+                    {/* Pick Up button */}
+                    <button
+                      disabled={isClaiming}
+                      onClick={() => handleClaim(ticket)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                        ${isClaiming
+                          ? 'opacity-60 cursor-wait border-indigo-500/30 text-indigo-400'
+                          : 'border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/60 active:scale-95'
+                        }`}
+                    >
+                      {isClaiming
+                        ? <><Loader2 size={12} className="animate-spin" /> Claiming…</>
+                        : <><HandMetal size={12} /> Pick Up</>}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        )}
+      </Card>
 
       {/* ── Filter card ───────────────────────────────────────────────────── */}
       <Card>

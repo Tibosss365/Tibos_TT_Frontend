@@ -34,16 +34,56 @@ export const useAdminStore = create(
       ticketSettings: DEFAULT_TICKET_SETTINGS,
       emailTemplates: DEFAULT_EMAIL_TEMPLATES,
 
-      addGroup: (group) => {
-        const id = 'grp-' + Date.now()
-        set(s => ({ groups: [...s.groups, { ...group, id, isBuiltin: false }] }))
+      addGroup: async (group) => {
+        try {
+          const data = await api.post('/groups', {
+            name:        group.name,
+            description: group.description || null,
+            color:       group.color || '#6B7280',
+          })
+          const newGroup = {
+            id:          data.id,
+            name:        data.name,
+            description: data.description || '',
+            color:       data.color,
+            isBuiltin:   data.is_builtin ?? false,
+          }
+          set(s => ({ groups: [...s.groups, newGroup] }))
+          return newGroup
+        } catch (e) {
+          console.error('addGroup error', e)
+          // Optimistic local fallback
+          const id = group.name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+          const newGroup = { ...group, id, isBuiltin: false }
+          set(s => ({ groups: [...s.groups, newGroup] }))
+          return newGroup
+        }
       },
-      updateGroup: (id, changes) => {
+
+      updateGroup: async (id, changes) => {
+        // Optimistic update first
         set(s => ({ groups: s.groups.map(g => g.id === id ? { ...g, ...changes } : g) }))
+        try {
+          await api.patch(`/groups/${id}`, {
+            name:        changes.name,
+            description: changes.description ?? null,
+            color:       changes.color,
+          })
+        } catch (e) {
+          console.error('updateGroup error', e)
+        }
       },
-      deleteGroup: (id) => {
+
+      deleteGroup: async (id) => {
+        // Optimistic remove first
         set(s => ({ groups: s.groups.filter(g => g.id !== id) }))
+        try {
+          await api.delete(`/groups/${id}`)
+        } catch (e) {
+          console.error('deleteGroup error', e)
+        }
       },
+
       getGroupById:  (id) => get().groups.find(g => g.id === id),
       getGroupName:  (id) => { const g = get().groups.find(g => g.id === id); return g ? g.name : '—' },
 
@@ -197,7 +237,7 @@ export const useAdminStore = create(
     try {
       const data = await api.get('/groups')
       if (!Array.isArray(data) || data.length === 0) {
-        set({ groups: DEFAULT_GROUPS })
+        // Backend returned nothing — keep current state (don't wipe user's groups)
         return
       }
       const grps = data.map(g => ({
@@ -205,12 +245,12 @@ export const useAdminStore = create(
         name:        g.name,
         description: g.description || '',
         color:       g.color || '#6B7280',
-        isBuiltin:   g.is_builtin ?? true,
+        isBuiltin:   g.is_builtin ?? false,
       }))
       set({ groups: grps })
     } catch {
-      // No groups backend yet — always reset to current defaults so group IDs
-      // match the group_id values that fetchCategories returns from the backend.
+      // Backend unavailable — fall back to seed defaults so group_id values
+      // on categories/tickets still resolve to a name.
       set({ groups: DEFAULT_GROUPS })
     }
   },
@@ -466,10 +506,20 @@ export const useAdminStore = create(
         }
       },
 
-      updateCategory: (id, changes) => {
+      updateCategory: async (id, changes) => {
+        // Optimistic update first so the UI feels instant
         set(s => ({
           categories: s.categories.map(c => c.id === id ? { ...c, ...changes } : c)
         }))
+        try {
+          await api.patch(`/categories/${id}`, {
+            name:        changes.name,
+            color:       changes.color,
+            description: changes.description ?? null,
+          })
+        } catch (e) {
+          console.error('updateCategory error', e)
+        }
       },
 
       deleteCategory: async (id) => {

@@ -251,32 +251,11 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
 
   const handlePollNow = async () => {
     setPolling(true)
-    await new Promise(r => setTimeout(r, 1800))
-    // Simulate finding 1 new email → create fake log entry
-    const fakeEmails = [
-      { from: 'jane.doe@company.com', name: 'Jane Doe', subject: 'My computer won\'t turn on' },
-      { from: 'bob.smith@acme.com',   name: 'Bob Smith',  subject: 'Outlook is crashing repeatedly' },
-      { from: 'lisa.k@techcorp.io',   name: 'Lisa K',     subject: 'Need VPN access for new project' },
-    ]
-    const pick = fakeEmails[Math.floor(Math.random() * fakeEmails.length)]
-    const entry = {
-      id: Date.now(),
-      messageId: `<${Date.now()}@mail.demo>`,
-      fromEmail: pick.from,
-      fromName: pick.name,
-      subject: pick.subject,
-      status: 'processed',
-      ticketId: `TKT-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-      processedAt: new Date().toISOString(),
+    try {
+      await onPollNow()
+    } finally {
+      setPolling(false)
     }
-    onPollNow(entry)
-    setInboundEdits(p => ({
-      ...p,
-      lastPolledAt: new Date().toISOString(),
-      processedCount: (p.processedCount || 0) + 1,
-    }))
-    setPolling(false)
-    addToast(`1 email converted → ${entry.ticketId}`, 'success')
   }
 
   return (
