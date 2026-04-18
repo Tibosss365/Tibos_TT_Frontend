@@ -104,12 +104,16 @@ export function getSlaRemainingSeconds(ticket) {
   if (slaStatus === 'not_started' || slaStatus === 'completed') return null
   const dueIso = ticket.slaDueTime || ticket.slaDueAt
   if (!dueIso) return null
+
   const dueMs = new Date(dueIso).getTime()
 
-  // When paused, remaining is measured from the pause moment
+  // ── Paused: freeze countdown at the moment the timer was paused ──────
+  // The due time is not extended until the timer resumes, so we measure
+  // (due - paused_at) instead of (due - now) to show a frozen display.
   if (slaStatus === 'paused' && ticket.slaPausedAt) {
     return Math.floor((dueMs - new Date(ticket.slaPausedAt).getTime()) / 1000)
   }
+
   return Math.floor((dueMs - Date.now()) / 1000)
 }
 
