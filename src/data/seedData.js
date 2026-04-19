@@ -115,6 +115,8 @@ export const DEFAULT_INBOUND_EMAIL = {
   pollIntervalMinutes: 5,
   markSeen: true,
   moveToFolder: '',
+  // Filter rules — list of {field, operator, value}
+  filterRules: [],
   // Stats (updated at runtime)
   lastPolledAt: null,
   processedCount: 0,

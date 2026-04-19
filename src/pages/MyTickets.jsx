@@ -9,7 +9,7 @@ import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
 import { useAdminStore } from '../stores/adminStore'
 import { useT } from '../utils/i18n'
-import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw, Inbox, HandMetal, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw, Inbox, HandMetal, Loader2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -60,7 +60,7 @@ const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
 
 export default function MyTickets() {
-  const { tickets, loading, updateTicket } = useTicketStore()
+  const { tickets, loading, updateTicket, deleteTicket } = useTicketStore()
   const { currentUser }                    = useUserStore()
   const { addToast }                       = useUiStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
@@ -68,6 +68,7 @@ export default function MyTickets() {
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
   const [claiming, setClaiming]               = useState({})   // { _uuid: true }
+  const [deleting, setDeleting]               = useState({})   // { _uuid: true }
   const [poolCollapsed, setPoolCollapsed]     = useState(false)
   const [visibleCols, setVisibleCols]       = useState(DEFAULT_COLS)
   const [showColPicker, setShowColPicker]   = useState(false)
@@ -120,6 +121,20 @@ export default function MyTickets() {
       addToast(err.message || 'Failed to claim ticket', 'error')
     } finally {
       setClaiming(prev => ({ ...prev, [ticket._uuid]: false }))
+    }
+  }
+
+  // ── Delete (from pool) handler ─────────────────────────────────────────
+  const handleDelete = async (ticket) => {
+    if (!window.confirm(`Delete ticket ${ticket.id}? This cannot be undone.`)) return
+    setDeleting(prev => ({ ...prev, [ticket._uuid]: true }))
+    try {
+      await deleteTicket(ticket._uuid)
+      addToast(`${ticket.id} deleted`, 'success')
+    } catch (err) {
+      addToast(err.message || 'Failed to delete ticket', 'error')
+    } finally {
+      setDeleting(prev => ({ ...prev, [ticket._uuid]: false }))
     }
   }
 
@@ -362,20 +377,39 @@ export default function MyTickets() {
                       </div>
                     </div>
 
-                    {/* Pick Up button */}
-                    <button
-                      disabled={isClaiming}
-                      onClick={() => handleClaim(ticket)}
-                      className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all
-                        ${isClaiming
-                          ? 'opacity-60 cursor-wait border-indigo-500/30 text-indigo-400'
-                          : 'border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/60 active:scale-95'
-                        }`}
-                    >
-                      {isClaiming
-                        ? <><Loader2 size={12} className="animate-spin" /> Claiming…</>
-                        : <><HandMetal size={12} /> Pick Up</>}
-                    </button>
+                    {/* Action buttons */}
+                    <div className="flex-shrink-0 flex items-center gap-1.5">
+                      {/* Pick Up */}
+                      <button
+                        disabled={isClaiming || deleting[ticket._uuid]}
+                        onClick={() => handleClaim(ticket)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                          ${isClaiming
+                            ? 'opacity-60 cursor-wait border-indigo-500/30 text-indigo-400'
+                            : 'border-indigo-500/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/60 active:scale-95'
+                          }`}
+                      >
+                        {isClaiming
+                          ? <><Loader2 size={12} className="animate-spin" /> Claiming…</>
+                          : <><HandMetal size={12} /> Pick Up</>}
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        disabled={deleting[ticket._uuid] || isClaiming}
+                        onClick={() => handleDelete(ticket)}
+                        title="Delete ticket"
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all
+                          ${deleting[ticket._uuid]
+                            ? 'opacity-60 cursor-wait border-rose-500/30 text-rose-400'
+                            : 'border-rose-500/30 text-rose-500/70 hover:bg-rose-500/10 hover:border-rose-500/50 hover:text-rose-500 active:scale-95'
+                          }`}
+                      >
+                        {deleting[ticket._uuid]
+                          ? <Loader2 size={12} className="animate-spin" />
+                          : <Trash2 size={12} />}
+                      </button>
+                    </div>
                   </div>
                 )
               })}

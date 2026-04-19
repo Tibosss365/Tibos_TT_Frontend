@@ -385,6 +385,7 @@ export const useAdminStore = create(
               pollIntervalMinutes: data.poll_interval_minutes || 5,
               markSeen:            data.mark_seen          ?? true,
               moveToFolder:        data.move_to_folder     || '',
+              filterRules:         data.filter_rules       || [],
               lastPolledAt:        data.last_polled_at     || null,
               processedCount:      data.processed_count    || 0,
             },
@@ -412,6 +413,7 @@ export const useAdminStore = create(
           poll_interval_minutes: Number(inboundState.pollIntervalMinutes) || 5,
           mark_seen:            inboundState.markSeen            ?? true,
           move_to_folder:       inboundState.moveToFolder        || null,
+          filter_rules:         inboundState.filterRules         || [],
         }
         // Only include password if the user actually typed one
         if (inboundState.imapPass) body.imap_pass = inboundState.imapPass
@@ -423,6 +425,7 @@ export const useAdminStore = create(
             ...s.inboundEmail,
             enabled:             data.enabled,
             auth_type:           data.auth_type,
+            filterRules:         data.filter_rules    || [],
             lastPolledAt:        data.last_polled_at  || null,
             processedCount:      data.processed_count || 0,
           },

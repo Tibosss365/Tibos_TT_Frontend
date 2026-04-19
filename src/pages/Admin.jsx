@@ -231,15 +231,59 @@ function CategoriesTab({ categories, onAdd, onUpdate, onDelete, inputCls }) {
 const PRIORITIES_LIST = ['critical','high','medium','low']
 
 const STATUS_META = {
-  processed: { label: 'Converted',  cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+  processed: { label: 'Converted', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
   duplicate:  { label: 'Duplicate', cls: 'bg-amber-500/10  text-amber-600  dark:text-amber-400  border-amber-500/20'  },
   error:      { label: 'Error',     cls: 'bg-rose-500/10   text-rose-600   dark:text-rose-400   border-rose-500/20'   },
+  filtered:   { label: 'Filtered',  cls: 'bg-slate-500/10  text-slate-500  dark:text-slate-400  border-slate-500/20'  },
 }
+
+// ── Filter rule helpers ────────────────────────────────────────────────────────
+const RULE_FIELDS = [
+  { value: 'subject',     label: 'Subject' },
+  { value: 'from_email',  label: 'From Email' },
+  { value: 'from_domain', label: 'From Domain' },
+]
+const RULE_OPERATORS = [
+  { value: 'contains',     label: 'contains' },
+  { value: 'not_contains', label: 'not contains' },
+  { value: 'starts_with',  label: 'starts with' },
+  { value: 'ends_with',    label: 'ends with' },
+  { value: 'equals',       label: 'equals' },
+]
+const RULE_FIELD_LABEL    = Object.fromEntries(RULE_FIELDS.map(f => [f.value, f.label]))
+const RULE_OPERATOR_LABEL = Object.fromEntries(RULE_OPERATORS.map(o => [o.value, o.label]))
+const FILTER_PRESETS = [
+  { label: '🚫 No-Reply',    field: 'from_email',  operator: 'contains',    value: 'noreply' },
+  { label: '📢 Promotions',  field: 'subject',     operator: 'contains',    value: 'unsubscribe' },
+  { label: '🛒 Advertising', field: 'subject',     operator: 'contains',    value: 'promotion' },
+  { label: '📨 Newsletter',  field: 'subject',     operator: 'contains',    value: 'newsletter' },
+]
 
 function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, categories = [], onSaveInbound, onPollNow, onClearLog, addToast, inputCls }) {
   const [showPass, setShowPass] = useState(false)
   const [polling, setPolling] = useState(false)
+  const [newRule, setNewRule] = useState({ field: 'subject', operator: 'contains', value: '' })
   const set = (k, v) => setInboundEdits(p => ({ ...p, [k]: v }))
+
+  // ── Filter rule handlers ─────────────────────────────────────────────────
+  const addRule = () => {
+    const val = newRule.value.trim()
+    if (!val) return
+    set('filterRules', [...(inboundEdits.filterRules || []), { ...newRule, value: val }])
+    setNewRule(r => ({ ...r, value: '' }))
+  }
+  const removeRule = (index) => {
+    const rules = [...(inboundEdits.filterRules || [])]
+    rules.splice(index, 1)
+    set('filterRules', rules)
+  }
+  const addPreset = (preset) => {
+    const exists = (inboundEdits.filterRules || []).some(
+      r => r.field === preset.field && r.operator === preset.operator &&
+           r.value.toLowerCase() === preset.value.toLowerCase()
+    )
+    if (!exists) set('filterRules', [...(inboundEdits.filterRules || []), { field: preset.field, operator: preset.operator, value: preset.value }])
+  }
 
   const authType = inboundEdits.authType || 'basic'
 
@@ -465,6 +509,73 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
           </Card>
         </div>
       </div>
+
+      {/* ── Filter Rules ─────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader title="Filter Rules" subtitle="Block matching emails before they become tickets" />
+
+        {/* Quick-add presets */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Quick add:</span>
+          {FILTER_PRESETS.map(p => (
+            <button key={p.label} onClick={() => addPreset(p)}
+              className="px-2.5 py-1 rounded-lg border border-glass text-[10px] font-semibold t-muted hover:bg-indigo-500/10 hover:border-indigo-500/30 hover:text-indigo-500 transition-all">
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Existing rules list */}
+        {(inboundEdits.filterRules || []).length === 0 ? (
+          <div className="py-4 text-center text-xs t-muted border border-dashed border-glass rounded-lg mb-3">
+            No filter rules — all incoming emails will create tickets.
+          </div>
+        ) : (
+          <div className="space-y-1.5 mb-3">
+            {(inboundEdits.filterRules || []).map((rule, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/5 dark:bg-white/3 border border-glass">
+                <span className="flex-shrink-0 text-[10px] font-bold t-sub uppercase tracking-wide">
+                  {RULE_FIELD_LABEL[rule.field] || rule.field}
+                </span>
+                <span className="flex-shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                  {RULE_OPERATOR_LABEL[rule.operator] || rule.operator}
+                </span>
+                <span className="flex-1 text-xs font-mono t-main truncate">"{rule.value}"</span>
+                <button onClick={() => removeRule(i)}
+                  className="flex-shrink-0 p-1 rounded hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-all">
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add new rule form */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
+          <select value={newRule.field} onChange={e => setNewRule(r => ({ ...r, field: e.target.value }))}
+            className="h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer">
+            {RULE_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+          <select value={newRule.operator} onChange={e => setNewRule(r => ({ ...r, operator: e.target.value }))}
+            className="h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer">
+            {RULE_OPERATORS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <input
+            className="flex-1 min-w-[140px] h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main placeholder:t-muted focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+            placeholder="e.g. unsubscribe, noreply@"
+            value={newRule.value}
+            onChange={e => setNewRule(r => ({ ...r, value: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && addRule()}
+          />
+          <button onClick={addRule} disabled={!newRule.value.trim()}
+            className="h-8 px-4 rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-all flex items-center gap-1.5">
+            <Plus size={12} /> Add Rule
+          </button>
+        </div>
+        <p className="text-[10px] t-muted mt-2">
+          Rules are checked against every incoming email before a ticket is created. Matched emails are logged as <span className="font-semibold text-slate-400">Filtered</span> and skipped.
+        </p>
+      </Card>
 
       {/* Email Log */}
       <Card>
