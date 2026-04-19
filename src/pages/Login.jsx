@@ -35,9 +35,9 @@ export default function Login() {
         style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {/* Login card */}
-      <div className="relative w-full max-w-md mx-4 animate-slide-up">
+      <div className="relative w-full max-w-md mx-3 sm:mx-4 animate-slide-up">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-glow-indigo mb-4 animate-pulse-glow">
             <Zap size={28} className="text-white" />
           </div>
@@ -46,7 +46,7 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="glass-card shadow-glass-lg p-8">
+        <div className="glass-card shadow-glass-lg p-5 sm:p-8">
           <h2 className="text-lg font-semibold t-main mb-1">Welcome back</h2>
           <p className="text-xs t-muted mb-6">Sign in to your account to continue</p>
 

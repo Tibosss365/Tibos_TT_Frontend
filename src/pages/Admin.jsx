@@ -1629,24 +1629,26 @@ export default function Admin() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">Admin Panel</h1>
           <p className="text-sm t-muted mt-0.5">System configuration and management</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleRefresh}>
+        <Button variant="ghost" size="sm" onClick={handleRefresh} className="self-start sm:self-auto flex-shrink-0">
           <RefreshCw size={13} /> Refresh
         </Button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 glass-card w-fit border border-glass">
-        {TABS.map(({ id, icon: Icon, label }) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === id ? 'bg-indigo-600/30 dark:bg-indigo-600/30 t-main border border-indigo-500/30' : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
-            <Icon size={14} />{label}
-          </button>
-        ))}
+      <div className="overflow-x-auto pb-0.5">
+        <div className="flex gap-1 p-1 glass-card w-fit min-w-full sm:min-w-0 border border-glass">
+          {TABS.map(({ id, icon: Icon, label }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${tab === id ? 'bg-indigo-600/30 dark:bg-indigo-600/30 t-main border border-indigo-500/30' : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+              <Icon size={13} />{label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* General / System Settings */}

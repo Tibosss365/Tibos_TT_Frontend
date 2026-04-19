@@ -294,14 +294,14 @@ export default function AllTickets() {
     <div className="space-y-4 animate-fade-in">
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">All Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
             {filtered.length} ticket{filtered.length !== 1 ? 's' : ''}{hasAnyFilter ? ' (filtered)' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Column picker */}
           <div className="relative" ref={colPickerRef}>
             <button
@@ -309,7 +309,7 @@ export default function AllTickets() {
               className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all
                 ${showColPicker ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400' : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}
             >
-              <SlidersHorizontal size={13} /> Columns
+              <SlidersHorizontal size={13} /> <span className="hidden sm:inline">Columns</span>
             </button>
             {showColPicker && (
               <div className="absolute right-0 top-full mt-2 w-52 glass-card border border-glass rounded-xl shadow-xl z-50 p-2 animate-fade-in">
@@ -332,7 +332,7 @@ export default function AllTickets() {
               </div>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleExportCSV}><Download size={14} /> Export CSV</Button>
+          <Button variant="ghost" size="sm" onClick={handleExportCSV}><Download size={14} /> <span className="hidden sm:inline">Export CSV</span></Button>
         </div>
       </div>
 
@@ -341,13 +341,13 @@ export default function AllTickets() {
         <div className="p-4 space-y-3">
 
           {/* Row 1: Date range tabs + dropdowns + Clear + Apply */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
 
             {/* Date range tabs */}
-            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass">
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass overflow-x-auto">
               {DATE_RANGES.map(({ key, label }) => (
                 <button key={key} onClick={() => setSF('dateRange', key)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0
                     ${staged.dateRange === key ? 'bg-indigo-500 text-white shadow-sm' : 't-muted hover:t-main'}`}>
                   {label}
                 </button>
@@ -356,15 +356,15 @@ export default function AllTickets() {
 
             {/* Custom date inputs */}
             {staged.dateRange === 'custom' && (
-              <div className="flex items-center gap-2">
-                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls} />
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls + ' flex-1 sm:flex-none'} />
                 <span className="text-xs t-muted">to</span>
-                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls} />
+                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls + ' flex-1 sm:flex-none'} />
               </div>
             )}
 
             {/* Right-side dropdowns + buttons */}
-            <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
               <select value={staged.priority} onChange={e => setSF('priority', e.target.value)} className={selectCls}>
                 <option value="">All Priorities</option>
                 {PRIORITIES.map(p => <option key={p} value={p}>{cap(p)}</option>)}
@@ -409,31 +409,33 @@ export default function AllTickets() {
           </div>
 
           {/* Row 2: Status chips + Search + Sort */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">{t('status')}</span>
-            {STATUS_OPTIONS.map(({ key }) => {
-              const count = statusCounts[key] ?? 0
-              const isActive = filters.status === key
-              return (
-                <button key={key} onClick={() => handleStatusChip(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
-                    ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
-                  {key ? t(key) : t('allStatuses')}
-                  <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
-                    ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pt-2 border-t border-glass">
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 flex-nowrap sm:flex-wrap">
+              <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1 flex-shrink-0">{t('status')}</span>
+              {STATUS_OPTIONS.map(({ key }) => {
+                const count = statusCounts[key] ?? 0
+                const isActive = filters.status === key
+                return (
+                  <button key={key} onClick={() => handleStatusChip(key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex-shrink-0
+                      ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
+                    {key ? t(key) : t('allStatuses')}
+                    <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
+                      ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
 
-            {/* Search + Sort pushed to right */}
-            <div className="ml-auto flex items-center gap-2">
-              <div className="relative">
+            {/* Search + Sort */}
+            <div className="flex items-center gap-2 sm:ml-auto flex-wrap">
+              <div className="relative flex-1 sm:flex-none">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
                 <input type="text" placeholder="Search tickets…"
                   value={filters.search} onChange={e => setFilter('search', e.target.value)}
-                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-52" />
+                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-full sm:w-48" />
                 {filters.search && (
                   <button onClick={() => setFilter('search', '')} className="absolute right-2 top-1/2 -translate-y-1/2 t-sub hover:t-main">
                     <X size={11} />
@@ -441,7 +443,7 @@ export default function AllTickets() {
                 )}
               </div>
               <select value={filters.sort} onChange={e => setFilter('sort', e.target.value)}
-                className={selectCls + ' min-w-32'}>
+                className={selectCls + ' flex-1 sm:flex-none sm:min-w-32'}>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="priority">By priority</option>
@@ -455,12 +457,12 @@ export default function AllTickets() {
 
       {/* ── Bulk action bar ───────────────────────────────────────────────── */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-indigo-500 dark:bg-indigo-600/15 border border-indigo-500/30 animate-fade-in">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-2.5 rounded-xl bg-indigo-500 dark:bg-indigo-600/15 border border-indigo-500/30 animate-fade-in">
           <span className="text-sm text-white dark:text-indigo-300 font-medium">{selectedIds.length} selected</span>
-          <div className="flex gap-2 ml-auto">
-            <Button variant="ghost" size="sm" onClick={handleBulkResolve} className="text-white dark:text-inherit">Mark Resolved</Button>
-            <Button variant="ghost" size="sm" onClick={handleBulkClose}   className="text-white dark:text-inherit">Mark Closed</Button>
-            <Button variant="danger" size="sm" onClick={handleBulkDelete}><Trash2 size={12} /> Delete</Button>
+          <div className="flex flex-wrap gap-2 sm:ml-auto">
+            <Button variant="ghost" size="sm" onClick={handleBulkResolve} className="text-white dark:text-inherit"><span className="hidden sm:inline">Mark </span>Resolved</Button>
+            <Button variant="ghost" size="sm" onClick={handleBulkClose}   className="text-white dark:text-inherit"><span className="hidden sm:inline">Mark </span>Closed</Button>
+            <Button variant="danger" size="sm" onClick={handleBulkDelete}><Trash2 size={12} /> <span className="hidden sm:inline">Delete</span></Button>
             <Button variant="ghost" size="sm" onClick={clearSelection}     className="text-white dark:text-inherit"><X size={12} /></Button>
           </div>
         </div>

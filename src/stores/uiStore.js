@@ -3,10 +3,13 @@ import { persist } from 'zustand/middleware'
 
 let toastId = 0
 
+// On mobile (< 1024px) default to closed; on desktop default to open
+const defaultSidebarOpen = typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+
 export const useUiStore = create(
   persist(
     (set, get) => ({
-      sidebarOpen: true,
+      sidebarOpen: defaultSidebarOpen,
       isDark: false,
       toasts: [],
       activeModal: null,   // { type: 'ticket', data: ticketObj }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Outlet, Navigate } from 'react-router-dom'
+import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { ToastContainer } from '../ui/Toast'
@@ -18,8 +18,16 @@ export function Layout() {
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
   } = useAdminStore()
   const { fetchNotifications, addNotification } = useNotificationStore()
-  const { activeModal, closeModal } = useUiStore()
+  const { activeModal, closeModal, sidebarOpen, toggleSidebar } = useUiStore()
   const sseRef = useRef(null)
+  const location = useLocation()
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    if (window.innerWidth < 1024 && sidebarOpen) {
+      toggleSidebar()
+    }
+  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isLoggedIn || !token) return
@@ -74,17 +82,41 @@ export function Layout() {
 
   return (
     <div
-      className="flex h-screen overflow-hidden transition-colors duration-300"
+      className="flex h-screen overflow-hidden transition-colors duration-300 relative"
       style={{ background: 'var(--c-app-bg)' }}
     >
-      <Sidebar />
+      {/* ── Mobile backdrop (closes sidebar on tap outside) ──────────────────── */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-20 lg:hidden transition-opacity duration-300 ${
+          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={toggleSidebar}
+      />
+
+      {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
+      {/* On mobile: fixed overlay, hidden with translateX.
+          On desktop (lg+): static in flow, always visible. */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-30 h-full
+          lg:relative lg:z-auto lg:translate-x-0
+          transition-transform duration-300
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <Sidebar />
+      </div>
+
+      {/* ── Main area ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6">
           <Outlet />
         </main>
       </div>
+
       <ToastContainer />
+
       {activeModal?.type === 'ticket' && activeModal.data && (
         <TicketDetailModal ticket={activeModal.data} onClose={closeModal} />
       )}

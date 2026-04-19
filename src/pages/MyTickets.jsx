@@ -264,8 +264,8 @@ export default function MyTickets() {
     <div className="space-y-4 animate-fade-in">
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">My Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
             {myTickets.length} ticket{myTickets.length !== 1 ? 's' : ''} assigned to you
@@ -278,13 +278,13 @@ export default function MyTickets() {
         </div>
 
         {/* Column picker */}
-        <div className="relative" ref={pickerRef}>
+        <div className="relative flex-shrink-0" ref={pickerRef}>
           <button
             onClick={() => setShowColPicker(p => !p)}
             className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all
               ${showColPicker ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400' : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}
           >
-            <SlidersHorizontal size={13} /> Customize Columns
+            <SlidersHorizontal size={13} /> <span className="hidden sm:inline">Customize </span>Columns
           </button>
           {showColPicker && (
             <div className="absolute right-0 top-full mt-2 w-52 glass-card border border-glass rounded-xl shadow-xl z-50 p-2 animate-fade-in">
@@ -355,10 +355,10 @@ export default function MyTickets() {
                 return (
                   <div
                     key={ticket._uuid}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-black/3 dark:hover:bg-white/3 transition-colors"
+                    className="flex items-start sm:items-center gap-3 px-4 py-3 hover:bg-black/3 dark:hover:bg-white/3 transition-colors"
                   >
                     {/* Priority strip */}
-                    <div className={`flex-shrink-0 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide ${PRIORITY_COLOR[pri]}`}>
+                    <div className={`flex-shrink-0 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wide mt-0.5 sm:mt-0 ${PRIORITY_COLOR[pri]}`}>
                       {pri}
                     </div>
 
@@ -368,10 +368,10 @@ export default function MyTickets() {
                         <span className="font-mono text-[11px] t-sub flex-shrink-0">{ticket.id}</span>
                         <span className="text-sm font-medium t-main truncate group-hover:text-indigo-500">{ticket.subject}</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <span className="text-[10px] t-muted truncate">{getCategoryName(ticket.category)}</span>
-                        <span className="text-[10px] t-muted">·</span>
-                        <span className="text-[10px] t-muted">{ticket.company}</span>
+                        <span className="text-[10px] t-muted hidden sm:inline">·</span>
+                        <span className="text-[10px] t-muted hidden sm:inline">{ticket.company}</span>
                         <span className="text-[10px] t-muted">·</span>
                         <span className="text-[10px] t-muted">{timeAgo(ticket.created)}</span>
                       </div>
@@ -423,13 +423,13 @@ export default function MyTickets() {
         <div className="p-4 space-y-3">
 
           {/* Row 1: Date range tabs + dropdowns + Clear + Apply */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2">
 
             {/* Date range tabs */}
-            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass">
+            <div className="flex items-center gap-0.5 bg-black/5 dark:bg-white/5 rounded-lg p-1 border border-glass overflow-x-auto">
               {DATE_RANGES.map(({ key, label }) => (
                 <button key={key} onClick={() => setSF('dateRange', key)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap flex-shrink-0
                     ${staged.dateRange === key ? 'bg-indigo-500 text-white shadow-sm' : 't-muted hover:t-main'}`}>
                   {label}
                 </button>
@@ -438,15 +438,15 @@ export default function MyTickets() {
 
             {/* Custom date inputs */}
             {staged.dateRange === 'custom' && (
-              <div className="flex items-center gap-2">
-                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls} />
+              <div className="flex items-center gap-2 flex-wrap">
+                <input type="date" value={staged.dateFrom} onChange={e => setSF('dateFrom', e.target.value)} className={selectCls + ' flex-1 sm:flex-none'} />
                 <span className="text-xs t-muted">to</span>
-                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls} />
+                <input type="date" value={staged.dateTo}   onChange={e => setSF('dateTo',   e.target.value)} className={selectCls + ' flex-1 sm:flex-none'} />
               </div>
             )}
 
             {/* Right-side dropdowns + buttons */}
-            <div className="flex flex-wrap items-center gap-2 ml-auto">
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
               <select value={staged.priority} onChange={e => setSF('priority', e.target.value)} className={selectCls}>
                 <option value="">All Priorities</option>
                 {PRIORITIES.map(p => <option key={p} value={p}>{cap(p)}</option>)}
@@ -491,31 +491,33 @@ export default function MyTickets() {
           </div>
 
           {/* Row 2: Status chips + Search */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-glass">
-            <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1">{t('status')}</span>
-            {STATUS_OPTIONS.map(({ key }) => {
-              const count = statusCounts[key] ?? 0
-              const isActive = activeStatus === key
-              return (
-                <button key={key} onClick={() => handleStatusChip(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
-                    ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
-                  {key ? t(key) : t('allStatuses')}
-                  <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
-                    ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
-                    {count}
-                  </span>
-                </button>
-              )
-            })}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pt-2 border-t border-glass">
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 flex-nowrap sm:flex-wrap">
+              <span className="text-[10px] font-bold t-sub uppercase tracking-wider mr-1 flex-shrink-0">{t('status')}</span>
+              {STATUS_OPTIONS.map(({ key }) => {
+                const count = statusCounts[key] ?? 0
+                const isActive = activeStatus === key
+                return (
+                  <button key={key} onClick={() => handleStatusChip(key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex-shrink-0
+                      ${isActive ? STATUS_ACTIVE_CLS[key] : 'border-glass t-muted hover:t-main hover:border-indigo-500/30'}`}>
+                    {key ? t(key) : t('allStatuses')}
+                    <span className={`min-w-[18px] text-center text-[10px] font-bold px-1 py-0.5 rounded-full
+                      ${isActive ? 'bg-black/10 dark:bg-white/20' : 'bg-black/10 dark:bg-white/10 t-sub'}`}>
+                      {count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
 
-            {/* Search pushed to right */}
-            <div className="ml-auto">
+            {/* Search */}
+            <div className="sm:ml-auto">
               <div className="relative">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
                 <input type="text" placeholder="Search my tickets…"
                   value={search} onChange={e => setSearch(e.target.value)}
-                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-52" />
+                  className="glass-input pl-8 pr-7 py-1.5 text-xs w-full sm:w-48" />
                 {search && (
                   <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 t-sub hover:t-main">
                     <X size={11} />

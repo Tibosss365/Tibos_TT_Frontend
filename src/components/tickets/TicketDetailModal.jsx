@@ -196,7 +196,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col">
+    <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col lg:overflow-y-auto">
       {/* Requester */}
       <div className="p-4 border-b border-glass">
         <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">{t('requester')}</div>
@@ -230,7 +230,8 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
       </div>
 
       {/* Ticket Meta */}
-      <div className="p-4 border-b border-glass space-y-3 flex-1">
+      <div className="p-4 border-b border-glass flex-1">
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
         <div>
           <div className={labelCls}>{t('id')}</div>
           <div className="text-xs font-mono font-semibold t-main">{ticket.id}</div>
@@ -243,7 +244,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           <div className={labelCls}>{t('updated')}</div>
           <div className="text-xs t-main">{fmtDateTime(ticket.updated)}</div>
         </div>
-        <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+        <div className="col-span-2 lg:col-span-1 p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
           <div className={labelCls + ' mb-2'}>{t('slaStatus')}</div>
           <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
         </div>
@@ -295,6 +296,7 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
             <div className="text-xs t-main py-1">{edits.asset || '—'}</div>
           )}
         </div>
+        </div>{/* end grid */}
       </div>
 
       {/* Action Buttons */}
@@ -495,11 +497,11 @@ export function TicketDetailModal({ ticket, onClose }) {
   const totalHours = (liveTicket.workLog||[]).reduce((s, w) => s + Number(w.hours||0), 0)
 
   return (
-    <Modal isOpen onClose={onClose} title="" size="xl">
-      <div className="flex flex-col" style={{ maxHeight: 'calc(90vh - 56px)' }}>
+    <Modal isOpen onClose={onClose} title="" size="xl" fillHeight>
+      <div className="flex flex-col flex-1 min-h-0">
 
         {/* ── Top Status Bar ───────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-2">
+        <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-1.5">
           <span className="text-sm font-bold t-main font-mono">{ticket.id}</span>
           <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
           {isEditing ? (
@@ -555,20 +557,21 @@ export function TicketDetailModal({ ticket, onClose }) {
               </span>
             )
           })()}
-          <div className="flex items-center gap-1.5 text-[10px] t-sub">
+          <div className="hidden sm:flex items-center gap-1.5 text-[10px] t-sub">
             <CalendarDays size={11} />
             Created {fmtDateTime(ticket.created)}
           </div>
         </div>
 
         {/* ── Body ─────────────────────────────────────────────────────── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Mobile: vertical stack (body scrolls as one). Desktop: side-by-side, each column scrolls independently. */}
+        <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
 
           {/* Left: Tabs */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-w-0 flex flex-col lg:overflow-hidden">
 
             {/* Tab bar */}
-            <div className="flex border-b border-glass px-4 flex-shrink-0 overflow-x-auto">
+            <div className="flex border-b border-glass px-2 sm:px-4 flex-shrink-0 overflow-x-auto">
               {MODAL_TABS.map(({ id, icon: Icon, label }) => {
                 // Badge counts
                 let badge = 0
@@ -593,7 +596,7 @@ export function TicketDetailModal({ ticket, onClose }) {
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex-1 lg:overflow-y-auto p-4 sm:p-5">
 
               {/* ── Conversations ── */}
               {activeTab === 'conversations' && (

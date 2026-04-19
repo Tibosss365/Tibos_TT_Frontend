@@ -100,9 +100,9 @@ export default function NewTicket() {
         <p className="text-sm t-muted mt-0.5">Fill in the details below to create a support request</p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main form */}
-        <form onSubmit={handleSubmit} className="xl:col-span-2 space-y-4">
+        <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
           {/* Ticket Type */}
           <Card>
             <CardHeader title="Ticket Type" />
@@ -164,7 +164,7 @@ export default function NewTicket() {
                 {errors.subject && <p className="text-xs text-rose-500 mt-1">{errors.subject}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Group / Team</label>
                   <select className="glass-input w-full text-sm" value={form.group_id} onChange={e => { set('group_id', e.target.value); set('category', '') }}>
@@ -183,7 +183,7 @@ export default function NewTicket() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={labelCls}>Asset / Device</label>
                   <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
@@ -202,7 +202,7 @@ export default function NewTicket() {
               {/* Priority selector */}
               <div>
                 <label className={labelCls}>Priority</label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {PRIORITIES.map(p => {
                     const ui = PRIORITY_UI[p]
                     const active = form.priority === p

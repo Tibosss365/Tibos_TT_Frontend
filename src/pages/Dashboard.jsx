@@ -418,7 +418,7 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
         <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  />
         <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  />
         <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   />
@@ -542,7 +542,7 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Charts row ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader title="Tickets by Category" subtitle="Distribution across categories" />
           {categoryData.length === 0 ? (
@@ -654,8 +654,8 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Recent tickets + activity ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <div className="xl:col-span-3">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <div className="lg:col-span-3">
           <Card>
             <CardHeader
               title="Recent Tickets"
@@ -699,7 +699,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader title="Activity Feed" subtitle="Recent events" />
             <div className="space-y-3">

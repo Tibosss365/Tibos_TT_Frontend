@@ -35,7 +35,11 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`flex flex-col h-full relative transition-all duration-300 ${sidebarOpen ? 'w-60' : 'w-16'}`}
+      // On mobile: always w-60 (overlay panel).
+      // On desktop (lg+): w-60 when open, w-16 when collapsed.
+      className={`flex flex-col h-full relative transition-all duration-300 ${
+        sidebarOpen ? 'w-60' : 'w-60 lg:w-16'
+      }`}
       style={{
         background: 'var(--c-sidebar-bg)',
         borderRight: '1px solid var(--c-border)',
@@ -143,10 +147,10 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Collapse toggle */}
+      {/* Collapse toggle — desktop only */}
       <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-20 w-6 h-6 rounded-full flex items-center justify-center transition-all z-10 hover:bg-indigo-600 hover:text-white"
+        className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center transition-all z-10 hover:bg-indigo-600 hover:text-white"
         style={{
           background: 'var(--c-card-bg)',
           border: '1px solid var(--c-border)',

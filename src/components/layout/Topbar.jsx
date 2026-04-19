@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight } from 'lucide-react'
+import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu } from 'lucide-react'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -24,7 +24,7 @@ export function Topbar() {
   const { notifications, markAllRead, markRead, unreadCount } = useNotificationStore()
   const { tickets } = useTicketStore()
   const { setFilter } = useTicketStore()
-  const { isDark, toggleTheme, openModal } = useUiStore()
+  const { isDark, toggleTheme, openModal, toggleSidebar } = useUiStore()
   const [notifOpen, setNotifOpen] = useState(false)
   const [searchVal, setSearchVal] = useState('')
 
@@ -61,8 +61,20 @@ export function Topbar() {
           WebkitBackdropFilter: 'blur(12px)',
         }}
       >
+        {/* ── Mobile hamburger ── */}
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden p-2 rounded-lg flex-shrink-0 transition-all"
+          style={{ color: 'var(--c-text-40)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--c-hover)'; e.currentTarget.style.color = 'var(--c-text)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--c-text-40)' }}
+          title="Toggle menu"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Search */}
-        <div className="flex-1 max-w-md relative">
+        <div className="flex-1 min-w-0 max-w-md relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--c-text-30)' }} />
           <input
             type="text"
@@ -154,7 +166,7 @@ export function Topbar() {
       <div
         className="fixed top-0 right-0 h-full z-50 flex flex-col"
         style={{
-          width: '360px',
+          width: 'min(360px, 100vw)',
           background: 'var(--c-card-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',

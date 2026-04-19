@@ -105,18 +105,18 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">Analytics</h1>
           <p className="text-sm t-muted mt-0.5">Performance metrics and insights</p>
         </div>
-        <div className="text-xs t-sub">Avg resolution: <span className="font-bold t-main">{data.avg_resolution_hours}h</span></div>
+        <div className="text-xs t-sub flex-shrink-0">Avg resolution: <span className="font-bold t-main">{data.avg_resolution_hours}h</span></div>
       </div>
 
       {/* Top row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Status bar chart */}
-        <div className="xl:col-span-2">
+        <div className="lg:col-span-2">
           <Card>
             <CardHeader title="Tickets by Status" subtitle="Current distribution" />
             <ResponsiveContainer width="100%" height={200}>
@@ -135,7 +135,7 @@ export default function Analytics() {
         {/* Resolution rate */}
         <Card>
           <CardHeader title="Resolution Rate" />
-          <div className="flex flex-col items-center justify-center h-48">
+          <div className="flex flex-col items-center justify-center py-4 lg:h-48">
             <div className="relative w-36 h-36">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" className="text-black/5 dark:text-white/5" strokeWidth="10" />
@@ -163,7 +163,7 @@ export default function Analytics() {
       </div>
 
       {/* Middle row */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Volume trend */}
         <Card>
           <CardHeader title="Ticket Volume" subtitle="Tickets created over last 30 days" />
