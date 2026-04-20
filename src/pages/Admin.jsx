@@ -644,6 +644,32 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
 }
 
 // ─── Test Email Panel ─────────────────────────────────────────────────────────
+const THRESHOLD_LONG_MSG = 120
+
+function TestEmailErrorDetail({ message }) {
+  const [expanded, setExpanded] = useState(false)
+  const isLong = message && message.length > THRESHOLD_LONG_MSG
+  // Detect Azure/M365 hint messages — they mention "Azure Portal" or "AADSTS"
+  const isAzureHint = message && (message.includes('Azure Portal') || message.includes('AADSTS') || message.includes('Client Secret'))
+  const displayed = isLong && !expanded ? message.slice(0, THRESHOLD_LONG_MSG) + '…' : message
+  return (
+    <div className="mt-0.5 space-y-1.5">
+      {isAzureHint && (
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/25 w-fit">
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Azure / M365</span>
+        </div>
+      )}
+      <p className="text-[11px] t-muted leading-relaxed">{displayed}</p>
+      {isLong && (
+        <button onClick={() => setExpanded(p => !p)}
+          className="text-[10px] font-semibold text-rose-500 hover:text-rose-400 transition-colors">
+          {expanded ? 'Show less ▲' : 'Show full error ▼'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 function TestEmailPanel({ open, testTo, setTestTo, status, message, onSend, onClose, inputCls }) {
   if (!open) return null
   return (
@@ -707,9 +733,9 @@ function TestEmailPanel({ open, testTo, setTestTo, status, message, onSend, onCl
       {status === 'error' && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/25">
           <XCircle size={15} className="text-rose-500 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="text-xs font-semibold text-rose-600 dark:text-rose-400">Test Failed</div>
-            <div className="text-[11px] t-muted mt-0.5">{message}</div>
+            <TestEmailErrorDetail message={message} />
           </div>
         </div>
       )}
@@ -1287,6 +1313,9 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Client Secret</label>
                 <input type="password" className={inputCls} value={m365.clientSecret || ''} placeholder="••••••••••••"
                   onChange={e => setM365('clientSecret', e.target.value)} />
+                <p className="text-[10px] t-sub mt-1">
+                  ⚠️ Use the secret <strong>Value</strong> from Azure Portal → App registrations → Certificates &amp; secrets — not the ID (GUID).
+                </p>
               </div>
               <div>
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
@@ -1528,6 +1557,9 @@ function AlertEmailConfigCard({ alertEdits, setAlertEdits, inputCls }) {
                     {showSecret ? <EyeOff size={13} /> : <Eye size={13} />}
                   </button>
                 </div>
+                <p className="text-[10px] t-sub mt-1">
+                  ⚠️ Use the secret <strong>Value</strong> from Azure Portal → App registrations → Certificates &amp; secrets — not the ID (GUID).
+                </p>
               </div>
               <div className="sm:col-span-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
                 <p className="text-xs text-blue-500 leading-relaxed">
