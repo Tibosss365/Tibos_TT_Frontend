@@ -617,6 +617,16 @@ export const SEED_TICKETS = [
 ]
 
 // ── Alert Settings ────────────────────────────────────────────────────────────
+const _DEFAULT_REPORT_TEMPLATE = (subject) => ({
+  subject,
+  intro: "Here's your helpdesk ticket health summary.",
+  includeUnassigned: true,
+  includeSla:        true,
+  includeOnHold:     true,
+  includeOpenToday:  true,
+  footer: '',
+})
+
 export const DEFAULT_ALERT_SETTINGS = {
   conditions: {
     unassigned:  { enabled: true,  thresholdMins: 30 },
@@ -626,12 +636,18 @@ export const DEFAULT_ALERT_SETTINGS = {
     inProgress:  { enabled: false, thresholdHours: 48 },
   },
   reports: {
-    daily:   { enabled: false, time: '08:00' },
-    weekly:  { enabled: false, day: 'monday', time: '08:00' },
-    monthly: { enabled: false, dayOfMonth: 1, time: '08:00' },
+    daily:   { enabled: false, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📊 Daily Helpdesk Report — {date}') },
+    weekly:  { enabled: false, day: 'monday', time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📆 Weekly Helpdesk Report — Week of {date}') },
+    monthly: { enabled: false, dayOfMonth: 1, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('🗓️ Monthly Helpdesk Report — {month} {year}') },
   },
   recipients: {
     includeAdmin: true,
     emails: [],
+  },
+  alertEmailConfig: {
+    useSameAsEmail: true,
+    type: 'smtp',
+    smtp: { host: '', port: '587', security: 'tls', from: '', user: '', pass: '' },
+    m365: { tenantId: '', clientId: '', clientSecret: '', from: '' },
   },
 }

@@ -1392,6 +1392,310 @@ function Toggle({ on, onChange, size = 'md' }) {
   )
 }
 
+// ─── Alert Email Config Card ───────────────────────────────────────────────────
+const ALERT_EMAIL_TYPES = [
+  { id: 'smtp', label: 'SMTP',           icon: '📧' },
+  { id: 'm365', label: 'Microsoft 365',  icon: '🔷' },
+]
+
+function AlertEmailConfigCard({ alertEdits, setAlertEdits, inputCls }) {
+  const [showPass, setShowPass] = useState(false)
+  const [showSecret, setShowSecret] = useState(false)
+  const cfg = alertEdits.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig
+
+  const setEmail  = p => setAlertEdits(s => ({ ...s, alertEmailConfig: { ...(s.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig), ...p } }))
+  const setSmtp   = p => setAlertEdits(s => ({ ...s, alertEmailConfig: { ...(s.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig), smtp: { ...(s.alertEmailConfig?.smtp || {}), ...p } } }))
+  const setM365   = p => setAlertEdits(s => ({ ...s, alertEmailConfig: { ...(s.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig), m365: { ...(s.alertEmailConfig?.m365 || {}), ...p } } }))
+
+  return (
+    <Card>
+      <CardHeader
+        title="Alert Email Account"
+        subtitle="Send alert notifications and reports from a dedicated email address"
+      />
+
+      {/* Use same toggle */}
+      <div className="flex items-center justify-between p-3.5 rounded-xl border border-glass bg-black/3 dark:bg-white/[0.03] mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-500/12 border border-indigo-500/25 flex items-center justify-center">
+            <Link2 size={15} className="text-indigo-500" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold t-main">Use main Email configuration</div>
+            <div className="text-xs t-muted">Reuse the account configured in the Email tab</div>
+          </div>
+        </div>
+        <Toggle on={cfg.useSameAsEmail} onChange={() => setEmail({ useSameAsEmail: !cfg.useSameAsEmail })} />
+      </div>
+
+      {/* Dedicated config — shown only when useSameAsEmail is false */}
+      {!cfg.useSameAsEmail && (
+        <div className="space-y-4">
+          {/* Type selector */}
+          <div className="flex gap-1.5">
+            {ALERT_EMAIL_TYPES.map(({ id, label, icon }) => (
+              <button key={id} onClick={() => setEmail({ type: id })}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all
+                  ${cfg.type === id
+                    ? 'bg-indigo-500/15 text-indigo-500 border-indigo-500/30'
+                    : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                <span>{icon}</span>{label}
+              </button>
+            ))}
+          </div>
+
+          {/* SMTP fields */}
+          {cfg.type === 'smtp' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border border-glass bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
+                <input className={inputCls} type="email" placeholder="alerts@company.com"
+                  value={cfg.smtp?.from || ''}
+                  onChange={e => setSmtp({ from: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">SMTP Host</label>
+                <input className={inputCls} placeholder="smtp.office365.com"
+                  value={cfg.smtp?.host || ''}
+                  onChange={e => setSmtp({ host: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Port</label>
+                  <input className={inputCls} placeholder="587"
+                    value={cfg.smtp?.port || ''}
+                    onChange={e => setSmtp({ port: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Security</label>
+                  <select className={inputCls} value={cfg.smtp?.security || 'tls'} onChange={e => setSmtp({ security: e.target.value })}>
+                    <option value="tls">TLS</option>
+                    <option value="ssl">SSL</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Username</label>
+                <input className={inputCls} placeholder="alerts@company.com"
+                  value={cfg.smtp?.user || ''}
+                  onChange={e => setSmtp({ user: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Password</label>
+                <div className="relative">
+                  <input type={showPass ? 'text' : 'password'} className={`${inputCls} pr-9`} placeholder="••••••••"
+                    value={cfg.smtp?.pass || ''}
+                    onChange={e => setSmtp({ pass: e.target.value })} />
+                  <button type="button" onClick={() => setShowPass(p => !p)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 t-sub hover:t-main transition-colors">
+                    {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Microsoft 365 / Graph fields */}
+          {cfg.type === 'm365' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border border-glass bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">From Address</label>
+                <input className={inputCls} type="email" placeholder="alerts@company.com"
+                  value={cfg.m365?.from || ''}
+                  onChange={e => setM365({ from: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Tenant ID</label>
+                <input className={inputCls} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={cfg.m365?.tenantId || ''}
+                  onChange={e => setM365({ tenantId: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Application (Client) ID</label>
+                <input className={inputCls} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={cfg.m365?.clientId || ''}
+                  onChange={e => setM365({ clientId: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Client Secret</label>
+                <div className="relative">
+                  <input type={showSecret ? 'text' : 'password'} className={`${inputCls} pr-9`} placeholder="••••••••"
+                    value={cfg.m365?.clientSecret || ''}
+                    onChange={e => setM365({ clientSecret: e.target.value })} />
+                  <button type="button" onClick={() => setShowSecret(p => !p)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 t-sub hover:t-main transition-colors">
+                    {showSecret ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                </div>
+              </div>
+              <div className="sm:col-span-2 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                <p className="text-xs text-blue-500 leading-relaxed">
+                  <strong>Required permissions:</strong> Microsoft Graph → <code>Mail.Send</code> (Application permission).
+                  Grant admin consent in Azure → App registrations → API permissions.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ─── Report Email Templates Card ──────────────────────────────────────────────
+const TEMPLATE_VARS_HINT = [
+  { tag: '{date}',        desc: 'Formatted date' },
+  { tag: '{month}',       desc: 'Month name' },
+  { tag: '{year}',        desc: 'Year number' },
+  { tag: '{system_name}', desc: 'Your company/system name' },
+]
+
+const REPORT_STAT_ITEMS = [
+  { key: 'includeUnassigned', label: 'Unassigned tickets', emoji: '👤', color: 'amber' },
+  { key: 'includeSla',        label: 'SLA breaches',       emoji: '⚠️',  color: 'rose' },
+  { key: 'includeOnHold',     label: 'On-hold tickets',    emoji: '⏸',  color: 'violet' },
+  { key: 'includeOpenToday',  label: 'Open today',         emoji: '📬', color: 'blue' },
+]
+
+function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
+  const [activeReport, setActiveReport] = useState('daily')
+
+  const REPORT_TABS = [
+    { key: 'daily',   label: 'Daily',   emoji: '📅' },
+    { key: 'weekly',  label: 'Weekly',  emoji: '📆' },
+    { key: 'monthly', label: 'Monthly', emoji: '🗓️' },
+  ]
+
+  const defaults = DEFAULT_ALERT_SETTINGS.reports[activeReport].template
+  const tmpl = alertEdits.reports?.[activeReport]?.template || defaults
+
+  const setTmpl = patch =>
+    setAlertEdits(s => ({
+      ...s,
+      reports: {
+        ...s.reports,
+        [activeReport]: {
+          ...(s.reports?.[activeReport] || DEFAULT_ALERT_SETTINGS.reports[activeReport]),
+          template: { ...(s.reports?.[activeReport]?.template || defaults), ...patch },
+        },
+      },
+    }))
+
+  return (
+    <Card>
+      <CardHeader
+        title="Report Email Templates"
+        subtitle="Customise the subject, intro, content and signature for each report type"
+      />
+
+      {/* Report type selector */}
+      <div className="flex gap-1.5 mb-5">
+        {REPORT_TABS.map(({ key, label, emoji }) => (
+          <button key={key} onClick={() => setActiveReport(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-all
+              ${activeReport === key
+                ? 'bg-indigo-500/15 text-indigo-500 border-indigo-500/30'
+                : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+            <span>{emoji}</span>{label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4">
+        {/* Subject */}
+        <div>
+          <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Email Subject</label>
+          <input className={inputCls}
+            value={tmpl.subject || ''}
+            onChange={e => setTmpl({ subject: e.target.value })}
+            placeholder={defaults.subject} />
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {TEMPLATE_VARS_HINT.map(({ tag, desc }) => (
+              <button key={tag} type="button"
+                onClick={() => setTmpl({ subject: (tmpl.subject || '') + tag })}
+                title={`Insert ${desc}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/5 dark:bg-white/8 text-[10px] font-mono t-sub hover:t-main hover:bg-indigo-500/10 transition-all">
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Intro text */}
+        <div>
+          <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Intro / Preface</label>
+          <textarea className={`${inputCls} resize-none`} rows={2}
+            value={tmpl.intro || ''}
+            onChange={e => setTmpl({ intro: e.target.value })}
+            placeholder={defaults.intro} />
+        </div>
+
+        {/* What to include */}
+        <div>
+          <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Include in Report</label>
+          <div className="grid grid-cols-2 gap-2">
+            {REPORT_STAT_ITEMS.map(({ key, label, emoji, color }) => {
+              const active = tmpl[key] !== false
+              const activeCls = {
+                amber:  'border-amber-400/40  bg-amber-500/5  text-amber-700  dark:text-amber-400',
+                rose:   'border-rose-400/40   bg-rose-500/5   text-rose-700   dark:text-rose-400',
+                violet: 'border-violet-400/40 bg-violet-500/5 text-violet-700 dark:text-violet-400',
+                blue:   'border-blue-400/40   bg-blue-500/5   text-blue-700   dark:text-blue-400',
+              }[color]
+              return (
+                <label key={key}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer select-none transition-all
+                    ${active ? activeCls : 'border-glass t-muted hover:border-glass'}`}>
+                  <input type="checkbox" checked={active}
+                    onChange={e => setTmpl({ [key]: e.target.checked })}
+                    className="rounded accent-indigo-500 flex-shrink-0" />
+                  <span className="text-xs font-semibold">{emoji} {label}</span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Footer / Signature */}
+        <div>
+          <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+            Footer / Signature <span className="normal-case font-normal t-muted">(optional)</span>
+          </label>
+          <input className={inputCls}
+            value={tmpl.footer || ''}
+            onChange={e => setTmpl({ footer: e.target.value })}
+            placeholder="Powered by Tibos Helpdesk" />
+        </div>
+
+        {/* Live preview strip */}
+        <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03]">
+          <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Eye size={10} /> Preview
+          </div>
+          <div className="text-xs t-sub mb-1">
+            <span className="font-semibold t-main">Subject: </span>
+            {(tmpl.subject || defaults.subject)
+              .replace('{date}', new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }))
+              .replace('{month}', new Date().toLocaleString('default', { month: 'long' }))
+              .replace('{year}', new Date().getFullYear())
+              .replace('{system_name}', 'Tibos Helpdesk')}
+          </div>
+          <div className="text-xs t-muted italic">{tmpl.intro || defaults.intro}</div>
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {REPORT_STAT_ITEMS.filter(({ key }) => tmpl[key] !== false).map(({ emoji, label }) => (
+              <span key={label} className="text-[10px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/8 t-sub">
+                {emoji} {label}
+              </span>
+            ))}
+          </div>
+          {tmpl.footer && <div className="text-[10px] t-muted mt-2 pt-2 border-t border-glass">{tmpl.footer}</div>}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving }) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState('')
@@ -1417,6 +1721,8 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   const activeCount  = Object.values(alertEdits.conditions).filter(c => c.enabled).length
   const reportCount  = Object.values(alertEdits.reports).filter(r => r.enabled).length
   const recipCount   = (alertEdits.recipients.includeAdmin ? 1 : 0) + alertEdits.recipients.emails.length
+  const emailCfg     = alertEdits.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig
+  const emailLabel   = emailCfg.useSameAsEmail ? 'main email' : (emailCfg.type === 'm365' ? 'M365' : 'SMTP')
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -1424,9 +1730,9 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
       {/* ── Summary pills ───────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
         {[
-          { count: activeCount,  label: 'condition',  icon: BellRing,     active: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/25' },
-          { count: reportCount,  label: 'report',     icon: CalendarDays, active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
-          { count: recipCount,   label: 'recipient',  icon: Users,        active: 'bg-sky-500/10 text-sky-500 border-sky-500/25' },
+          { count: activeCount, label: 'condition',  icon: BellRing,     active: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/25' },
+          { count: reportCount, label: 'report',     icon: CalendarDays, active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
+          { count: recipCount,  label: 'recipient',  icon: Users,        active: 'bg-sky-500/10 text-sky-500 border-sky-500/25' },
         ].map(({ count, label, icon: Icon, active }) => (
           <span key={label}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
@@ -1435,6 +1741,11 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
             {count} {label}{count !== 1 ? 's' : ''} {count > 0 ? 'active' : ''}
           </span>
         ))}
+        {/* Email account pill */}
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border bg-black/5 dark:bg-white/5 t-muted border-glass">
+          <Mail size={11} />
+          via {emailLabel}
+        </span>
       </div>
 
       {/* ── 1. Alert Conditions ──────────────────────────────────────────── */}
@@ -1578,7 +1889,13 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
         </div>
       </Card>
 
-      {/* ── 3. Recipients ────────────────────────────────────────────────── */}
+      {/* ── 3. Report Email Templates ────────────────────────────────────── */}
+      <ReportTemplatesCard alertEdits={alertEdits} setAlertEdits={setAlertEdits} inputCls={inputCls} />
+
+      {/* ── 4. Alert Email Account ───────────────────────────────────────── */}
+      <AlertEmailConfigCard alertEdits={alertEdits} setAlertEdits={setAlertEdits} inputCls={inputCls} />
+
+      {/* ── 5. Recipients ────────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title="Alert Recipients"
@@ -1988,8 +2305,23 @@ export default function Admin() {
   const [alertEdits, setAlertEdits] = useState(() => alertSettings || DEFAULT_ALERT_SETTINGS)
   const [alertSaving, setAlertSaving] = useState(false)
 
-  // Sync when store loads real settings from backend
-  useEffect(() => { setAlertEdits(alertSettings || DEFAULT_ALERT_SETTINGS) }, [alertSettings])
+  // Sync when store loads real settings — deep-merge so new fields get defaults
+  useEffect(() => {
+    const s = alertSettings || {}
+    const d = DEFAULT_ALERT_SETTINGS
+    setAlertEdits({
+      ...d, ...s,
+      reports: {
+        daily:   { ...d.reports.daily,   ...(s.reports?.daily   || {}), template: { ...d.reports.daily.template,   ...(s.reports?.daily?.template   || {}) } },
+        weekly:  { ...d.reports.weekly,  ...(s.reports?.weekly  || {}), template: { ...d.reports.weekly.template,  ...(s.reports?.weekly?.template  || {}) } },
+        monthly: { ...d.reports.monthly, ...(s.reports?.monthly || {}), template: { ...d.reports.monthly.template, ...(s.reports?.monthly?.template || {}) } },
+      },
+      alertEmailConfig: { ...d.alertEmailConfig, ...(s.alertEmailConfig || {}),
+        smtp: { ...d.alertEmailConfig.smtp, ...(s.alertEmailConfig?.smtp || {}) },
+        m365: { ...d.alertEmailConfig.m365, ...(s.alertEmailConfig?.m365 || {}) },
+      },
+    })
+  }, [alertSettings])
 
   // Fetch alert settings whenever the alerts tab is opened
   useEffect(() => {
@@ -2010,10 +2342,20 @@ export default function Admin() {
 
   const handleTestAlert = async () => {
     try {
-      await sendTestAlert()
-      addToast('Test alert sent to all recipients', 'success')
-    } catch {
-      addToast('Test alert failed — check email configuration', 'error')
+      const result = await sendTestAlert()
+      addToast(
+        result?.sent > 0
+          ? `Test alert sent to ${result.sent} recipient${result.sent > 1 ? 's' : ''}`
+          : 'Test alert sent',
+        'success'
+      )
+    } catch (err) {
+      const msg = err?.message || ''
+      // "Failed to fetch" = network / CORS issue — give a clear hint
+      const display = msg === 'Failed to fetch'
+        ? 'Could not reach the server — check network and ensure backend is running'
+        : msg || 'Test alert failed — check email configuration'
+      addToast(display, 'error')
     }
   }
 

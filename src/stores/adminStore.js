@@ -500,7 +500,7 @@ export const useAdminStore = create(
       },
 
       sendTestAlert: async () => {
-        await api.post('/admin/alerts/test', {})
+        return await api.post('/admin/alerts/test', {})
       },
 
       // ── Category actions ──────────────────────────────────────────────
