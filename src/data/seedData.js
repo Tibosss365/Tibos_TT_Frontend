@@ -620,10 +620,13 @@ export const SEED_TICKETS = [
 const _DEFAULT_REPORT_TEMPLATE = (subject) => ({
   subject,
   intro: "Here's your helpdesk ticket health summary.",
-  includeUnassigned: true,
-  includeSla:        true,
-  includeOnHold:     true,
-  includeOpenToday:  true,
+  includeUnassigned:    true,
+  includeSla:           true,
+  includeOnHold:        true,
+  includeOpenToday:     true,
+  includeCreatedToday:  true,
+  includeResolvedToday: true,
+  includeAgentStats:    true,
   footer: '',
 })
 

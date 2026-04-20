@@ -1583,12 +1583,20 @@ const TEMPLATE_VARS_HINT = [
   { tag: '{system_name}', desc: 'Your company/system name' },
 ]
 
-const REPORT_STAT_ITEMS = [
-  { key: 'includeUnassigned', label: 'Unassigned tickets', emoji: '👤', color: 'amber' },
-  { key: 'includeSla',        label: 'SLA breaches',       emoji: '⚠️',  color: 'rose' },
-  { key: 'includeOnHold',     label: 'On-hold tickets',    emoji: '⏸',  color: 'violet' },
-  { key: 'includeOpenToday',  label: 'Open today',         emoji: '📬', color: 'blue' },
-]
+const _PERIOD_LABEL = { daily: 'today', weekly: 'this week', monthly: 'this month' }
+
+const getReportStatItems = (reportType = 'daily') => {
+  const p = _PERIOD_LABEL[reportType] || 'today'
+  return [
+    { key: 'includeUnassigned',    label: 'Unassigned tickets',   emoji: '👤', color: 'amber' },
+    { key: 'includeSla',           label: 'SLA breaches',         emoji: '⚠️',  color: 'rose' },
+    { key: 'includeOnHold',        label: 'On-hold tickets',      emoji: '⏸',  color: 'violet' },
+    { key: 'includeOpenToday',     label: 'Currently open',       emoji: '📬', color: 'blue' },
+    { key: 'includeCreatedToday',  label: `Created ${p}`,         emoji: '📥', color: 'emerald' },
+    { key: 'includeResolvedToday', label: `Resolved ${p}`,        emoji: '✅', color: 'teal' },
+    { key: 'includeAgentStats',    label: 'Agent status table',   emoji: '👥', color: 'indigo' },
+  ]
+}
 
 function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
   const [activeReport, setActiveReport] = useState('daily')
@@ -1601,6 +1609,7 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
 
   const defaults = DEFAULT_ALERT_SETTINGS.reports[activeReport].template
   const tmpl = alertEdits.reports?.[activeReport]?.template || defaults
+  const statItems = getReportStatItems(activeReport)
 
   const setTmpl = patch =>
     setAlertEdits(s => ({
@@ -1666,14 +1675,17 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
         {/* What to include */}
         <div>
           <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Include in Report</label>
-          <div className="grid grid-cols-2 gap-2">
-            {REPORT_STAT_ITEMS.map(({ key, label, emoji, color }) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {statItems.map(({ key, label, emoji, color }) => {
               const active = tmpl[key] !== false
               const activeCls = {
-                amber:  'border-amber-400/40  bg-amber-500/5  text-amber-700  dark:text-amber-400',
-                rose:   'border-rose-400/40   bg-rose-500/5   text-rose-700   dark:text-rose-400',
-                violet: 'border-violet-400/40 bg-violet-500/5 text-violet-700 dark:text-violet-400',
-                blue:   'border-blue-400/40   bg-blue-500/5   text-blue-700   dark:text-blue-400',
+                amber:   'border-amber-400/40   bg-amber-500/5   text-amber-700   dark:text-amber-400',
+                rose:    'border-rose-400/40    bg-rose-500/5    text-rose-700    dark:text-rose-400',
+                violet:  'border-violet-400/40  bg-violet-500/5  text-violet-700  dark:text-violet-400',
+                blue:    'border-blue-400/40    bg-blue-500/5    text-blue-700    dark:text-blue-400',
+                emerald: 'border-emerald-400/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400',
+                teal:    'border-teal-400/40    bg-teal-500/5    text-teal-700    dark:text-teal-400',
+                indigo:  'border-indigo-400/40  bg-indigo-500/5  text-indigo-700  dark:text-indigo-400',
               }[color]
               return (
                 <label key={key}
@@ -1715,7 +1727,7 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
           </div>
           <div className="text-xs t-muted italic">{tmpl.intro || defaults.intro}</div>
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {REPORT_STAT_ITEMS.filter(({ key }) => tmpl[key] !== false).map(({ emoji, label }) => (
+            {statItems.filter(({ key }) => tmpl[key] !== false).map(({ emoji, label }) => (
               <span key={label} className="text-[10px] px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/8 t-sub">
                 {emoji} {label}
               </span>
