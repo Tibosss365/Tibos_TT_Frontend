@@ -615,3 +615,23 @@ export const SEED_TICKETS = [
     ],
   },
 ]
+
+// ── Alert Settings ────────────────────────────────────────────────────────────
+export const DEFAULT_ALERT_SETTINGS = {
+  conditions: {
+    unassigned:  { enabled: true,  thresholdMins: 30 },
+    slaBreach:   { enabled: true,  includeWarning: true },
+    openToday:   { enabled: false },
+    onHold:      { enabled: false, thresholdHours: 24 },
+    inProgress:  { enabled: false, thresholdHours: 48 },
+  },
+  reports: {
+    daily:   { enabled: false, time: '08:00' },
+    weekly:  { enabled: false, day: 'monday', time: '08:00' },
+    monthly: { enabled: false, dayOfMonth: 1, time: '08:00' },
+  },
+  recipients: {
+    includeAdmin: true,
+    emails: [],
+  },
+}

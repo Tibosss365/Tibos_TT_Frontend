@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle } from 'lucide-react'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
@@ -11,7 +11,7 @@ import { PriorityBadge } from '../components/ui/Badge'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { PRIORITIES } from '../utils/ticketUtils'
 import { api } from '../api/client'
-import { DEFAULT_EMAIL_TEMPLATES } from '../data/seedData'
+import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
 const TABS = [
   { id: 'general',   icon: Settings2,         label: 'General' },
@@ -22,6 +22,7 @@ const TABS = [
   { id: 'agents',    icon: Users,             label: 'Agents' },
   { id: 'sla',       icon: SlidersHorizontal, label: 'SLA' },
   { id: 'email',     icon: Mail,              label: 'Email' },
+  { id: 'alerts',    icon: Bell,              label: 'Alerts' },
 ]
 
 const GROUP_COLORS = [
@@ -1317,6 +1318,361 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
   )
 }
 
+// ─── Alert Settings Section ────────────────────────────────────────────────────
+const ALERT_CONDITIONS = [
+  {
+    key: 'unassigned',
+    icon: UserX,
+    color: 'text-amber-500',
+    iconBg: 'bg-amber-500/12 border-amber-500/25',
+    activeBorder: 'border-amber-500/30 bg-amber-500/[0.03]',
+    label: 'Unassigned Tickets',
+    desc: 'Tickets sitting in the queue with no agent assigned',
+    threshold: { key: 'thresholdMins', label: 'Alert after', unit: 'min unassigned', min: 5, max: 1440 },
+  },
+  {
+    key: 'slaBreach',
+    icon: AlertCircle,
+    color: 'text-rose-500',
+    iconBg: 'bg-rose-500/12 border-rose-500/25',
+    activeBorder: 'border-rose-500/30 bg-rose-500/[0.03]',
+    label: 'SLA Breach',
+    desc: 'Tickets that have exceeded their response-time target',
+    warning: true,
+  },
+  {
+    key: 'openToday',
+    icon: Inbox,
+    color: 'text-blue-500',
+    iconBg: 'bg-blue-500/12 border-blue-500/25',
+    activeBorder: 'border-blue-500/30 bg-blue-500/[0.03]',
+    label: 'Open Tickets Today',
+    desc: 'New tickets created since midnight — included in reports',
+  },
+  {
+    key: 'onHold',
+    icon: PauseCircle,
+    color: 'text-violet-500',
+    iconBg: 'bg-violet-500/12 border-violet-500/25',
+    activeBorder: 'border-violet-500/30 bg-violet-500/[0.03]',
+    label: 'On-Hold Tickets',
+    desc: 'Tickets stuck in on-hold status beyond a set period',
+    threshold: { key: 'thresholdHours', label: 'Alert after', unit: 'hrs on hold', min: 1, max: 168 },
+  },
+  {
+    key: 'inProgress',
+    icon: Timer,
+    color: 'text-emerald-500',
+    iconBg: 'bg-emerald-500/12 border-emerald-500/25',
+    activeBorder: 'border-emerald-500/30 bg-emerald-500/[0.03]',
+    label: 'Long-Running In Progress',
+    desc: 'Active tickets still unresolved after a long time',
+    threshold: { key: 'thresholdHours', label: 'Alert after', unit: 'hrs in progress', min: 1, max: 720 },
+  },
+]
+
+const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+
+function Toggle({ on, onChange, size = 'md' }) {
+  const w = size === 'sm' ? 32 : 40
+  const h = size === 'sm' ? 18 : 22
+  const dot = size === 'sm' ? 14 : 18
+  const tx = size === 'sm' ? 'translate-x-[14px]' : 'translate-x-[18px]'
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      className="flex-shrink-0 relative focus:outline-none transition-all"
+      style={{ width: w, height: h }}
+    >
+      <div className={`w-full h-full rounded-full transition-colors duration-200 ${on ? 'bg-indigo-500' : 'bg-black/15 dark:bg-white/20'}`} />
+      <div className={`absolute top-0.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${on ? tx : 'translate-x-0.5'}`}
+        style={{ width: dot, height: dot }} />
+    </button>
+  )
+}
+
+function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving }) {
+  const [newEmail, setNewEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
+
+  const setCond = (key, patch) =>
+    setAlertEdits(s => ({ ...s, conditions: { ...s.conditions, [key]: { ...s.conditions[key], ...patch } } }))
+
+  const setRep = (key, patch) =>
+    setAlertEdits(s => ({ ...s, reports: { ...s.reports, [key]: { ...s.reports[key], ...patch } } }))
+
+  const setRecip = (patch) =>
+    setAlertEdits(s => ({ ...s, recipients: { ...s.recipients, ...patch } }))
+
+  const addEmail = () => {
+    const email = newEmail.trim().toLowerCase()
+    if (!email) return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEmailError('Invalid email address'); return }
+    if (alertEdits.recipients.emails.includes(email)) { setEmailError('Already added'); return }
+    setRecip({ emails: [...alertEdits.recipients.emails, email] })
+    setNewEmail(''); setEmailError('')
+  }
+
+  const activeCount  = Object.values(alertEdits.conditions).filter(c => c.enabled).length
+  const reportCount  = Object.values(alertEdits.reports).filter(r => r.enabled).length
+  const recipCount   = (alertEdits.recipients.includeAdmin ? 1 : 0) + alertEdits.recipients.emails.length
+
+  return (
+    <div className="space-y-5 max-w-3xl">
+
+      {/* ── Summary pills ───────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { count: activeCount,  label: 'condition',  icon: BellRing,     active: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/25' },
+          { count: reportCount,  label: 'report',     icon: CalendarDays, active: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' },
+          { count: recipCount,   label: 'recipient',  icon: Users,        active: 'bg-sky-500/10 text-sky-500 border-sky-500/25' },
+        ].map(({ count, label, icon: Icon, active }) => (
+          <span key={label}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
+              ${count > 0 ? active : 'bg-black/5 dark:bg-white/5 t-muted border-glass'}`}>
+            <Icon size={11} />
+            {count} {label}{count !== 1 ? 's' : ''} {count > 0 ? 'active' : ''}
+          </span>
+        ))}
+      </div>
+
+      {/* ── 1. Alert Conditions ──────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title="Alert Conditions"
+          subtitle="Select which events send email notifications to recipients"
+        />
+        <div className="space-y-2.5">
+          {ALERT_CONDITIONS.map(cfg => {
+            const cond = alertEdits.conditions[cfg.key]
+            const Icon = cfg.icon
+            return (
+              <div key={cfg.key}
+                className={`rounded-xl border transition-all ${cond.enabled ? cfg.activeBorder : 'border-glass'}`}>
+                {/* Row */}
+                <div className="flex items-center gap-3 p-3.5">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${cfg.iconBg}`}>
+                    <Icon size={15} className={cfg.color} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold t-main">{cfg.label}</div>
+                    <div className="text-xs t-muted leading-snug mt-0.5">{cfg.desc}</div>
+                  </div>
+                  <Toggle on={cond.enabled} onChange={() => setCond(cfg.key, { enabled: !cond.enabled })} />
+                </div>
+
+                {/* Options row (shown only when enabled) */}
+                {cond.enabled && (cfg.threshold || cfg.warning) && (
+                  <div className="flex flex-wrap items-center gap-4 px-4 py-2.5 border-t border-black/5 dark:border-white/5 bg-black/[0.015] dark:bg-white/[0.015] rounded-b-xl">
+                    {cfg.threshold && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs t-sub whitespace-nowrap">{cfg.threshold.label}</span>
+                        <input
+                          type="number"
+                          min={cfg.threshold.min}
+                          max={cfg.threshold.max}
+                          value={cond[cfg.threshold.key] ?? cfg.threshold.min}
+                          onChange={e => setCond(cfg.key, { [cfg.threshold.key]: Number(e.target.value) })}
+                          className="w-16 glass-input text-xs py-1 text-center font-mono"
+                        />
+                        <span className="text-xs t-sub whitespace-nowrap">{cfg.threshold.unit}</span>
+                      </div>
+                    )}
+                    {cfg.warning && (
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <Toggle
+                          size="sm"
+                          on={cond.includeWarning ?? false}
+                          onChange={() => setCond(cfg.key, { includeWarning: !cond.includeWarning })}
+                        />
+                        <span className="text-xs t-sub">Also alert at 80% SLA elapsed</span>
+                      </label>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </Card>
+
+      {/* ── 2. Scheduled Reports ─────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title="Scheduled Reports"
+          subtitle="Automated digest emails summarising ticket health on a regular schedule"
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { key: 'daily',   emoji: '📅', label: 'Daily',   hint: 'Every day at a set time' },
+            { key: 'weekly',  emoji: '📆', label: 'Weekly',  hint: 'Once a week on your chosen day' },
+            { key: 'monthly', emoji: '🗓️', label: 'Monthly', hint: 'Once a month on your chosen date' },
+          ].map(({ key, emoji, label, hint }) => {
+            const rep = alertEdits.reports[key]
+            return (
+              <div key={key}
+                className={`rounded-xl border p-4 transition-all ${rep.enabled ? 'border-indigo-500/30 bg-indigo-500/5' : 'border-glass bg-black/3 dark:bg-white/[0.03]'}`}>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-lg leading-none">{emoji}</span>
+                      <span className="text-sm font-bold t-main">{label}</span>
+                    </div>
+                    <div className="text-[10px] t-muted leading-snug">{hint}</div>
+                  </div>
+                  <Toggle on={rep.enabled} onChange={() => setRep(key, { enabled: !rep.enabled })} />
+                </div>
+
+                {rep.enabled && (
+                  <div className="space-y-2.5 pt-3 border-t border-black/8 dark:border-white/8">
+                    {key === 'weekly' && (
+                      <div>
+                        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Day of week</div>
+                        <select value={rep.day ?? 'monday'}
+                          onChange={e => setRep(key, { day: e.target.value })}
+                          className="glass-input text-xs w-full">
+                          {WEEK_DAYS.map(d => <option key={d} value={d.toLowerCase()}>{d}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {key === 'monthly' && (
+                      <div>
+                        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Day of month</div>
+                        <div className="flex items-center gap-2">
+                          <input type="number" min={1} max={28} value={rep.dayOfMonth ?? 1}
+                            onChange={e => setRep(key, { dayOfMonth: Number(e.target.value) })}
+                            className="glass-input text-xs w-16 text-center font-mono" />
+                          <span className="text-xs t-muted">of each month</span>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Send at</div>
+                      <input type="time" value={rep.time ?? '08:00'}
+                        onChange={e => setRep(key, { time: e.target.value })}
+                        className="glass-input text-xs w-full" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* What's in every report */}
+        <div className="mt-4 p-3 rounded-xl bg-black/3 dark:bg-white/[0.03] border border-glass">
+          <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Every report includes</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-1.5 gap-x-3">
+            {[
+              { emoji: '📬', text: 'Open tickets today' },
+              { emoji: '👤', text: 'Unassigned tickets' },
+              { emoji: '⚠️',  text: 'SLA breaches' },
+              { emoji: '⏸',  text: 'On-hold tickets' },
+            ].map(({ emoji, text }) => (
+              <div key={text} className="flex items-center gap-1.5 text-xs t-muted">
+                <span>{emoji}</span><span>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── 3. Recipients ────────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader
+          title="Alert Recipients"
+          subtitle="Who receives alert emails and scheduled reports"
+        />
+        <div className="space-y-4">
+
+          {/* Admin toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-glass bg-black/3 dark:bg-white/[0.03]">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/12 border border-indigo-500/25 flex items-center justify-center">
+                <ShieldCheck size={15} className="text-indigo-500" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold t-main">Admin Account</div>
+                <div className="text-xs t-muted">System administrator — recommended to keep enabled</div>
+              </div>
+            </div>
+            <Toggle on={alertEdits.recipients.includeAdmin}
+              onChange={() => setRecip({ includeAdmin: !alertEdits.recipients.includeAdmin })} />
+          </div>
+
+          {/* Custom email list */}
+          <div>
+            <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2">
+              Additional Recipients
+            </div>
+
+            {/* Add email */}
+            <div className="flex gap-2 mb-2">
+              <div className="relative flex-1">
+                <AtSign size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub pointer-events-none" />
+                <input
+                  type="email"
+                  placeholder="manager@company.com"
+                  value={newEmail}
+                  onChange={e => { setNewEmail(e.target.value); setEmailError('') }}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addEmail())}
+                  className={`${inputCls} pl-8 ${emailError ? 'border-rose-500/60 focus:border-rose-500' : ''}`}
+                />
+              </div>
+              <Button variant="primary" size="sm" onClick={addEmail}><Plus size={13} /> Add</Button>
+            </div>
+            {emailError && <p className="text-xs text-rose-500 mb-2">{emailError}</p>}
+
+            {/* Email list */}
+            {alertEdits.recipients.emails.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-5 rounded-xl border border-dashed border-glass t-muted gap-1.5">
+                <Mail size={18} className="opacity-30" />
+                <span className="text-xs">No custom recipients added yet</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {alertEdits.recipients.emails.map(email => (
+                  <div key={email}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-glass bg-black/3 dark:bg-white/[0.03] group hover:border-rose-500/20 transition-all">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[11px] font-bold text-indigo-500">{email[0].toUpperCase()}</span>
+                      </div>
+                      <span className="text-xs t-main font-mono">{email}</span>
+                    </div>
+                    <button
+                      onClick={() => setRecip({ emails: alertEdits.recipients.emails.filter(e => e !== email) })}
+                      className="p-1 rounded-md t-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all opacity-0 group-hover:opacity-100">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Save / Test ──────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="primary" size="md" onClick={onSave} disabled={saving}
+          className="flex-1 sm:flex-none shadow-glow-indigo">
+          {saving
+            ? <><Loader2 size={13} className="animate-spin" /> Saving…</>
+            : <><Save size={13} /> Save Alert Settings</>}
+        </Button>
+        <Button variant="ghost" size="md" onClick={onTest}>
+          <Send size={13} /> Send Test Alert
+        </Button>
+        <div className="text-xs t-muted hidden sm:block">
+          Test sends an immediate summary to all configured recipients
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Admin() {
   const [tab, setTab] = useState('overview')
   const {
@@ -1336,6 +1692,7 @@ export default function Admin() {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, saveInboundConfig, pollInbound,
     fetchInboundLogs, clearInboundLogs,
+    alertSettings, fetchAlertSettings, saveAlertSettings, sendTestAlert,
   } = useAdminStore()
 
   // ── General / System settings state ───────────────────────────────────────
@@ -1626,6 +1983,39 @@ export default function Admin() {
 
   const maxWorkload = Math.max(...agentWorkload.map(a => a.count), 1)
   const inputCls = 'glass-input w-full text-sm'
+
+  // ── Alert Settings state ───────────────────────────────────────────────────
+  const [alertEdits, setAlertEdits] = useState(() => alertSettings || DEFAULT_ALERT_SETTINGS)
+  const [alertSaving, setAlertSaving] = useState(false)
+
+  // Sync when store loads real settings from backend
+  useEffect(() => { setAlertEdits(alertSettings || DEFAULT_ALERT_SETTINGS) }, [alertSettings])
+
+  // Fetch alert settings whenever the alerts tab is opened
+  useEffect(() => {
+    if (tab === 'alerts') fetchAlertSettings()
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSaveAlerts = async () => {
+    setAlertSaving(true)
+    try {
+      await saveAlertSettings(alertEdits)
+      addToast('Alert settings saved', 'success')
+    } catch (err) {
+      addToast(err?.message || 'Failed to save alert settings', 'error')
+    } finally {
+      setAlertSaving(false)
+    }
+  }
+
+  const handleTestAlert = async () => {
+    try {
+      await sendTestAlert()
+      addToast('Test alert sent to all recipients', 'success')
+    } catch {
+      addToast('Test alert failed — check email configuration', 'error')
+    }
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -2574,6 +2964,18 @@ export default function Admin() {
           onUpdate={(id, changes) => { updateCategory(id, changes); addToast('Category updated', 'success') }}
           onDelete={(id) => { deleteCategory(id); addToast('Category deleted', 'info') }}
           inputCls={inputCls}
+        />
+      )}
+
+      {/* Alerts */}
+      {tab === 'alerts' && (
+        <AlertsSection
+          alertEdits={alertEdits}
+          setAlertEdits={setAlertEdits}
+          inputCls={inputCls}
+          onSave={handleSaveAlerts}
+          onTest={handleTestAlert}
+          saving={alertSaving}
         />
       )}
 

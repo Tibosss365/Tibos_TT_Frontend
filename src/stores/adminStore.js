@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { api } from '../api/client'
-import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGERS, DEFAULT_INBOUND_EMAIL, DEFAULT_EMAIL_LOG, DEFAULT_CATEGORIES, DEFAULT_TICKET_SETTINGS, DEFAULT_EMAIL_TEMPLATES, DEFAULT_GROUPS } from '../data/seedData'
+import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGERS, DEFAULT_INBOUND_EMAIL, DEFAULT_EMAIL_LOG, DEFAULT_CATEGORIES, DEFAULT_TICKET_SETTINGS, DEFAULT_EMAIL_TEMPLATES, DEFAULT_GROUPS, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
 export const useAdminStore = create(
   persist(
@@ -475,6 +475,34 @@ export const useAdminStore = create(
 
       clearEmailLog: () => set({ emailLog: [] }),
 
+      // ── Alert Settings ────────────────────────────────────────────────────
+      alertSettings: DEFAULT_ALERT_SETTINGS,
+
+      fetchAlertSettings: async () => {
+        try {
+          const data = await api.get('/admin/alerts')
+          set({ alertSettings: data })
+        } catch (e) {
+          // Backend not yet deployed — use local defaults silently
+        }
+      },
+
+      saveAlertSettings: async (settings) => {
+        // Optimistic local save first
+        set({ alertSettings: settings })
+        try {
+          const data = await api.put('/admin/alerts', settings)
+          if (data) set({ alertSettings: data })
+        } catch (e) {
+          // Settings already saved locally; backend sync optional
+          console.error('saveAlertSettings backend error', e)
+        }
+      },
+
+      sendTestAlert: async () => {
+        await api.post('/admin/alerts/test', {})
+      },
+
       // ── Category actions ──────────────────────────────────────────────
       addCategory: async (cat) => {
         const maxOrder = get().categories.reduce((m, c) => Math.max(m, c.sortOrder), 0)
@@ -554,7 +582,7 @@ export const useAdminStore = create(
       // categories and groups come from the backend / DEFAULT_GROUPS on every
       // login — never persist them so stale data can't block fresh data.
       partialize: (state) => {
-        const { categories, groups, ...rest } = state
+        const { categories, groups, alertSettings, ...rest } = state
         return rest
       },
     }
