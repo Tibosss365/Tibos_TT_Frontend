@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
-  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users,
+  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users, EyeOff,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
@@ -61,10 +61,123 @@ function OverdueDuration({ slaDueTime }) {
   )
 }
 
+// ── SLA Ignore Modal ─────────────────────────────────────────────────────────
+function SlaIgnoreModal({ ticket, onClose, onConfirm }) {
+  const [reason, setReason] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = () => {
+    if (!reason.trim()) { setError('Please provide a justification before submitting.'); return }
+    setSubmitted(true)
+    setTimeout(() => { onConfirm(ticket.id, reason.trim()); onClose() }, 800)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="glass-card w-full max-w-md rounded-2xl shadow-2xl border border-glass animate-fade-in"
+        style={{ padding: '28px 28px 24px' }}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+              <EyeOff size={16} className="text-amber-500" />
+            </div>
+            <div>
+              <div className="font-bold t-main text-sm">Ignore SLA Overdue</div>
+              <div className="text-[11px] t-muted mt-0.5">Ticket <span className="font-mono font-bold">{ticket.id}</span></div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center t-muted hover:t-main hover:bg-black/10 dark:hover:bg-white/10 transition-all"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Subject preview */}
+        <div className="mb-4 px-3 py-2.5 rounded-lg bg-rose-500/8 border border-rose-500/20">
+          <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Subject</div>
+          <div className="text-xs t-main font-medium leading-snug line-clamp-2">{ticket.subject}</div>
+        </div>
+
+        {/* Justification textarea */}
+        <div className="mb-1">
+          <label className="block text-[11px] font-bold t-sub uppercase tracking-wider mb-1.5">
+            Justification / Reason <span className="text-rose-500">*</span>
+          </label>
+          <textarea
+            rows={4}
+            value={reason}
+            onChange={e => { setReason(e.target.value); if (e.target.value.trim()) setError('') }}
+            placeholder="e.g. Customer agreed to extended deadline due to pending hardware delivery…"
+            className="w-full px-3 py-2.5 text-xs rounded-xl border border-glass bg-white/60 dark:bg-white/5 t-main resize-none focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/60 transition-all placeholder:t-sub"
+            disabled={submitted}
+          />
+          {error && <div className="text-[11px] text-rose-500 mt-1.5 flex items-center gap-1"><span className="inline-block w-1 h-1 rounded-full bg-rose-500" />{error}</div>}
+        </div>
+
+        {/* Info note */}
+        <div className="mt-3 mb-4 flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-500/8 border border-amber-500/20">
+          <EyeOff size={12} className="text-amber-500 mt-0.5 flex-shrink-0" />
+          <span className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
+            This ticket will be removed from the SLA Overdue dashboard report. The ignore reason will be recorded.
+          </span>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            disabled={submitted}
+            className="px-4 py-2 text-xs font-semibold rounded-xl border border-glass t-muted hover:t-main hover:border-indigo-500/30 transition-all disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitted || !reason.trim()}
+            className={`flex items-center gap-1.5 px-5 py-2 text-xs font-bold rounded-xl transition-all ${
+              submitted
+                ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/40 cursor-default'
+                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+          >
+            {submitted ? (
+              <><CheckCircle size={12} /> Ignored!</>
+            ) : (
+              <><EyeOff size={12} /> Submit & Ignore</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { tickets, loading } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
+
+  // ── SLA ignore state (persisted in localStorage) ──────────────────────────
+  const [ignoredSlaIds, setIgnoredSlaIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('sla-ignored-ids') || '{}') } catch { return {} }
+  })
+  const [ignoreModal, setIgnoreModal] = useState(null) // ticket object or null
+
+  const handleIgnoreConfirm = (ticketId, justification) => {
+    const updated = { ...ignoredSlaIds, [ticketId]: { justification, ignoredAt: new Date().toISOString() } }
+    setIgnoredSlaIds(updated)
+    localStorage.setItem('sla-ignored-ids', JSON.stringify(updated))
+  }
 
   // ── Filter state (staged → applied on click) ────────────────────────────────
   const [dashFilters, setDashFilters] = useState(EMPTY_FILTERS)  // applied
@@ -121,11 +234,12 @@ export default function Dashboard() {
     else if (dashFilters.sla === 'resolved')    result = result.filter(t => t.status === 'resolved')
     else if (dashFilters.sla === 'critical')    result = result.filter(t => t.priority === 'critical')
     else if (dashFilters.sla === 'overdue')     result = result.filter(t =>
-      t.slaStatus === 'overdue' || (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())
+      (t.slaStatus === 'overdue' || (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
+      !ignoredSlaIds[t.id]
     )
 
     return result
-  }, [tickets, dashFilters])
+  }, [tickets, dashFilters, ignoredSlaIds])
 
   // ── Status chip counts ──────────────────────────────────────────────────────
   const statusCounts = useMemo(() => {
@@ -150,25 +264,27 @@ export default function Dashboard() {
     const resolved   = displayTickets.filter(t => t.status === 'resolved').length
     const critical   = displayTickets.filter(t => t.priority === 'critical').length
     const slaOverdue = displayTickets.filter(t =>
-      t.slaStatus === 'overdue' ||
-      (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())
+      (t.slaStatus === 'overdue' ||
+      (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
+      !ignoredSlaIds[t.id]
     ).length
     return { open, inProgress, onHold, resolved, critical, slaOverdue, total: displayTickets.length }
-  }, [displayTickets])
+  }, [displayTickets, ignoredSlaIds])
 
   // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
   const overdueTickets = useMemo(() => {
     return displayTickets
       .filter(t =>
-        t.slaStatus === 'overdue' ||
-        (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())
+        (t.slaStatus === 'overdue' ||
+        (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
+        !ignoredSlaIds[t.id]
       )
       .sort((a, b) => {
         const aMs = a.slaDueTime ? Date.now() - new Date(a.slaDueTime).getTime() : 0
         const bMs = b.slaDueTime ? Date.now() - new Date(b.slaDueTime).getTime() : 0
         return bMs - aMs
       })
-  }, [displayTickets])
+  }, [displayTickets, ignoredSlaIds])
 
   // ── Chart data ──────────────────────────────────────────────────────────────
   const categoryData = useMemo(() => {
@@ -470,8 +586,8 @@ export default function Dashboard() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-glass">
-                  {['Priority', 'Ticket', 'Subject', 'Assignee', 'Due At', 'Overdue By', ''].map(h => (
-                    <th key={h} className="py-2.5 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">
+                  {['Priority', 'Ticket', 'Subject', 'Assignee', 'Due At', 'Overdue By', '', ''].map((h, i) => (
+                    <th key={i} className="py-2.5 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}
@@ -533,6 +649,15 @@ export default function Dashboard() {
                         Open <ChevronRight size={10} />
                       </span>
                     </td>
+                    <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={e => { e.stopPropagation(); setIgnoreModal(ticket) }}
+                        title="Ignore this overdue ticket"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold border border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-500/50 transition-all opacity-0 group-hover:opacity-100 whitespace-nowrap"
+                      >
+                        <EyeOff size={10} /> Ignore
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -540,6 +665,15 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+
+      {/* ── SLA Ignore Modal ────────────────────────────────────────────────── */}
+      {ignoreModal && (
+        <SlaIgnoreModal
+          ticket={ignoreModal}
+          onClose={() => setIgnoreModal(null)}
+          onConfirm={handleIgnoreConfirm}
+        />
+      )}
 
       {/* ── Charts row ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
