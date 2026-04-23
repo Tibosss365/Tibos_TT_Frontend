@@ -1038,6 +1038,31 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
                 </div>
               </label>
             ))}
+            
+            <div className="pt-3 border-t border-glass">
+              <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                <Clock size={11} className="inline mr-1" /> Trigger Timezone
+              </label>
+              <select
+                className={inputCls}
+                value={triggersEdits.timezone || 'UTC'}
+                onChange={e => setTriggersEdits(t => ({ ...t, timezone: e.target.value }))}
+              >
+                {(() => {
+                  const tzGroups = [...new Set(TIMEZONES.map(z => z.group))]
+                  return tzGroups.map(grp => (
+                    <optgroup key={grp} label={grp}>
+                      {TIMEZONES.filter(z => z.group === grp).map(z => (
+                        <option key={z.value} value={z.value}>{z.label}</option>
+                      ))}
+                    </optgroup>
+                  ))
+                })()}
+              </select>
+              <p className="text-[10px] t-sub mt-1">
+                Timezone used for formatting dates/times in trigger emails.
+              </p>
+            </div>
           </div>
         </Card>
 
@@ -2261,6 +2286,7 @@ export default function Admin() {
           trigger_new:     triggersEdits.new     ?? false,
           trigger_assign:  triggersEdits.assign  ?? false,
           trigger_resolve: triggersEdits.resolve ?? false,
+          trigger_timezone: triggersEdits.timezone || 'UTC',
         },
       }
       if (type === 'smtp') {

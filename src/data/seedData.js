@@ -48,7 +48,7 @@ export const DEFAULT_EMAIL_CONFIG = {
   },
 }
 
-export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: false }
+export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: false, timezone: 'UTC' }
 
 // ── Dynamic categories ────────────────────────────────────────────────────────
 export const DEFAULT_CATEGORIES = [

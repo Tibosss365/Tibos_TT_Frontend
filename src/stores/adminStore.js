@@ -208,6 +208,7 @@ export const useAdminStore = create(
           new:     data.trigger_new     ?? false,
           assign:  data.trigger_assign  ?? false,
           resolve: data.trigger_resolve ?? false,
+          timezone: data.trigger_timezone || 'UTC',
         },
       })
     } catch (e) {
@@ -350,6 +351,7 @@ export const useAdminStore = create(
         new:     data.trigger_new     ?? false,
         assign:  data.trigger_assign  ?? false,
         resolve: data.trigger_resolve ?? false,
+        timezone: data.trigger_timezone || 'UTC',
       },
     })
   },
