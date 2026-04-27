@@ -353,7 +353,7 @@ export default function Dashboard() {
     )
   }
 
-  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer min-w-[120px]"
+  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-slate-800 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer min-w-[120px]"
 
   return (
     <div className="space-y-6 animate-fade-in">

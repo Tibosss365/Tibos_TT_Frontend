@@ -229,7 +229,7 @@ export default function AllTickets() {
     return counts
   })()
 
-  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-white/5 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer"
+  const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-slate-800 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer"
 
   // Cell renderer
   const cellValue = (ticket, key) => {
