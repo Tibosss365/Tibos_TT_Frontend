@@ -1045,7 +1045,7 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
               </label>
               <select
                 className={inputCls}
-                value={triggersEdits.timezone || 'UTC'}
+                value={triggersEdits.timezone || 'Asia/Kolkata'}
                 onChange={e => setTriggersEdits(t => ({ ...t, timezone: e.target.value }))}
               >
                 {(() => {
@@ -1775,6 +1775,9 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   const setRep = (key, patch) =>
     setAlertEdits(s => ({ ...s, reports: { ...s.reports, [key]: { ...s.reports[key], ...patch } } }))
 
+  const setReportTimezone = (tz) =>
+    setAlertEdits(s => ({ ...s, reports: { ...s.reports, timezone: tz } }))
+
   const setRecip = (patch) =>
     setAlertEdits(s => ({ ...s, recipients: { ...s.recipients, ...patch } }))
 
@@ -1788,7 +1791,7 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   }
 
   const activeCount  = Object.values(alertEdits.conditions).filter(c => c.enabled).length
-  const reportCount  = Object.values(alertEdits.reports).filter(r => r.enabled).length
+  const reportCount  = ['daily', 'weekly', 'monthly'].filter(k => alertEdits.reports[k]?.enabled).length
   const recipCount   = (alertEdits.recipients.includeAdmin ? 1 : 0) + alertEdits.recipients.emails.length
   const emailCfg     = alertEdits.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig
   const emailLabel   = emailCfg.useSameAsEmail ? 'main email' : (emailCfg.type === 'm365' ? 'M365' : 'SMTP')
@@ -1938,6 +1941,28 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
               </div>
             )
           })}
+        </div>
+
+        {/* Report timezone */}
+        <div className="mt-4 flex items-center gap-3">
+          <Clock size={13} className="t-sub flex-shrink-0" />
+          <label className="text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">Report Timezone</label>
+          <select
+            className="glass-input text-xs flex-1"
+            value={alertEdits.reports?.timezone || 'Asia/Kolkata'}
+            onChange={e => setReportTimezone(e.target.value)}
+          >
+            {(() => {
+              const tzGroups = [...new Set(TIMEZONES.map(z => z.group))]
+              return tzGroups.map(grp => (
+                <optgroup key={grp} label={grp}>
+                  {TIMEZONES.filter(z => z.group === grp).map(z => (
+                    <option key={z.value} value={z.value}>{z.label}</option>
+                  ))}
+                </optgroup>
+              ))
+            })()}
+          </select>
         </div>
 
         {/* What's in every report */}
@@ -2289,7 +2314,7 @@ export default function Admin() {
           trigger_new:      triggersEdits.new     ?? false,
           trigger_assign:   triggersEdits.assign  ?? false,
           trigger_resolve:  triggersEdits.resolve ?? false,
-          trigger_timezone: triggersEdits.timezone || 'UTC',
+          trigger_timezone: triggersEdits.timezone || 'Asia/Kolkata',
         },
       }
       if (type === 'smtp') {
@@ -2391,9 +2416,10 @@ export default function Admin() {
     setAlertEdits({
       ...d, ...s,
       reports: {
-        daily:   { ...d.reports.daily,   ...(s.reports?.daily   || {}), template: { ...d.reports.daily.template,   ...(s.reports?.daily?.template   || {}) } },
-        weekly:  { ...d.reports.weekly,  ...(s.reports?.weekly  || {}), template: { ...d.reports.weekly.template,  ...(s.reports?.weekly?.template  || {}) } },
-        monthly: { ...d.reports.monthly, ...(s.reports?.monthly || {}), template: { ...d.reports.monthly.template, ...(s.reports?.monthly?.template || {}) } },
+        timezone: s.reports?.timezone || d.reports.timezone,
+        daily:    { ...d.reports.daily,   ...(s.reports?.daily   || {}), template: { ...d.reports.daily.template,   ...(s.reports?.daily?.template   || {}) } },
+        weekly:   { ...d.reports.weekly,  ...(s.reports?.weekly  || {}), template: { ...d.reports.weekly.template,  ...(s.reports?.weekly?.template  || {}) } },
+        monthly:  { ...d.reports.monthly, ...(s.reports?.monthly || {}), template: { ...d.reports.monthly.template, ...(s.reports?.monthly?.template || {}) } },
       },
       alertEmailConfig: { ...d.alertEmailConfig, ...(s.alertEmailConfig || {}),
         smtp: { ...d.alertEmailConfig.smtp, ...(s.alertEmailConfig?.smtp || {}) },

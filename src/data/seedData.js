@@ -48,7 +48,7 @@ export const DEFAULT_EMAIL_CONFIG = {
   },
 }
 
-export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: false, timezone: 'UTC' }
+export const DEFAULT_EMAIL_TRIGGERS = { new: false, assign: false, resolve: false, timezone: 'Asia/Kolkata' }
 
 // ── Dynamic categories ────────────────────────────────────────────────────────
 export const DEFAULT_CATEGORIES = [
@@ -639,9 +639,10 @@ export const DEFAULT_ALERT_SETTINGS = {
     inProgress:  { enabled: false, thresholdHours: 48 },
   },
   reports: {
-    daily:   { enabled: false, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📊 Daily Helpdesk Report — {date}') },
-    weekly:  { enabled: false, day: 'monday', time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📆 Weekly Helpdesk Report — Week of {date}') },
-    monthly: { enabled: false, dayOfMonth: 1, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('🗓️ Monthly Helpdesk Report — {month} {year}') },
+    timezone: 'Asia/Kolkata',
+    daily:    { enabled: false, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📊 Daily Helpdesk Report — {date}') },
+    weekly:   { enabled: false, day: 'monday', time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📆 Weekly Helpdesk Report — Week of {date}') },
+    monthly:  { enabled: false, dayOfMonth: 1, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('🗓️ Monthly Helpdesk Report — {month} {year}') },
   },
   recipients: {
     includeAdmin: true,
