@@ -9,14 +9,15 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useT }          from '../../utils/i18n'
 
 const NAV_KEYS = [
-  { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard' },
-  { to: '/tickets',      icon: List,            key: 'allTickets' },
-  { to: '/tickets/mine', icon: Ticket,          key: 'myTickets' },
+  { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true },
+  { to: '/tickets',      icon: List,            key: 'allTickets', staffOnly: true },
+  { to: '/tickets/mine', icon: Ticket,          key: 'myTickets',  staffOnly: true },
 ]
 const ACTION_KEYS = [
-  { to: '/tickets/new', icon: PlusCircle, key: 'submitTicket' },
-  { to: '/analytics',   icon: BarChart3,  key: 'analytics' },
-  { to: '/admin',       icon: Settings,   key: 'admin', adminOnly: true },
+  { to: '/tickets/new',      icon: PlusCircle, key: 'submitTicket' },
+  { to: '/tickets/my-portal', icon: Ticket,    key: 'myTickets',   userOnly: true },
+  { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true },
+  { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true },
 ]
 
 export function Sidebar() {
@@ -31,7 +32,9 @@ export function Sidebar() {
     navigate('/login')
   }
 
-  const isAdmin = currentUser?.role === 'admin'
+  const isAdmin   = currentUser?.role === 'admin'
+  const isEndUser = currentUser?.role === 'user'
+  const isStaff   = !isEndUser
 
   return (
     <aside
@@ -75,12 +78,12 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {sidebarOpen && (
+        {sidebarOpen && isStaff && (
           <div className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest t-sub opacity-70">
             {t('navigation')}
           </div>
         )}
-        {NAV_KEYS.map(({ to, icon: Icon, key }) => (
+        {NAV_KEYS.filter(n => !n.staffOnly || isStaff).map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}
@@ -99,7 +102,11 @@ export function Sidebar() {
           </div>
         )}
         {!sidebarOpen && <div className="my-2" style={{ borderTop: '1px solid var(--c-border)' }} />}
-        {ACTION_KEYS.filter(a => !a.adminOnly || isAdmin).map(({ to, icon: Icon, key }) => (
+        {ACTION_KEYS.filter(a =>
+          (!a.adminOnly || isAdmin) &&
+          (!a.staffOnly || isStaff) &&
+          (!a.userOnly  || isEndUser)
+        ).map(({ to, icon: Icon, key }) => (
           <NavLink
             key={to}
             to={to}

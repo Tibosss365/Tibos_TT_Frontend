@@ -190,7 +190,7 @@ function SlaCountdown({ ticket, slaSettings }) {
 }
 
 // ── Requester Details Sidebar ─────────────────────────────────────────────────
-function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete }) {
+function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete, hideActions }) {
   const t = useT()
   const initials = (ticket.submitter || ticket.contactName || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -299,18 +299,20 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
         </div>{/* end grid */}
       </div>
 
-      {/* Action Buttons */}
-      <div className="p-4 space-y-2">
-        {isEditing ? (
-          <>
-            <Button variant="primary" size="sm" className="w-full" onClick={onSave}><Save size={13} /> {t('saveChanges')}</Button>
-            <Button variant="ghost" size="sm" className="w-full" onClick={onCancel}><X size={13} /> {t('cancel')}</Button>
-          </>
-        ) : (
-          <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> {t('editTicket')}</Button>
-        )}
-        <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> {t('delete')}</Button>
-      </div>
+      {/* Action Buttons — hidden for end users */}
+      {!hideActions && (
+        <div className="p-4 space-y-2">
+          {isEditing ? (
+            <>
+              <Button variant="primary" size="sm" className="w-full" onClick={onSave}><Save size={13} /> {t('saveChanges')}</Button>
+              <Button variant="ghost" size="sm" className="w-full" onClick={onCancel}><X size={13} /> {t('cancel')}</Button>
+            </>
+          ) : (
+            <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> {t('editTicket')}</Button>
+          )}
+          <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> {t('delete')}</Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -328,6 +330,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
   const t = useT()
+  const isEndUser = currentUser?.role === 'user'
 
 
   const [activeTab, setActiveTab] = useState('details')
@@ -996,16 +999,17 @@ export function TicketDetailModal({ ticket, onClose }) {
           {/* Right: Requester + Meta + Actions */}
           <RequesterPanel
             ticket={liveTicket}
-            isEditing={isEditing}
+            isEditing={isEditing && !isEndUser}
             edits={edits}
             set={set}
             agents={agents}
             groups={groups}
             categories={categories}
-            onEdit={handleEdit}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            onDelete={handleDelete}
+            onEdit={isEndUser ? undefined : handleEdit}
+            onSave={isEndUser ? undefined : handleSave}
+            onCancel={isEndUser ? undefined : handleCancel}
+            onDelete={isEndUser ? undefined : handleDelete}
+            hideActions={isEndUser}
           />
         </div>
       </div>

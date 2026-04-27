@@ -3136,6 +3136,7 @@ export default function Admin() {
                   <select className={inputCls} value={newAgent.role} onChange={e => setNewAgent(a => ({ ...a, role: e.target.value }))}>
                     <option value="technician">Technician</option>
                     <option value="admin">Admin</option>
+                    <option value="user">End User</option>
                   </select>
                 </div>
               </div>
@@ -3209,6 +3210,7 @@ export default function Admin() {
                   <select className={inputCls} value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
                     <option value="technician">Technician</option>
                     <option value="admin">Admin</option>
+                    <option value="user">End User</option>
                   </select>
                 </div>
                 <div className="col-span-2">

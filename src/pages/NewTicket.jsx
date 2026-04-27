@@ -43,14 +43,20 @@ export default function NewTicket() {
   const { slaSettings, categories, groups, agents, ticketSettings } = useAdminStore()
   const navigate = useNavigate()
 
+  const isEndUser = currentUser?.role === 'user'
+
   // Pre-select the admin-configured default priority
   const defaultPriority = ticketSettings?.defaultPriority || 'medium'
 
+  // Auto-fill contact info for end users from their profile
+  const userEmail = isEndUser && currentUser?.username?.includes('@') ? currentUser.username : ''
+
   const [form, setForm] = useState({
     ...EMPTY,
-    priority:     defaultPriority,
-    contactName:  currentUser?.name || '',
-    company:      'Acme Corp',
+    priority:    defaultPriority,
+    contactName: currentUser?.name || '',
+    email:       userEmail,
+    company:     isEndUser ? '' : 'Acme Corp',
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -60,12 +66,12 @@ export default function NewTicket() {
     setForm(f => ({ ...f, [key]: val }))
     if (errors[key]) setErrors(e => ({ ...e, [key]: '' }))
   }
-  console.log("FORM DATA:", form)
+
   const validate = () => {
     const errs = {}
-    if (!form.company.trim())     errs.company     = 'Required'
+    if (!isEndUser && !form.company.trim()) errs.company = 'Required'
     if (!form.contactName.trim()) errs.contactName = 'Required'
-    if (!form.email.trim())       errs.email       = 'Required'
+    if (!isEndUser && !form.email.trim())   errs.email   = 'Required'
     if (!form.subject.trim())     errs.subject     = 'Required'
     if (!form.description.trim()) errs.description = 'Required'
     return errs
@@ -80,7 +86,7 @@ export default function NewTicket() {
     try {
       await addTicket(form)
       addToast('Ticket Submitted', 'success')
-      navigate('/tickets/mine')
+      navigate(isEndUser ? '/tickets/my-portal' : '/tickets/mine')
     } catch (err) {
       const msg = err.message || 'Failed to submit ticket'
       setSubmitError(msg)
@@ -128,25 +134,35 @@ export default function NewTicket() {
             </div>
           </Card>
 
-          {/* Contact info */}
+          {/* Contact info — simplified for end users */}
           <Card>
             <CardHeader title="Contact Information" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {!isEndUser && (
+                <div>
+                  <label className={labelCls}>Company *</label>
+                  <input className={inputCls('company')} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Acme Corp" />
+                  {errors.company && <p className="text-xs text-rose-500 mt-1">{errors.company}</p>}
+                </div>
+              )}
               <div>
-                <label className={labelCls}>Company *</label>
-                <input className={inputCls('company')} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Acme Corp" />
-                {errors.company && <p className="text-xs text-rose-500 mt-1">{errors.company}</p>}
-              </div>
-              <div>
-                <label className={labelCls}>Contact Name *</label>
-                <input className={inputCls('contactName')} value={form.contactName} onChange={e => set('contactName', e.target.value)} placeholder="Full name" />
+                <label className={labelCls}>Your Name *</label>
+                <input
+                  className={inputCls('contactName')}
+                  value={form.contactName}
+                  onChange={e => set('contactName', e.target.value)}
+                  placeholder="Full name"
+                  readOnly={isEndUser}
+                />
                 {errors.contactName && <p className="text-xs text-rose-500 mt-1">{errors.contactName}</p>}
               </div>
-              <div>
-                <label className={labelCls}>Email *</label>
-                <input type="email" className={inputCls('email')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@company.com" />
-                {errors.email && <p className="text-xs text-rose-400 mt-1">{errors.email}</p>}
-              </div>
+              {!isEndUser && (
+                <div>
+                  <label className={labelCls}>Email *</label>
+                  <input type="email" className={inputCls('email')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@company.com" />
+                  {errors.email && <p className="text-xs text-rose-400 mt-1">{errors.email}</p>}
+                </div>
+              )}
               <div>
                 <label className={labelCls}>Phone</label>
                 <input className={inputCls('phone')} value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+1 (555) 000-0000" />
@@ -188,15 +204,17 @@ export default function NewTicket() {
                   <label className={labelCls}>Asset / Device</label>
                   <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
                 </div>
-                <div>
-                  <label className={labelCls}>Assign To</label>
-                  <select className="glass-input w-full text-sm" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
-                    <option value="">— Unassigned —</option>
-                    {agents.filter(a => a.id !== 'unassigned').map(a => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {!isEndUser && (
+                  <div>
+                    <label className={labelCls}>Assign To</label>
+                    <select className="glass-input w-full text-sm" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
+                      <option value="">— Unassigned —</option>
+                      {agents.filter(a => a.id !== 'unassigned').map(a => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Priority selector */}

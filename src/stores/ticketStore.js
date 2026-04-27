@@ -6,6 +6,7 @@ export const useTicketStore = create(
   persist(
     (set, get) => ({
       tickets: [],
+      myRequests: [],
       loading: false,
       filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' },
       selectedIds: [],
@@ -31,6 +32,18 @@ export const useTicketStore = create(
         }
       },
 
+      fetchMyRequests: async () => {
+        set({ loading: true })
+        try {
+          const data = await api.get('/tickets/my-requests?page_size=100')
+          const items = (data.items || []).map(normalizeTicket)
+          set({ myRequests: items, loading: false })
+        } catch (e) {
+          console.error('fetchMyRequests error', e)
+          set({ loading: false })
+        }
+      },
+
       addTicket: async (formData) => {
         const body = {
           subject:        formData.subject,
@@ -48,7 +61,11 @@ export const useTicketStore = create(
         }
         const data = await api.post('/tickets', body)
         const ticket = normalizeTicket(data)
-        set(s => ({ tickets: [ticket, ...s.tickets] }))
+        // For end-users, add to myRequests; for agents add to tickets
+        set(s => ({
+          tickets: [ticket, ...s.tickets],
+          myRequests: [ticket, ...s.myRequests],
+        }))
         return ticket
       },
 
