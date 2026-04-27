@@ -313,17 +313,23 @@ export const useAdminStore = create(
   },
 
   updateEmailConfig: async (payload) => {
-    const data = await api.put('/admin/email', payload)
+    const raw = await api.put('/admin/email', payload)
+    // Backend may return 204 No Content — refetch to sync state
+    if (!raw) {
+      await get().fetchEmailConfig()
+      return
+    }
+    const data = raw
     // Normalize flat backend response → nested frontend structure
     const normalized = {
-      type: data.type || 'smtp',
+      type: data.type || payload.type || 'smtp',
       smtp: {
         host:     data.smtp_host     || '',
         port:     data.smtp_port     || '587',
         security: data.smtp_security || 'tls',
         from:     data.smtp_from     || '',
         user:     data.smtp_user     || '',
-        pass:     payload.smtp?.password || '',  // keep what was sent (not returned by backend)
+        pass:     payload.smtp?.password || '',
       },
       m365: {
         tenantId:     data.m365_tenant_id || '',
@@ -348,10 +354,10 @@ export const useAdminStore = create(
     set({
       emailConfig: normalized,
       emailTriggers: {
-        new:     data.trigger_new     ?? false,
-        assign:  data.trigger_assign  ?? false,
-        resolve: data.trigger_resolve ?? false,
-        timezone: data.trigger_timezone || 'UTC',
+        new:     data.trigger_new     ?? get().emailTriggers.new     ?? false,
+        assign:  data.trigger_assign  ?? get().emailTriggers.assign  ?? false,
+        resolve: data.trigger_resolve ?? get().emailTriggers.resolve ?? false,
+        timezone: data.trigger_timezone || get().emailTriggers.timezone || 'UTC',
       },
     })
   },

@@ -750,7 +750,7 @@ function TestEmailPanel({ open, testTo, setTestTo, status, message, onSend, onCl
 }
 
 // ─── Email Tab Component ──────────────────────────────────────────────────────
-function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, inboundEdits, setInboundEdits, agents, emailLog, categories, inputCls, onSave, onTest, onSaveInbound, onPollNow, onClearLog, addToast, tplEdits, setTplEdits, onSaveTemplate, insertVar }) {
+function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, inboundEdits, setInboundEdits, agents, emailLog, categories, inputCls, onSave, onTest, saving, onSaveInbound, onPollNow, onClearLog, addToast, tplEdits, setTplEdits, onSaveTemplate, insertVar }) {
   const [emailSubTab, setEmailSubTab] = useState('outbound')
   const emailType = emailEdits.type || 'smtp'
   const [oauthShowSecret, setOauthShowSecret] = useState(false)
@@ -1134,7 +1134,7 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save</Button>
+              <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>{saving ? <><RefreshCw size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save</>}</Button>
               <Button variant="ghost" size="sm" onClick={openTestPanel}>
                 <Mail size={13} /> Send Test Email
               </Button>
@@ -1285,7 +1285,7 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
 
             {/* Action buttons */}
             <div className="flex gap-2 flex-wrap">
-              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save Config</Button>
+              <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>{saving ? <><RefreshCw size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save Config</>}</Button>
               {!oauth.connected ? (
                 <button onClick={handleAuthorize} disabled={isAuthorizing}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all
@@ -1353,7 +1353,7 @@ function EmailTab({ emailEdits, setEmailEdits, triggersEdits, setTriggersEdits, 
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
-              <Button variant="primary" size="sm" onClick={onSave}><Save size={13} /> Save</Button>
+              <Button variant="primary" size="sm" onClick={onSave} disabled={saving}>{saving ? <><RefreshCw size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save</>}</Button>
               <Button variant="ghost" size="sm" onClick={openTestPanel}>
                 <Mail size={13} /> Send Test Email
               </Button>
@@ -2245,12 +2245,14 @@ export default function Admin() {
     pauseOn:       slaSettings.pauseOn       || ['on-hold'],
   })
   const [emailEdits, setEmailEdits] = useState({ ...emailConfig })
+  const [emailSaving, setEmailSaving] = useState(false)
   const [triggersEdits, setTriggersEdits] = useState({ ...emailTriggers })
   const [inboundEdits, setInboundEdits] = useState({ ...inboundEmail })
 
-  // Sync local edits when store values change (e.g. after fetchEmailConfig)
-  useEffect(() => { setEmailEdits(prev => ({ ...emailConfig, smtp: { ...emailConfig.smtp, pass: prev.smtp?.pass || emailConfig.smtp?.pass || '' }, m365: { ...emailConfig.m365, clientSecret: prev.m365?.clientSecret || emailConfig.m365?.clientSecret || '' } })) }, [emailConfig])
-  useEffect(() => { setTriggersEdits({ ...emailTriggers }) }, [emailTriggers])
+  // Sync local edits when store values change (e.g. after fetchEmailConfig).
+  // Preserve the user's active type selection and any unsaved secrets.
+  useEffect(() => { setEmailEdits(prev => ({ ...emailConfig, type: prev.type || emailConfig.type, smtp: { ...emailConfig.smtp, pass: prev.smtp?.pass || emailConfig.smtp?.pass || '' }, m365: { ...emailConfig.m365, clientSecret: prev.m365?.clientSecret || emailConfig.m365?.clientSecret || '' } })) }, [emailConfig])
+  useEffect(() => { setTriggersEdits(prev => ({ ...emailTriggers, ...prev })) }, [emailTriggers])
   useEffect(() => { setInboundEdits(prev => ({ ...inboundEmail, imapPass: prev.imapPass || '' })) }, [inboundEmail])
 
   const handleAddAgent = async (e) => {
@@ -2278,14 +2280,15 @@ export default function Admin() {
   }
 
   const handleSaveEmail = async () => {
+    setEmailSaving(true)
     try {
       const type = emailEdits.type || 'smtp'
       const payload = {
         type,
         triggers: {
-          trigger_new:     triggersEdits.new     ?? false,
-          trigger_assign:  triggersEdits.assign  ?? false,
-          trigger_resolve: triggersEdits.resolve ?? false,
+          trigger_new:      triggersEdits.new     ?? false,
+          trigger_assign:   triggersEdits.assign  ?? false,
+          trigger_resolve:  triggersEdits.resolve ?? false,
           trigger_timezone: triggersEdits.timezone || 'UTC',
         },
       }
@@ -2321,6 +2324,8 @@ export default function Admin() {
       addToast('Email settings saved', 'success')
     } catch (err) {
       addToast(err.message || 'Failed to save email config', 'error')
+    } finally {
+      setEmailSaving(false)
     }
   }
 
@@ -3358,7 +3363,7 @@ export default function Admin() {
         inboundEdits={inboundEdits} setInboundEdits={setInboundEdits}
         agents={agents} emailLog={emailLog} categories={categories}
         inputCls={inputCls}
-        onSave={handleSaveEmail} onTest={handleTestEmail}
+        onSave={handleSaveEmail} onTest={handleTestEmail} saving={emailSaving}
         onSaveInbound={handleSaveInbound}
         onPollNow={handlePollNow}
         onClearLog={handleClearLog}
