@@ -2323,7 +2323,11 @@ export default function Admin() {
       await updateEmailConfig(payload)
       addToast('Email settings saved', 'success')
     } catch (err) {
-      addToast(err.message || 'Failed to save email config', 'error')
+      const msg = err?.message || ''
+      const display = msg === 'Failed to fetch'
+        ? 'Could not reach the server — check your network connection and try again.'
+        : msg || 'Failed to save email config'
+      addToast(display, 'error')
     } finally {
       setEmailSaving(false)
     }
