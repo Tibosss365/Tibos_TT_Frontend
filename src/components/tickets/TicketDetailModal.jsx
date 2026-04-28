@@ -3,8 +3,9 @@ import {
   Trash2, Save, MessageSquare, Pencil, X, CheckSquare, Square,
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
-  CalendarDays, Briefcase, Mail, MailOpen, Send,
+  CalendarDays, Briefcase, Mail, MailOpen, Send, Paperclip, Download, Loader2 as SpinIcon,
 } from 'lucide-react'
+import { downloadAttachment } from '../../api/client'
 import { Modal } from '../ui/Modal'
 import { PriorityBadge, StatusBadge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -316,6 +317,52 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
     </div>
   )
 }
+
+// ── Attachment download row ────────────────────────────────────────────────────
+function AttachmentRow({ att, ticketUuid }) {
+  const [downloading, setDownloading] = useState(false)
+  const { addToast } = useUiStore()
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      await downloadAttachment(ticketUuid, att.id, att.filename)
+    } catch {
+      addToast('Download failed', 'error')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  const fmtSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded-lg border border-glass bg-black/3 dark:bg-white/3 group">
+      <FileText size={13} className="t-sub flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-xs t-main font-medium truncate">{att.filename}</div>
+        <div className="text-[10px] t-sub">{fmtSize(att.size)}</div>
+      </div>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg
+          bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500
+          border border-indigo-500/20 transition-all disabled:opacity-50 flex-shrink-0"
+      >
+        {downloading
+          ? <SpinIcon size={11} className="animate-spin" />
+          : <Download size={11} />}
+        {downloading ? 'Saving…' : 'Download'}
+      </button>
+    </div>
+  )
+}
+
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export function TicketDetailModal({ ticket, onClose }) {
@@ -689,6 +736,23 @@ export function TicketDetailModal({ ticket, onClose }) {
               {/* ── Details ── */}
               {activeTab === 'details' && (
                 <div className="space-y-4">
+                  {/* ── Attachments (top) ── */}
+                  {(liveTicket.attachments || []).length > 0 && (
+                    <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+                      <div className={labelCls + ' flex items-center gap-1.5 mb-2'}>
+                        <Paperclip size={11} /> Attachments ({liveTicket.attachments.length})
+                      </div>
+                      <div className="space-y-1.5">
+                        {liveTicket.attachments.map(att => (
+                          <AttachmentRow
+                            key={att.id}
+                            att={att}
+                            ticketUuid={liveTicket._uuid}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <div className={labelCls}>Subject</div>
                     {isEditing ? (
@@ -700,10 +764,11 @@ export function TicketDetailModal({ ticket, onClose }) {
                   <div>
                     <div className={labelCls}>Description</div>
                     {isEditing ? (
-                      <textarea className={inputCls + ' resize-none leading-relaxed'} rows={5}
+                      <textarea className={inputCls + ' resize-y leading-relaxed'} rows={10}
+                        style={{ minHeight: '160px' }}
                         value={edits.description} onChange={e => set('description', e.target.value)} />
                     ) : (
-                      <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap">{edits.description || <span className="opacity-40">No description</span>}</div>
+                      <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap min-h-[120px]">{edits.description || <span className="opacity-40">No description</span>}</div>
                     )}
                   </div>
                   {isEditing ? (
@@ -716,6 +781,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                   ) : (
                     <Button variant="primary" size="sm" onClick={handleEdit}><Pencil size={13}/> Edit Details</Button>
                   )}
+
                 </div>
               )}
 

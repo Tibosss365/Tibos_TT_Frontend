@@ -84,6 +84,31 @@ export function redirectToSSOLogin() {
   window.location.href = `${BASE}/auth/sso/login`
 }
 
+/** Returns the authenticated download URL for a ticket attachment. */
+export function attachmentDownloadUrl(ticketUuid, attachmentId) {
+  const token = getToken()
+  // We can't pass Authorization header via <a href>, so we fetch as blob and trigger download
+  return { ticketUuid, attachmentId, token }
+}
+
+/** Download an attachment by fetching as blob and triggering browser save. */
+export async function downloadAttachment(ticketUuid, attachmentId, filename) {
+  const token = getToken()
+  const res = await fetch(`${BASE}/tickets/${ticketUuid}/attachments/${attachmentId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error('Download failed')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 /** Normalize a ticket from the backend shape to the frontend shape. */
 export function normalizeTicket(t) {
   return {
@@ -121,6 +146,12 @@ export function normalizeTicket(t) {
       text:   ev.text,
       ts:     ev.created_at,
       author: ev.author?.name || '',
+    })),
+    attachments: (t.attachments || []).map(a => ({
+      id:          a.id,
+      filename:    a.filename,
+      contentType: a.content_type,
+      size:        a.size,
     })),
   }
 }
