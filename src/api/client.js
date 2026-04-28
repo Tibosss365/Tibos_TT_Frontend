@@ -67,6 +67,23 @@ export const api = {
   delete: (path)        => request(path, { method: 'DELETE' }),
 }
 
+// ── SSO helpers ────────────────────────────────────────────────────────────────
+/** Fetch public SSO info for the login page (no token required). */
+export async function fetchSSOPublic() {
+  try {
+    const res = await fetch(`${BASE}/auth/sso/public`)
+    if (!res.ok) return { enabled: false, provider: 'microsoft', label: 'Sign in with Microsoft' }
+    return await res.json()
+  } catch {
+    return { enabled: false, provider: 'microsoft', label: 'Sign in with Microsoft' }
+  }
+}
+
+/** Redirect browser to backend SSO login (initiates Azure AD auth flow). */
+export function redirectToSSOLogin() {
+  window.location.href = `${BASE}/auth/sso/login`
+}
+
 /** Normalize a ticket from the backend shape to the frontend shape. */
 export function normalizeTicket(t) {
   return {

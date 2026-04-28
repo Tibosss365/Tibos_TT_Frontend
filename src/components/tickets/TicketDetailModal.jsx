@@ -333,7 +333,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const isEndUser = currentUser?.role === 'user'
 
 
-  const [activeTab, setActiveTab] = useState('details')
+  const [activeTab, setActiveTab] = useState(isEndUser ? 'conversations' : 'details')
   const [resolverId, setResolverId] = useState(currentUser?.id || '')
 
   // Load full ticket detail (with timeline) when modal opens
@@ -507,7 +507,7 @@ export function TicketDetailModal({ ticket, onClose }) {
         <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-1.5">
           <span className="text-sm font-bold t-main font-mono">{ticket.id}</span>
           <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
-          {isEditing ? (
+          {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-28" value={edits.type} onChange={e => set('type', e.target.value)}>
               {TICKET_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
             </select>
@@ -520,17 +520,17 @@ export function TicketDetailModal({ ticket, onClose }) {
             )
           })()}
           <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
-          {isEditing ? (
+          {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-32" value={edits.status} onChange={e => set('status', e.target.value)}>
               {STATUSES.map(s => <option key={s} value={s}>{s.split('-').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ')}</option>)}
             </select>
           ) : <StatusBadge status={edits.status} />}
-          {isEditing ? (
+          {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-28" value={edits.priority} onChange={e => set('priority', e.target.value)}>
               {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
             </select>
           ) : <PriorityBadge priority={edits.priority} />}
-          {isEditing ? (
+          {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-36" value={edits.assignee} onChange={e => set('assignee', e.target.value)}>
               <option value="">— Unassigned —</option>
               {agents.filter(a => a.id !== 'unassigned').map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -575,7 +575,7 @@ export function TicketDetailModal({ ticket, onClose }) {
 
             {/* Tab bar */}
             <div className="flex border-b border-glass px-2 sm:px-4 flex-shrink-0 overflow-x-auto">
-              {MODAL_TABS.map(({ id, icon: Icon, label }) => {
+              {(isEndUser ? MODAL_TABS.filter(t => t.id === 'details' || t.id === 'conversations') : MODAL_TABS).map(({ id, icon: Icon, label }) => {
                 // Badge counts
                 let badge = 0
                 if (id === 'tasks')     badge = (liveTicket.tasks||[]).filter(t=>!t.done).length
@@ -706,7 +706,14 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap">{edits.description || <span className="opacity-40">No description</span>}</div>
                     )}
                   </div>
-                  {!isEditing && (
+                  {isEditing ? (
+                    isEndUser && (
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="primary" size="sm" onClick={() => handleSave()}><Save size={13}/> Save Changes</Button>
+                        <Button variant="ghost" size="sm" onClick={handleCancel}><X size={13}/> Cancel</Button>
+                      </div>
+                    )
+                  ) : (
                     <Button variant="primary" size="sm" onClick={handleEdit}><Pencil size={13}/> Edit Details</Button>
                   )}
                 </div>

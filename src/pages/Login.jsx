@@ -1,15 +1,61 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Zap, Eye, EyeOff, Lock, User } from 'lucide-react'
+import { Zap, Eye, EyeOff, Lock, User, Shield } from 'lucide-react'
 import { useUserStore } from '../stores/userStore'
+import { fetchSSOPublic, redirectToSSOLogin } from '../api/client'
 
 export default function Login() {
-  const [form, setForm] = useState({ username: '', password: '' })
-  const [showPw, setShowPw] = useState(false)
-  const [error, setError] = useState('')
+  const [form, setForm]       = useState({ username: '', password: '' })
+  const [showPw, setShowPw]   = useState(false)
+  const [error, setError]     = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useUserStore()
+  const [ssoInfo, setSsoInfo] = useState(null)   // { enabled, provider, label }
+  const [ssoLoading, setSsoLoading] = useState(false)
+
+  const { login, setFromSSO } = useUserStore()
   const navigate = useNavigate()
+
+  // ── On mount: load SSO config + handle callback token ─────────────────────
+  useEffect(() => {
+    // 1. Fetch whether SSO is enabled
+    fetchSSOPublic().then(setSsoInfo)
+
+    // 2. Handle SSO callback — backend redirects back with ?sso_token=...
+    const params = new URLSearchParams(window.location.search)
+    const ssoToken = params.get('sso_token')
+    const ssoUser  = params.get('sso_user')
+    const ssoError = params.get('sso_error')
+
+    if (ssoError) {
+      const messages = {
+        sso_disabled:          'Single sign-on is not enabled.',
+        user_not_provisioned:  'Your account is not provisioned. Contact your administrator.',
+        account_disabled:      'Your account has been disabled.',
+        invalid_state:         'Login session expired — please try again.',
+        token_exchange_failed: 'Could not complete sign-in. Try again.',
+        invalid_id_token:      'Identity verification failed. Contact your administrator.',
+        missing_oid:           'Your account is missing required identity claims.',
+        missing_params:        'Incomplete response from identity provider.',
+      }
+      setError(messages[ssoError] || `SSO error: ${ssoError}`)
+      // Clean URL
+      window.history.replaceState({}, '', '/login')
+      return
+    }
+
+    if (ssoToken && ssoUser) {
+      try {
+        const user = JSON.parse(atob(ssoUser))
+        setFromSSO(ssoToken, user)
+        // Clean URL before redirecting
+        window.history.replaceState({}, '', '/')
+        navigate(user.role === 'user' ? '/tickets/my-portal' : '/dashboard', { replace: true })
+      } catch {
+        setError('SSO login failed — invalid session data.')
+        window.history.replaceState({}, '', '/login')
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,6 +66,11 @@ export default function Login() {
     setLoading(false)
     if (result.success) navigate('/dashboard')
     else setError(result.error)
+  }
+
+  const handleSSOLogin = () => {
+    setSsoLoading(true)
+    redirectToSSOLogin()  // triggers full browser redirect to Azure AD
   }
 
   return (
@@ -56,6 +107,41 @@ export default function Login() {
             </div>
           )}
 
+          {/* ── SSO Button (shown when enabled) ── */}
+          {ssoInfo?.enabled && (
+            <div className="mb-5">
+              <button
+                type="button"
+                onClick={handleSSOLogin}
+                disabled={ssoLoading}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl
+                  border border-[#2672D8]/40 bg-[#2672D8]/10 hover:bg-[#2672D8]/20
+                  text-[#2672D8] dark:text-[#60a5fa] font-semibold text-sm
+                  transition-all disabled:opacity-50"
+              >
+                {ssoLoading ? (
+                  <span className="w-4 h-4 border-2 border-[#2672D8]/40 border-t-[#2672D8] rounded-full animate-spin" />
+                ) : (
+                  /* Microsoft logo SVG */
+                  <svg width="18" height="18" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="1" y="1" width="9" height="9" fill="#F25022"/>
+                    <rect x="11" y="1" width="9" height="9" fill="#7FBA00"/>
+                    <rect x="1" y="11" width="9" height="9" fill="#00A4EF"/>
+                    <rect x="11" y="11" width="9" height="9" fill="#FFB900"/>
+                  </svg>
+                )}
+                {ssoLoading ? 'Redirecting…' : (ssoInfo.label || 'Sign in with Microsoft')}
+              </button>
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+                <span className="text-[10px] t-sub font-medium uppercase tracking-wider">or</span>
+                <div className="flex-1 h-px bg-black/10 dark:bg-white/10" />
+              </div>
+            </div>
+          )}
+
+          {/* ── Username / Password form ── */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-medium t-muted mb-1.5">Username</label>

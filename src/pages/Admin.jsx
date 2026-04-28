@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info } from 'lucide-react'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
@@ -23,6 +23,7 @@ const TABS = [
   { id: 'sla',       icon: SlidersHorizontal, label: 'SLA' },
   { id: 'email',     icon: Mail,              label: 'Email' },
   { id: 'alerts',    icon: Bell,              label: 'Alerts' },
+  { id: 'sso',       icon: Shield,            label: 'SSO / OIDC' },
 ]
 
 const GROUP_COLORS = [
@@ -2433,6 +2434,97 @@ export default function Admin() {
     if (tab === 'alerts') fetchAlertSettings()
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── SSO state ──────────────────────────────────────────────────────────────
+  const { ssoConfig, fetchSSOConfig, saveSSOConfig, testSSOConfig } = useAdminStore()
+  const [ssoEdits, setSsoEdits] = useState({
+    enabled: false, provider: 'microsoft', tenant_id: '', client_id: '',
+    client_secret: '', redirect_uri: '', authorization_endpoint: '',
+    token_endpoint: '', jwks_uri: '', issuer: '', default_role: 'user',
+    admin_group_ids: '', agent_group_ids: '', auto_create_users: true,
+    sync_on_login: true, client_secret_set: false,
+  })
+  const [ssoSaving, setSsoSaving] = useState(false)
+  const [ssoTesting, setSsoTesting] = useState(false)
+  const [ssoTestResult, setSsoTestResult] = useState(null)  // { ok, message }
+  const [ssoShowSecret, setSsoShowSecret] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'sso') fetchSSOConfig()
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const SSO_DEFAULTS = {
+    enabled:                false,
+    provider:               'microsoft',
+    tenant_id:              '',
+    client_id:              '',
+    client_secret:          '',
+    redirect_uri:           '',
+    authorization_endpoint: '',
+    token_endpoint:         '',
+    jwks_uri:               '',
+    issuer:                 '',
+    default_role:           'user',
+    admin_group_ids:        '',
+    agent_group_ids:        '',
+    auto_create_users:      true,
+    sync_on_login:          true,
+    client_secret_set:      false,
+  }
+
+  useEffect(() => {
+    const s = ssoConfig || {}
+    setSsoEdits({
+      enabled:               s.enabled ?? SSO_DEFAULTS.enabled,
+      provider:              s.provider || SSO_DEFAULTS.provider,
+      tenant_id:             s.tenant_id || '',
+      client_id:             s.client_id || '',
+      client_secret:         '',   // never pre-fill the secret
+      redirect_uri:          s.redirect_uri || '',
+      authorization_endpoint: s.authorization_endpoint || '',
+      token_endpoint:         s.token_endpoint || '',
+      jwks_uri:               s.jwks_uri || '',
+      issuer:                 s.issuer || '',
+      default_role:           s.default_role || 'user',
+      admin_group_ids:        (s.admin_group_ids || []).join('\n'),
+      agent_group_ids:        (s.agent_group_ids || []).join('\n'),
+      auto_create_users:      s.auto_create_users ?? true,
+      sync_on_login:          s.sync_on_login ?? true,
+      client_secret_set:      s.client_secret_set || false,
+    })
+  }, [ssoConfig])
+
+  const handleSaveSSO = async () => {
+    if (!ssoEdits) return
+    setSsoSaving(true)
+    setSsoTestResult(null)
+    try {
+      const payload = {
+        ...ssoEdits,
+        admin_group_ids: ssoEdits.admin_group_ids.split('\n').map(s => s.trim()).filter(Boolean),
+        agent_group_ids: ssoEdits.agent_group_ids.split('\n').map(s => s.trim()).filter(Boolean),
+      }
+      await saveSSOConfig(payload)
+      addToast('SSO configuration saved', 'success')
+    } catch (err) {
+      addToast(err?.message || 'Failed to save SSO config', 'error')
+    } finally {
+      setSsoSaving(false)
+    }
+  }
+
+  const handleTestSSO = async () => {
+    setSsoTesting(true)
+    setSsoTestResult(null)
+    try {
+      const result = await testSSOConfig()
+      setSsoTestResult({ ok: true, message: result.message, issuer: result.issuer })
+    } catch (err) {
+      setSsoTestResult({ ok: false, message: err?.message || 'Connection failed' })
+    } finally {
+      setSsoTesting(false)
+    }
+  }
+
   const handleSaveAlerts = async () => {
     setAlertSaving(true)
     try {
@@ -3426,6 +3518,242 @@ export default function Admin() {
           onTest={handleTestAlert}
           saving={alertSaving}
         />
+      )}
+
+      {/* ── SSO / OIDC ─────────────────────────────────────────────────────── */}
+      {tab === 'sso' && (
+        <div className="space-y-5 max-w-3xl">
+
+          {/* Header info banner */}
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-indigo-500/8 border border-indigo-500/20">
+            <Shield size={16} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+            <div className="text-xs t-main leading-relaxed">
+              <span className="font-semibold">Single Sign-On (SSO) via OpenID Connect</span> — Users can log in with
+              their Microsoft corporate account. This is <em>separate</em> from the Email configuration.
+              Local username/password login continues to work for admin accounts.
+            </div>
+          </div>
+
+          {ssoEdits && (
+            <>
+              {/* ── Azure AD App Registration Guide ── */}
+              <Card>
+                <CardHeader
+                  title="Azure AD App Registration"
+                  subtitle="One-time setup in the Microsoft Entra admin center"
+                />
+                <div className="space-y-2.5 text-xs t-muted leading-relaxed">
+                  {[
+                    ['1', 'Go to', 'portal.azure.com', 'https://portal.azure.com', '→ Microsoft Entra ID → App registrations → New registration'],
+                    ['2', 'Set Name (e.g. "Tibos Helpdesk"), Supported account types = "Single tenant"', '', '', ''],
+                    ['3', 'Add Redirect URI → Web → paste the Redirect URI shown below', '', '', ''],
+                    ['4', 'After creating: copy', 'Application (client) ID', '', 'and', 'Directory (tenant) ID', ''],
+                    ['5', 'Go to Certificates & secrets → New client secret → copy the Value', '', '', ''],
+                    ['6', 'Go to Token configuration → Add optional claim → ID → check email, family_name, given_name', '', '', ''],
+                    ['7', 'For role mapping: API permissions → add', 'GroupMember.Read.All', '', ', then paste group Object IDs below', '', ''],
+                  ].map(([num, ...parts], i) => (
+                    <div key={i} className="flex gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-indigo-500/15 text-indigo-500 font-bold text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">{num}</span>
+                      <span>{parts.filter(Boolean).join(' ')}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href="https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app"
+                  target="_blank" rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-indigo-500 hover:underline">
+                  <ExternalLink size={11} /> Microsoft documentation
+                </a>
+              </Card>
+
+              {/* ── Enable / Provider ── */}
+              <Card>
+                <CardHeader title="Provider & Status" subtitle="Enable SSO and select your identity provider" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-glass bg-black/3 dark:bg-white/[0.03]">
+                    <div>
+                      <div className="text-sm font-semibold t-main">Enable SSO Login</div>
+                      <div className="text-xs t-muted mt-0.5">Show "Sign in with Microsoft" button on the login page</div>
+                    </div>
+                    <Toggle on={ssoEdits.enabled} onChange={() => setSsoEdits(s => ({ ...s, enabled: !s.enabled }))} />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Identity Provider</label>
+                    <select className={inputCls} value={ssoEdits.provider}
+                      onChange={e => setSsoEdits(s => ({ ...s, provider: e.target.value }))}>
+                      <option value="microsoft">Microsoft Entra ID (Azure AD)</option>
+                      <option value="custom">Custom OIDC Provider</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+
+              {/* ── Azure AD Credentials ── */}
+              <Card>
+                <CardHeader
+                  title={ssoEdits.provider === 'microsoft' ? 'Azure AD Credentials' : 'OIDC Client Credentials'}
+                  subtitle="From your app registration in the Entra admin center"
+                />
+                <div className="space-y-4">
+                  {ssoEdits.provider === 'microsoft' && (
+                    <div>
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Directory (Tenant) ID</label>
+                      <input className={inputCls} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        value={ssoEdits.tenant_id}
+                        onChange={e => setSsoEdits(s => ({ ...s, tenant_id: e.target.value }))} />
+                      <p className="text-[10px] t-sub mt-1">Found on the app registration Overview page</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Application (Client) ID</label>
+                    <input className={inputCls} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={ssoEdits.client_id}
+                      onChange={e => setSsoEdits(s => ({ ...s, client_id: e.target.value }))} />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">
+                      Client Secret {ssoEdits.client_secret_set && <span className="text-emerald-500 font-normal ml-1">(saved)</span>}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={ssoShowSecret ? 'text' : 'password'}
+                        className={inputCls + ' pr-10'}
+                        placeholder={ssoEdits.client_secret_set ? '••••••••••••••••••••••••' : 'Paste new secret value…'}
+                        value={ssoEdits.client_secret}
+                        onChange={e => setSsoEdits(s => ({ ...s, client_secret: e.target.value }))}
+                      />
+                      <button type="button" onClick={() => setSsoShowSecret(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 t-sub hover:t-main">
+                        {ssoShowSecret ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] t-sub mt-1">Leave blank to keep the existing secret</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Redirect URI</label>
+                    <input className={inputCls + ' font-mono text-xs'} placeholder="https://your-api.example.com/auth/sso/callback"
+                      value={ssoEdits.redirect_uri}
+                      onChange={e => setSsoEdits(s => ({ ...s, redirect_uri: e.target.value }))} />
+                    <p className="text-[10px] t-sub mt-1">Must match exactly what you registered in Azure AD → Authentication → Redirect URIs</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* ── Custom OIDC endpoints (only for custom provider) ── */}
+              {ssoEdits.provider === 'custom' && (
+                <Card>
+                  <CardHeader title="Custom OIDC Endpoints" subtitle="Required when using a provider other than Microsoft Entra ID" />
+                  <div className="space-y-3">
+                    {[
+                      ['Authorization Endpoint', 'authorization_endpoint', 'https://your-idp.example.com/oauth2/authorize'],
+                      ['Token Endpoint',          'token_endpoint',         'https://your-idp.example.com/oauth2/token'],
+                      ['JWKS URI',                'jwks_uri',               'https://your-idp.example.com/.well-known/jwks.json'],
+                      ['Issuer',                  'issuer',                 'https://your-idp.example.com'],
+                    ].map(([label, key, ph]) => (
+                      <div key={key}>
+                        <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">{label}</label>
+                        <input className={inputCls + ' font-mono text-xs'} placeholder={ph}
+                          value={ssoEdits[key]}
+                          onChange={e => setSsoEdits(s => ({ ...s, [key]: e.target.value }))} />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* ── User Provisioning ── */}
+              <Card>
+                <CardHeader title="User Provisioning" subtitle="How SSO users are created and updated on first login" />
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/[0.03]">
+                    <div>
+                      <div className="text-sm font-semibold t-main">Auto-create users</div>
+                      <div className="text-xs t-muted mt-0.5">Create a new account on first SSO login (JIT provisioning)</div>
+                    </div>
+                    <Toggle on={ssoEdits.auto_create_users} onChange={() => setSsoEdits(s => ({ ...s, auto_create_users: !s.auto_create_users }))} />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/[0.03]">
+                    <div>
+                      <div className="text-sm font-semibold t-main">Sync profile on login</div>
+                      <div className="text-xs t-muted mt-0.5">Update name and role from Azure AD on every sign-in</div>
+                    </div>
+                    <Toggle on={ssoEdits.sync_on_login} onChange={() => setSsoEdits(s => ({ ...s, sync_on_login: !s.sync_on_login }))} />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Default Role for new SSO users</label>
+                    <select className={inputCls} value={ssoEdits.default_role}
+                      onChange={e => setSsoEdits(s => ({ ...s, default_role: e.target.value }))}>
+                      <option value="user">User (End-user portal only)</option>
+                      <option value="technician">Technician (Agent)</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+
+              {/* ── Role Mapping via Azure AD Groups ── */}
+              <Card>
+                <CardHeader
+                  title="Group → Role Mapping (optional)"
+                  subtitle="Paste Azure AD Group Object IDs to auto-assign roles. One ID per line."
+                />
+                <div className="space-y-4">
+                  <div className="p-3 rounded-xl bg-amber-500/8 border border-amber-500/20 text-xs t-main flex items-start gap-2">
+                    <Info size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    Requires <strong>GroupMember.Read.All</strong> API permission and enabling group claims in Token Configuration in your Azure app registration.
+                  </div>
+                  {[
+                    ['Admin Group IDs', 'admin_group_ids', 'Maps these Azure groups → Admin role'],
+                    ['Agent Group IDs', 'agent_group_ids', 'Maps these Azure groups → Technician role'],
+                  ].map(([label, key, hint]) => (
+                    <div key={key}>
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">{label}</label>
+                      <textarea className={inputCls + ' font-mono text-xs resize-none'} rows={3}
+                        placeholder={'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\nxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}
+                        value={ssoEdits[key]}
+                        onChange={e => setSsoEdits(s => ({ ...s, [key]: e.target.value }))} />
+                      <p className="text-[10px] t-sub mt-0.5">{hint}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* ── Test + Save ── */}
+              <Card>
+                <CardHeader title="Test & Save" subtitle="Verify your configuration before enabling" />
+
+                {ssoTestResult && (
+                  <div className={`mb-4 flex items-start gap-2 p-3 rounded-xl text-xs border ${
+                    ssoTestResult.ok
+                      ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400'
+                  }`}>
+                    {ssoTestResult.ok ? <CheckCircle2 size={13} className="mt-0.5 flex-shrink-0" /> : <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />}
+                    <div>
+                      <div className="font-semibold">{ssoTestResult.ok ? 'Connection successful' : 'Connection failed'}</div>
+                      <div className="mt-0.5 opacity-80">{ssoTestResult.message}</div>
+                      {ssoTestResult.issuer && <div className="mt-0.5 font-mono opacity-60 text-[10px]">Issuer: {ssoTestResult.issuer}</div>}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <Button variant="ghost" size="sm" onClick={handleTestSSO} disabled={ssoTesting}>
+                    {ssoTesting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                    Test Connection
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={handleSaveSSO} disabled={ssoSaving}>
+                    {ssoSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                    Save SSO Config
+                  </Button>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
       )}
 
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}

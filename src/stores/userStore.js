@@ -22,6 +22,11 @@ export const useUserStore = create(
       logout: () => {
         set({ currentUser: null, token: null, isLoggedIn: false })
       },
+
+      // Called after a successful SSO callback — token + user come from URL params
+      setFromSSO: (token, user) => {
+        set({ token, currentUser: user, isLoggedIn: true })
+      },
     }),
     {
       name: 'helpdesk-user',

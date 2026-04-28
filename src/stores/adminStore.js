@@ -511,6 +511,28 @@ export const useAdminStore = create(
         return await api.post('/admin/alerts/test', {})
       },
 
+      // ── SSO / OIDC config ─────────────────────────────────────────────────
+      ssoConfig: null,
+
+      fetchSSOConfig: async () => {
+        try {
+          const data = await api.get('/admin/sso')
+          set({ ssoConfig: data })
+        } catch (e) {
+          console.error('fetchSSOConfig error', e)
+        }
+      },
+
+      saveSSOConfig: async (body) => {
+        const data = await api.put('/admin/sso', body)
+        set({ ssoConfig: data })
+        return data
+      },
+
+      testSSOConfig: async () => {
+        return await api.post('/admin/sso/test', {})
+      },
+
       // ── Category actions ──────────────────────────────────────────────
       addCategory: async (cat) => {
         const maxOrder = get().categories.reduce((m, c) => Math.max(m, c.sortOrder), 0)
