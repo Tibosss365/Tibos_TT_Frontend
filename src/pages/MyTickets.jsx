@@ -112,7 +112,10 @@ export default function MyTickets() {
 
   // ── Claim (Pick Up) handler ───────────────────────────────────────────────
   const handleClaim = async (ticket) => {
-    if (!currentUser?.id) return
+    if (!currentUser?.id) {
+      addToast('Unable to claim: user session not found. Please log in again.', 'error')
+      return
+    }
     setClaiming(prev => ({ ...prev, [ticket._uuid]: true }))
     try {
       await updateTicket(ticket._uuid, { assignee: String(currentUser.id) })

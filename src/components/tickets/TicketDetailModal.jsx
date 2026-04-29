@@ -508,40 +508,42 @@ export function TicketDetailModal({ ticket, onClose }) {
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
   const [newTask, setNewTask] = useState({ title: '', dueDate: '', assignee: currentUser?.id || '' })
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault()
     if (!newTask.title.trim()) return
-    addTask(ticket.id, newTask); setNewTask({ title: '', dueDate: '', assignee: currentUser?.id || '' })
-    addToast('Task added', 'success')
+    setNewTask({ title: '', dueDate: '', assignee: currentUser?.id || '' })
+    try { await addTask(ticket.id, newTask); addToast('Task added', 'success') }
+    catch { addToast('Failed to save task', 'error') }
   }
 
   // ── Work Log ───────────────────────────────────────────────────────────────
   const [newLog, setNewLog] = useState({ hours: '', description: '', date: new Date().toISOString().slice(0,10) })
-  const handleAddLog = (e) => {
+  const handleAddLog = async (e) => {
     e.preventDefault()
     if (!newLog.hours || !newLog.description.trim()) return
-    addWorkLog(ticket.id, { ...newLog, agent: currentUser?.name || 'Agent' })
     setNewLog({ hours: '', description: '', date: new Date().toISOString().slice(0,10) })
-    addToast('Work log added', 'success')
+    try { await addWorkLog(ticket.id, { ...newLog, agent: currentUser?.name || 'Agent' }); addToast('Work log added', 'success') }
+    catch { addToast('Failed to save work log', 'error') }
   }
 
   // ── Reminders ─────────────────────────────────────────────────────────────
   const [newReminder, setNewReminder] = useState({ date: '', note: '' })
-  const handleAddReminder = (e) => {
+  const handleAddReminder = async (e) => {
     e.preventDefault()
     if (!newReminder.date) return
-    addReminder(ticket.id, newReminder); setNewReminder({ date: '', note: '' })
-    addToast('Reminder set', 'success')
+    setNewReminder({ date: '', note: '' })
+    try { await addReminder(ticket.id, newReminder); addToast('Reminder set', 'success') }
+    catch { addToast('Failed to save reminder', 'error') }
   }
 
   // ── Approvals ─────────────────────────────────────────────────────────────
   const [newApproval, setNewApproval] = useState({ requestedFrom: '', note: '' })
-  const handleAddApproval = (e) => {
+  const handleAddApproval = async (e) => {
     e.preventDefault()
     if (!newApproval.requestedFrom) return
-    addApproval(ticket.id, { ...newApproval, requestedBy: currentUser?.name || 'Agent' })
     setNewApproval({ requestedFrom: '', note: '' })
-    addToast('Approval request sent', 'success')
+    try { await addApproval(ticket.id, { ...newApproval, requestedBy: currentUser?.name || 'Agent' }); addToast('Approval request sent', 'success') }
+    catch { addToast('Failed to save approval', 'error') }
   }
 
   const totalHours = (liveTicket.workLog||[]).reduce((s, w) => s + Number(w.hours||0), 0)

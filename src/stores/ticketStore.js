@@ -75,7 +75,10 @@ export const useTicketStore = create(
         if (changes.category     !== undefined) body.category     = changes.category
         if (changes.priority     !== undefined) body.priority     = changes.priority
         if (changes.status       !== undefined) body.status       = changes.status
-        if (changes.assignee     !== undefined) body.assignee_id  = changes.assignee || null
+        if (changes.assignee     !== undefined) {
+          const n = changes.assignee ? parseInt(changes.assignee, 10) : null
+          body.assignee_id = (n !== null && !Number.isNaN(n)) ? n : (changes.assignee || null)
+        }
         if (changes.company      !== undefined) body.company      = changes.company
         if (changes.submitter    !== undefined) body.contact_name = changes.submitter
         if (changes.email        !== undefined) body.email        = changes.email
@@ -85,7 +88,12 @@ export const useTicketStore = create(
         if (changes.group        !== undefined) body.group_id     = changes.group || null
         const data = await api.patch(`/tickets/${uuid}`, body)
         const updated = normalizeTicket(data)
-        set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
+        // Preserve attachments already loaded in the store — PATCH response returns [] for attachments
+        set(s => {
+          const existing = s.tickets.find(t => t._uuid === uuid)
+          const merged = { ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
+          return { tickets: s.tickets.map(t => t._uuid === uuid ? merged : t) }
+        })
         return updated
       },
 
@@ -111,7 +119,12 @@ export const useTicketStore = create(
           send_to_customer: event.sendToCustomer ?? false,
         })
         const updated = normalizeTicket(data)
-        set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? updated : t) }))
+        // Preserve attachments — comment POST response returns [] for attachments
+        set(s => {
+          const existing = s.tickets.find(t => t._uuid === uuid)
+          const merged = { ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
+          return { tickets: s.tickets.map(t => t._uuid === uuid ? merged : t) }
+        })
         return updated
       },
 
@@ -127,66 +140,82 @@ export const useTicketStore = create(
         set(s => ({ tickets: s.tickets.filter(t => !uuids.includes(t._uuid)), selectedIds: [] }))
       },
 
-      // ── Tasks ──────────────────────────────────────────────────────────────
-      addTask: (ticketId, task) => {
+      // ── Helper: push updated ticket from API response into store ───────────
+      _mergeTicket: (uuid, updated) => {
+        set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated } : t) }))
+      },
+
+      // ── Tasks (persisted to backend) ───────────────────────────────────────
+      addTask: async (ticketId, task) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
         const id = 'task-' + Date.now()
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, tasks: [...(t.tasks||[]), { ...task, id, done: false, createdAt: new Date().toISOString() }], updated: new Date().toISOString() }
-          : t) }))
+        const newTask = { ...task, id, done: false, createdAt: new Date().toISOString() }
+        const items = [...(existing?.tasks || []), newTask]
+        const data = await api.put(`/tickets/${existing?._uuid}/tasks`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      toggleTask: (ticketId, taskId) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, tasks: (t.tasks||[]).map(tk => tk.id === taskId ? { ...tk, done: !tk.done } : tk), updated: new Date().toISOString() }
-          : t) }))
+      toggleTask: async (ticketId, taskId) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.tasks || []).map(tk => tk.id === taskId ? { ...tk, done: !tk.done } : tk)
+        const data = await api.put(`/tickets/${existing?._uuid}/tasks`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      deleteTask: (ticketId, taskId) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, tasks: (t.tasks||[]).filter(tk => tk.id !== taskId), updated: new Date().toISOString() }
-          : t) }))
+      deleteTask: async (ticketId, taskId) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.tasks || []).filter(tk => tk.id !== taskId)
+        const data = await api.put(`/tickets/${existing?._uuid}/tasks`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
 
-      // ── Work Log ───────────────────────────────────────────────────────────
-      addWorkLog: (ticketId, entry) => {
+      // ── Work Log (persisted to backend) ───────────────────────────────────
+      addWorkLog: async (ticketId, entry) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
         const id = 'wl-' + Date.now()
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, workLog: [...(t.workLog||[]), { ...entry, id, ts: new Date().toISOString() }], updated: new Date().toISOString() }
-          : t) }))
+        const items = [...(existing?.workLog || []), { ...entry, id, ts: new Date().toISOString() }]
+        const data = await api.put(`/tickets/${existing?._uuid}/work-log`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      deleteWorkLog: (ticketId, entryId) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, workLog: (t.workLog||[]).filter(w => w.id !== entryId), updated: new Date().toISOString() }
-          : t) }))
+      deleteWorkLog: async (ticketId, entryId) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.workLog || []).filter(w => w.id !== entryId)
+        const data = await api.put(`/tickets/${existing?._uuid}/work-log`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
 
-      // ── Reminders ──────────────────────────────────────────────────────────
-      addReminder: (ticketId, reminder) => {
+      // ── Reminders (persisted to backend) ──────────────────────────────────
+      addReminder: async (ticketId, reminder) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
         const id = 'rem-' + Date.now()
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, reminders: [...(t.reminders||[]), { ...reminder, id, done: false }], updated: new Date().toISOString() }
-          : t) }))
+        const items = [...(existing?.reminders || []), { ...reminder, id, done: false }]
+        const data = await api.put(`/tickets/${existing?._uuid}/reminders`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      toggleReminder: (ticketId, remId) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, reminders: (t.reminders||[]).map(r => r.id === remId ? { ...r, done: !r.done } : r), updated: new Date().toISOString() }
-          : t) }))
+      toggleReminder: async (ticketId, remId) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.reminders || []).map(r => r.id === remId ? { ...r, done: !r.done } : r)
+        const data = await api.put(`/tickets/${existing?._uuid}/reminders`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      deleteReminder: (ticketId, remId) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, reminders: (t.reminders||[]).filter(r => r.id !== remId), updated: new Date().toISOString() }
-          : t) }))
+      deleteReminder: async (ticketId, remId) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.reminders || []).filter(r => r.id !== remId)
+        const data = await api.put(`/tickets/${existing?._uuid}/reminders`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
 
-      // ── Approvals ──────────────────────────────────────────────────────────
-      addApproval: (ticketId, approval) => {
+      // ── Approvals (persisted to backend) ──────────────────────────────────
+      addApproval: async (ticketId, approval) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
         const id = 'appr-' + Date.now()
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, approvals: [...(t.approvals||[]), { ...approval, id, status: 'pending', ts: new Date().toISOString() }], updated: new Date().toISOString() }
-          : t) }))
+        const items = [...(existing?.approvals || []), { ...approval, id, status: 'pending', ts: new Date().toISOString() }]
+        const data = await api.put(`/tickets/${existing?._uuid}/approvals`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
-      updateApprovalStatus: (ticketId, approvalId, status) => {
-        set(s => ({ tickets: s.tickets.map(t => t.id === ticketId
-          ? { ...t, approvals: (t.approvals||[]).map(a => a.id === approvalId ? { ...a, status, resolvedAt: new Date().toISOString() } : a), updated: new Date().toISOString() }
-          : t) }))
+      updateApprovalStatus: async (ticketId, approvalId, status) => {
+        const existing = get().tickets.find(t => t.id === ticketId)
+        const items = (existing?.approvals || []).map(a => a.id === approvalId ? { ...a, status, resolvedAt: new Date().toISOString() } : a)
+        const data = await api.put(`/tickets/${existing?._uuid}/approvals`, { items })
+        get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
 
       // ── Filters & Selection ────────────────────────────────────────────────

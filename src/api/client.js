@@ -37,7 +37,15 @@ async function request(path, options = {}) {
     return   // navigation in progress; prevent further processing
   }
 
-  const data = await res.json()
+  // Parse JSON body — guard against empty or non-JSON responses (e.g. DELETE 200)
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return null  // successful response with no/non-JSON body
+  }
+
   if (!res.ok) {
     const detail = data?.detail
     let msg
@@ -129,6 +137,10 @@ export function normalizeTicket(t) {
     assigneeObj: t.assignee || null,
     group:       t.group_id ? String(t.group_id) : (t.group?.id ? String(t.group.id) : ''),
     resolution:  t.resolution || '',
+    tasks:     t.tasks     || [],
+    workLog:   t.work_log  || [],
+    reminders: t.reminders || [],
+    approvals: t.approvals || [],
     // ── SLA v2 fields ─────────────────────────────────────────────────
     slaStatus:        t.sla_status        || 'not_started',
     slaStartTime:     t.sla_start_time    || null,
