@@ -7,6 +7,7 @@ export const useTicketStore = create(
     (set, get) => ({
       tickets: [],
       myRequests: [],
+      deletedTickets: [],
       loading: false,
       filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' },
       selectedIds: [],
@@ -25,7 +26,8 @@ export const useTicketStore = create(
             if (page >= (data.pages || 1) || items.length === 0) break
             page++
           }
-          set({ tickets: allTickets, loading: false })
+          const deletedUuids = new Set(get().deletedTickets.map(t => t._uuid))
+          set({ tickets: allTickets.filter(t => !deletedUuids.has(t._uuid)), loading: false })
         } catch (e) {
           console.error('fetchTickets error', e)
           set({ loading: false })
@@ -76,8 +78,7 @@ export const useTicketStore = create(
         if (changes.priority     !== undefined) body.priority     = changes.priority
         if (changes.status       !== undefined) body.status       = changes.status
         if (changes.assignee     !== undefined) {
-          const n = changes.assignee ? parseInt(changes.assignee, 10) : null
-          body.assignee_id = (n !== null && !Number.isNaN(n)) ? n : (changes.assignee || null)
+          body.assignee_id = changes.assignee || null
         }
         if (changes.company      !== undefined) body.company      = changes.company
         if (changes.submitter    !== undefined) body.contact_name = changes.submitter
@@ -100,6 +101,58 @@ export const useTicketStore = create(
       deleteTicket: async (uuid) => {
         await api.delete(`/tickets/${uuid}`)
         set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
+      },
+
+      // ── Recycle Bin ───────────────────────────────────────────────────────────
+      softDelete: (uuid) => {
+        const ticket = get().tickets.find(t => t._uuid === uuid)
+        if (!ticket) return
+        set(s => ({
+          tickets: s.tickets.filter(t => t._uuid !== uuid),
+          deletedTickets: [{ ...ticket, deletedAt: new Date().toISOString() }, ...s.deletedTickets],
+        }))
+      },
+
+      softBulkDelete: (uuids) => {
+        const toDelete = get().tickets.filter(t => uuids.includes(t._uuid))
+        const now = new Date().toISOString()
+        set(s => ({
+          tickets: s.tickets.filter(t => !uuids.includes(t._uuid)),
+          deletedTickets: [...toDelete.map(t => ({ ...t, deletedAt: now })), ...s.deletedTickets],
+          selectedIds: [],
+        }))
+      },
+
+      restoreTicket: (uuid) => {
+        const ticket = get().deletedTickets.find(t => t._uuid === uuid)
+        if (!ticket) return
+        const { deletedAt, ...restored } = ticket
+        set(s => ({
+          deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid),
+          tickets: [restored, ...s.tickets],
+        }))
+      },
+
+      permanentDelete: async (uuid) => {
+        await api.delete(`/tickets/${uuid}`)
+        set(s => ({ deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid) }))
+      },
+
+      permanentBulkDelete: async (uuids) => {
+        await Promise.allSettled(uuids.map(uuid => api.delete(`/tickets/${uuid}`)))
+        set(s => ({ deletedTickets: s.deletedTickets.filter(t => !uuids.includes(t._uuid)) }))
+      },
+
+      purgeExpiredDeleted: async () => {
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
+        const now = Date.now()
+        const expired = get().deletedTickets.filter(
+          t => now - new Date(t.deletedAt).getTime() >= THIRTY_DAYS_MS
+        )
+        if (expired.length === 0) return
+        await Promise.allSettled(expired.map(t => api.delete(`/tickets/${t._uuid}`)))
+        const expiredUuids = new Set(expired.map(t => t._uuid))
+        set(s => ({ deletedTickets: s.deletedTickets.filter(t => !expiredUuids.has(t._uuid)) }))
       },
 
       fetchTicket: async (uuid) => {

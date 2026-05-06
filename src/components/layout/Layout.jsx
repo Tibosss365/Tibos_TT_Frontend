@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { ToastContainer } from '../ui/Toast'
 import { useUserStore } from '../../stores/userStore'
+import { BASE } from '../../api/client'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -45,7 +46,7 @@ export function Layout() {
     fetchNotifications()
 
     // Open SSE connection
-    const es = new EventSource(`/api/events?token=${encodeURIComponent(token)}`)
+    const es = new EventSource(`${BASE}/events?token=${encodeURIComponent(token)}`)
     sseRef.current = es
 
     const handleTicketEvent = () => {

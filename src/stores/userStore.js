@@ -12,8 +12,9 @@ export const useUserStore = create(
       login: async (username, password) => {
         try {
           const data = await api.post('/auth/login', { username, password })
+          if (!data?.access_token) throw new Error('Invalid response from server')
           set({ currentUser: data.user, token: data.access_token, isLoggedIn: true })
-          return { success: true }
+          return { success: true, role: data.user?.role }
         } catch (e) {
           return { success: false, error: e.message }
         }

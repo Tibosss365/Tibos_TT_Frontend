@@ -9,6 +9,7 @@ import UserPortal from './pages/UserPortal'
 import NewTicket from './pages/NewTicket'
 import Admin from './pages/Admin'
 import Analytics from './pages/Analytics'
+import DeletedItems from './pages/DeletedItems'
 import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
@@ -57,6 +58,7 @@ export default function App() {
         <Route path="/tickets/new"       element={<NewTicket />} />
         <Route path="/admin"             element={<StaffOnly><Admin /></StaffOnly>} />
         <Route path="/analytics"         element={<StaffOnly><Analytics /></StaffOnly>} />
+        <Route path="/deleted"           element={<StaffOnly><DeletedItems /></StaffOnly>} />
         <Route path="*"                  element={<DefaultRedirect />} />
       </Route>
     </Routes>

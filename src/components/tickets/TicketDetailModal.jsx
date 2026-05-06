@@ -191,7 +191,7 @@ function SlaCountdown({ ticket, slaSettings }) {
 }
 
 // ── Requester Details Sidebar ─────────────────────────────────────────────────
-function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete, hideActions }) {
+function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categories, slaSettings, onEdit, onSave, onCancel, onDelete, hideActions, isDeleting }) {
   const t = useT()
   const initials = (ticket.submitter || ticket.contactName || '?')
     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -311,7 +311,9 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           ) : (
             <Button variant="primary" size="sm" className="w-full" onClick={onEdit}><Pencil size={13} /> {t('editTicket')}</Button>
           )}
-          <Button variant="danger" size="sm" className="w-full" onClick={onDelete}><Trash2 size={13} /> {t('delete')}</Button>
+          <Button variant="danger" size="sm" className="w-full" onClick={onDelete} disabled={isDeleting}>
+            {isDeleting ? <><SpinIcon size={13} className="animate-spin" /> Deleting…</> : <><Trash2 size={13} /> {t('delete')}</>}
+          </Button>
         </div>
       )}
     </div>
@@ -367,7 +369,7 @@ function AttachmentRow({ att, ticketUuid }) {
 // ── Main Modal ────────────────────────────────────────────────────────────────
 export function TicketDetailModal({ ticket, onClose }) {
   const {
-    updateTicket, addTimelineEvent, deleteTicket, fetchTicket,
+    updateTicket, addTimelineEvent, softDelete, fetchTicket,
     addTask, toggleTask, deleteTask,
     addWorkLog, deleteWorkLog,
     addReminder, toggleReminder, deleteReminder,
@@ -485,10 +487,12 @@ export function TicketDetailModal({ ticket, onClose }) {
     setIsEditing(false)
   }
 
-  const handleDelete = async () => {
-    if (window.confirm('Delete this ticket? This cannot be undone.')) {
-      deleteTicket(ticket._uuid); addToast('Ticket deleted', 'error'); onClose()
-    }
+  const [deleting, setDeleting] = useState(false)
+  const handleDelete = () => {
+    if (!window.confirm('Move this ticket to trash? You can restore it within 30 days.')) return
+    softDelete(ticket._uuid)
+    addToast('Ticket moved to trash', 'info')
+    onClose()
   }
 
   // ── Comment ────────────────────────────────────────────────────────────────
@@ -1080,11 +1084,13 @@ export function TicketDetailModal({ ticket, onClose }) {
             agents={agents}
             groups={groups}
             categories={categories}
+            slaSettings={slaSettings}
             onEdit={isEndUser ? undefined : handleEdit}
             onSave={isEndUser ? undefined : handleSave}
             onCancel={isEndUser ? undefined : handleCancel}
             onDelete={isEndUser ? undefined : handleDelete}
             hideActions={isEndUser}
+            isDeleting={deleting}
           />
         </div>
       </div>

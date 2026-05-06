@@ -1,12 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
-  ChevronLeft, ChevronRight, LogOut, Zap, List
+  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2
 } from 'lucide-react'
-import { useUserStore }  from '../../stores/userStore'
-import { useUiStore }    from '../../stores/uiStore'
-import { useAdminStore } from '../../stores/adminStore'
-import { useT }          from '../../utils/i18n'
+import { useUserStore }   from '../../stores/userStore'
+import { useUiStore }     from '../../stores/uiStore'
+import { useAdminStore }  from '../../stores/adminStore'
+import { useTicketStore } from '../../stores/ticketStore'
+import { useT }           from '../../utils/i18n'
 
 const NAV_KEYS = [
   { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true },
@@ -24,6 +25,7 @@ export function Sidebar() {
   const { currentUser, logout } = useUserStore()
   const { sidebarOpen, toggleSidebar } = useUiStore()
   const { companyProfile } = useAdminStore()
+  const deletedCount = useTicketStore(s => s.deletedTickets.length)
   const navigate = useNavigate()
   const t = useT()
 
@@ -101,6 +103,24 @@ export function Sidebar() {
             {t('actions')}
           </div>
         )}
+        {isStaff && (
+          <NavLink
+            to="/deleted"
+            className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
+            title={!sidebarOpen ? 'Deleted Items' : undefined}
+          >
+            <Trash2 size={16} className="flex-shrink-0" />
+            {sidebarOpen && (
+              <span className="flex-1">Deleted Items</span>
+            )}
+            {deletedCount > 0 && (
+              <span className={`${sidebarOpen ? '' : 'absolute top-0.5 right-0.5'} inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-rose-500 text-white`}>
+                {deletedCount}
+              </span>
+            )}
+          </NavLink>
+        )}
+
         {!sidebarOpen && <div className="my-2" style={{ borderTop: '1px solid var(--c-border)' }} />}
         {ACTION_KEYS.filter(a =>
           (!a.adminOnly || isAdmin) &&

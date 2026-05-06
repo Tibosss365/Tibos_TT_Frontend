@@ -1,5 +1,5 @@
 // const BASE = 'https://tt.tibostech.in'
-const BASE = 'https://tibos-tt-api.azurewebsites.net'
+export const BASE = 'https://tibos-tt-api.azurewebsites.net'
 // const BASE = 'http://127.0.0.1:8000'
 
 

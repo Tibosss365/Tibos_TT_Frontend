@@ -64,7 +64,7 @@ export default function Login() {
     setError('')
     const result = await login(form.username, form.password)
     setLoading(false)
-    if (result.success) navigate('/dashboard')
+    if (result.success) navigate(result.role === 'user' ? '/tickets/my-portal' : '/dashboard')
     else setError(result.error)
   }
 
@@ -190,8 +190,8 @@ export default function Login() {
 
           <div className="mt-6 pt-5 border-t border-glass">
             <p className="text-xs t-sub text-center mb-2 font-medium opacity-60">Demo credentials</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[['admin', 'admin', 'Admin'], ['siva', 'siva', 'Technician']].map(([u, p, label]) => (
+            <div className="grid grid-cols-1 gap-2">
+              {[['admin', 'admin', 'Admin']].map(([u, p, label]) => (
                 <button key={u} type="button"
                   onClick={() => setForm({ username: u, password: p })}
                   className="px-3 py-2 rounded-lg bg-indigo-50/50 dark:bg-white/5 hover:bg-indigo-100/50 dark:hover:bg-white/10 border border-indigo-100 dark:border-white/10 text-xs t-muted hover:t-main transition-all text-left">

@@ -60,7 +60,7 @@ const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
 
 export default function MyTickets() {
-  const { tickets, loading, updateTicket, deleteTicket } = useTicketStore()
+  const { tickets, loading, updateTicket, softDelete } = useTicketStore()
   const { currentUser }                    = useUserStore()
   const { addToast }                       = useUiStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
@@ -112,13 +112,39 @@ export default function MyTickets() {
 
   // ── Claim (Pick Up) handler ───────────────────────────────────────────────
   const handleClaim = async (ticket) => {
-    if (!currentUser?.id) {
+    if (!currentUser) {
       addToast('Unable to claim: user session not found. Please log in again.', 'error')
       return
     }
+
+    // Resolve the correct agent record for the logged-in user.
+    // Try email → username → numeric ID in order, because admin user IDs
+    // and agent record IDs may differ across backend tables.
+    const agentByEmail = agents.find(
+      a => a.email && currentUser.email &&
+           a.email.toLowerCase() === currentUser.email.toLowerCase()
+    )
+    const agentByUsername = agents.find(
+      a => a.username && currentUser.username &&
+           a.username.toLowerCase() === currentUser.username.toLowerCase()
+    )
+    const agentById = agents.find(
+      a => String(a.id) === String(currentUser.id)
+    )
+    const resolvedAgent = agentByEmail || agentByUsername || agentById
+
+    if (!resolvedAgent) {
+      addToast(
+        `Cannot pick up: your account (${currentUser.email || currentUser.username || currentUser.name}) ` +
+        'is not registered as an agent. Ask an admin to add you as an agent in the Agents settings.',
+        'error'
+      )
+      return
+    }
+
     setClaiming(prev => ({ ...prev, [ticket._uuid]: true }))
     try {
-      await updateTicket(ticket._uuid, { assignee: String(currentUser.id) })
+      await updateTicket(ticket._uuid, { assignee: String(resolvedAgent.id) })
       addToast(`${ticket.id} assigned to you`, 'success')
     } catch (err) {
       addToast(err.message || 'Failed to claim ticket', 'error')
@@ -128,17 +154,10 @@ export default function MyTickets() {
   }
 
   // ── Delete (from pool) handler ─────────────────────────────────────────
-  const handleDelete = async (ticket) => {
-    if (!window.confirm(`Delete ticket ${ticket.id}? This cannot be undone.`)) return
-    setDeleting(prev => ({ ...prev, [ticket._uuid]: true }))
-    try {
-      await deleteTicket(ticket._uuid)
-      addToast(`${ticket.id} deleted`, 'success')
-    } catch (err) {
-      addToast(err.message || 'Failed to delete ticket', 'error')
-    } finally {
-      setDeleting(prev => ({ ...prev, [ticket._uuid]: false }))
-    }
+  const handleDelete = (ticket) => {
+    if (!window.confirm(`Move ticket ${ticket.id} to trash?`)) return
+    softDelete(ticket._uuid)
+    addToast(`${ticket.id} moved to trash`, 'info')
   }
 
   // ── Unassigned pool (visible to all agents) ───────────────────────────────

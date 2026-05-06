@@ -74,7 +74,7 @@ export default function AllTickets() {
   const {
     tickets, filters, setFilter, resetFilters,
     selectedIds, toggleSelect, selectAll, clearSelection,
-    bulkUpdate, bulkDelete, getFilteredTickets,
+    bulkUpdate, softBulkDelete, getFilteredTickets,
   } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, getGroupName, agents } = useAdminStore()
   const { addToast } = useUiStore()
@@ -165,10 +165,10 @@ export default function AllTickets() {
     try { await bulkUpdate(selectedIds, { status: 'closed' }); addToast(`${selectedIds.length} tickets closed`, 'info') }
     catch (e) { addToast(e.message, 'error') }
   }
-  const handleBulkDelete = async () => {
-    if (!window.confirm(`Delete ${selectedIds.length} tickets?`)) return
-    try { await bulkDelete(selectedIds); addToast(`${selectedIds.length} tickets deleted`, 'error') }
-    catch (e) { addToast(e.message, 'error') }
+  const handleBulkDelete = () => {
+    if (!window.confirm(`Move ${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} to trash?`)) return
+    softBulkDelete(selectedIds)
+    addToast(`${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} moved to trash`, 'info')
   }
 
   const handleExportCSV = () => {
