@@ -495,9 +495,34 @@ export function TicketDetailModal({ ticket, onClose }) {
     onClose()
   }
 
-  // ── Comment ────────────────────────────────────────────────────────────────
+  // ── Comment / Email compose ────────────────────────────────────────────────
   const [comment, setComment] = useState('')
   const [sendToCustomer, setSendToCustomer] = useState(false)
+
+  // Email compose state
+  const [composeMode, setComposeMode] = useState('comment') // 'comment' | 'email'
+  const [composeTo, setComposeTo]     = useState('')
+  const [composeCc, setComposeCc]     = useState('')
+  const [composeSubject, setComposeSubject] = useState('')
+  const [composeBody, setComposeBody] = useState('')
+  const [expandedEmail, setExpandedEmail] = useState(null) // track which email is expanded
+
+  const openReply = (ev, replyAll = false) => {
+    setComposeMode('email')
+    setComposeTo(ev.from || liveTicket.email || '')
+    setComposeCc(replyAll ? (ev.cc || '') : '')
+    setComposeSubject(ev.subject ? `Re: ${ev.subject}` : `Re: ${liveTicket.subject || ''}`)
+    setComposeBody('')
+  }
+
+  const openNewEmail = () => {
+    setComposeMode('email')
+    setComposeTo(liveTicket.email || '')
+    setComposeCc('')
+    setComposeSubject(liveTicket.subject || '')
+    setComposeBody('')
+  }
+
   const handleComment = () => {
     if (!comment.trim()) return
     addTimelineEvent(ticket._uuid, {
@@ -508,6 +533,21 @@ export function TicketDetailModal({ ticket, onClose }) {
     })
     setComment('')
     addToast(sendToCustomer ? 'Comment added & emailed to customer' : 'Comment added', 'success')
+  }
+
+  const handleSendEmail = () => {
+    if (!composeTo.trim() || !composeBody.trim()) return
+    addTimelineEvent(ticket._uuid, {
+      type: 'email_out',
+      text: composeBody,
+      subject: composeSubject,
+      to: composeTo,
+      cc: composeCc,
+      author: currentUser?.name || 'Agent',
+    })
+    setComposeMode('comment')
+    setComposeTo(''); setComposeCc(''); setComposeSubject(''); setComposeBody('')
+    addToast('Email sent to customer', 'success')
   }
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
@@ -656,40 +696,118 @@ export function TicketDetailModal({ ticket, onClose }) {
 
               {/* ── Conversations ── */}
               {activeTab === 'conversations' && (
-                <div className="space-y-4">
+                <div className="space-y-3">
+
+                  {/* ── Timeline ── */}
                   <div className="space-y-2">
                     {(liveTicket.timeline || []).length === 0 && (
-                      <div className="text-sm t-muted text-center py-6">No activity yet</div>
+                      <div className="text-sm t-muted text-center py-8">No activity yet</div>
                     )}
                     {(liveTicket.timeline || []).map((ev, i) => {
-                      const style = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30', label: '' }
+                      const style    = TIMELINE_STYLES[ev.type] || { dot: 'bg-black/20 dark:bg-white/30', label: '' }
                       const isEmailOut = ev.type === 'email_out'
                       const isEmailIn  = ev.type === 'email_in'
                       const isComment  = ev.type === 'comment'
                       const isEmail    = isEmailOut || isEmailIn
+                      const isExpanded = expandedEmail === i
 
+                      /* ── Email bubble (in or out) ── */
                       if (isEmail) {
                         return (
-                          <div key={i} className={`rounded-xl border p-3 space-y-1.5 ${
+                          <div key={i} className={`rounded-xl border overflow-hidden ${
                             isEmailOut
                               ? 'border-sky-500/30 bg-sky-500/5'
                               : 'border-teal-500/30 bg-teal-500/5'
                           }`}>
-                            <div className="flex items-center gap-2">
-                              {isEmailOut
-                                ? <Send size={12} className="text-sky-500 flex-shrink-0" />
-                                : <MailOpen size={12} className="text-teal-500 flex-shrink-0" />
-                              }
-                              <span className={`text-[10px] font-bold uppercase tracking-wider ${isEmailOut ? 'text-sky-500' : 'text-teal-500'}`}>
-                                {style.label}
-                              </span>
-                              <span className="text-[10px] t-sub ml-auto">{timeAgo(ev.ts)}</span>
+                            {/* Email header row */}
+                            <div
+                              className="flex items-start justify-between gap-2 px-3 py-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                              onClick={() => setExpandedEmail(isExpanded ? null : i)}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {isEmailOut
+                                  ? <Send size={12} className="text-sky-500 flex-shrink-0" />
+                                  : <MailOpen size={12} className="text-teal-500 flex-shrink-0" />
+                                }
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${isEmailOut ? 'text-sky-500' : 'text-teal-500'}`}>
+                                      {isEmailOut ? 'Email Sent' : 'Email Received'}
+                                    </span>
+                                    {isEmailIn && ev.from && (
+                                      <span className="text-[11px] font-semibold t-main truncate max-w-[180px]">{ev.from}</span>
+                                    )}
+                                    {isEmailOut && ev.to && (
+                                      <span className="text-[11px] t-muted truncate max-w-[180px]">→ {ev.to}</span>
+                                    )}
+                                  </div>
+                                  {ev.subject && (
+                                    <p className="text-xs font-medium t-main mt-0.5 truncate">{ev.subject}</p>
+                                  )}
+                                  {!isExpanded && (
+                                    <p className="text-[11px] t-muted mt-0.5 line-clamp-1">
+                                      {(ev.text || '').replace(/<[^>]+>/g, '').slice(0, 100)}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-[10px] t-sub">{timeAgo(ev.ts)}</span>
+                                <span className="text-[10px] t-muted">{isExpanded ? '▲' : '▼'}</span>
+                              </div>
                             </div>
-                            <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: ev.text }} />
+
+                            {/* Expanded body */}
+                            {isExpanded && (
+                              <>
+                                {/* Meta row */}
+                                <div className="px-3 py-1.5 space-y-0.5" style={{ borderTop: '1px solid rgba(0,0,0,0.08)', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                                  {ev.from && <div className="text-[11px] t-muted"><span className="font-semibold t-sub">From:</span> {ev.from}</div>}
+                                  {ev.to   && <div className="text-[11px] t-muted"><span className="font-semibold t-sub">To:</span> {ev.to}</div>}
+                                  {ev.cc   && <div className="text-[11px] t-muted"><span className="font-semibold t-sub">CC:</span> {ev.cc}</div>}
+                                </div>
+
+                                {/* Body */}
+                                <div className="px-3 py-3">
+                                  <div className="text-xs t-main leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ev.text }} />
+                                </div>
+
+                                {/* Reply actions (only on received emails, staff only) */}
+                                {isEmailIn && !isEndUser && (
+                                  <div className="flex items-center gap-2 px-3 py-2" style={{ borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                                    <button
+                                      onClick={() => openReply(ev, false)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 text-sky-500 border border-sky-500/25 hover:bg-sky-500/20 transition-all"
+                                    >
+                                      <Mail size={12} /> Reply
+                                    </button>
+                                    <button
+                                      onClick={() => openReply(ev, true)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-glass t-muted hover:t-main hover:bg-white/5 transition-all"
+                                    >
+                                      <Mail size={12} /> Reply All
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setComposeMode('email')
+                                        setComposeTo(liveTicket.email || '')
+                                        setComposeCc('')
+                                        setComposeSubject(`Fwd: ${ev.subject || liveTicket.subject || ''}`)
+                                        setComposeBody(`\n\n---------- Forwarded Message ----------\nFrom: ${ev.from || ''}\n\n${(ev.text || '').replace(/<[^>]+>/g, '')}`)
+                                      }}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-glass t-muted hover:t-main hover:bg-white/5 transition-all"
+                                    >
+                                      <Send size={12} /> Forward
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         )
                       }
 
+                      /* ── Regular timeline event ── */
                       return (
                         <div key={i} className="flex gap-3">
                           <div className="flex flex-col items-center">
@@ -711,31 +829,138 @@ export function TicketDetailModal({ ticket, onClose }) {
                     })}
                   </div>
 
-                  {/* ── Add Comment ── */}
+                  {/* ── Compose area ── */}
                   <div className="pt-3 border-t border-glass space-y-2">
-                    <div className={labelCls}>{t('addComment')}</div>
-                    <textarea value={comment} onChange={e => setComment(e.target.value)}
-                      className="glass-input w-full text-sm resize-none" rows={3}
-                      placeholder="Write an internal comment or reply to customer…" />
-                    <div className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <div
-                          onClick={() => setSendToCustomer(v => !v)}
-                          className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${sendToCustomer ? 'bg-sky-500' : 'bg-black/15 dark:bg-white/15'}`}
+
+                    {/* Mode toggle buttons */}
+                    {!isEndUser && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={openNewEmail}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                            composeMode === 'email'
+                              ? 'bg-sky-500/15 text-sky-500 border-sky-500/40'
+                              : 'border-glass t-muted hover:text-sky-500 hover:border-sky-500/30 hover:bg-sky-500/5'
+                          }`}
                         >
-                          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${sendToCustomer ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          <Mail size={12} /> New Email
+                        </button>
+                        <button
+                          onClick={() => { setComposeMode('comment'); setComposeTo(''); setComposeCc(''); setComposeSubject(''); setComposeBody('') }}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                            composeMode === 'comment'
+                              ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/40'
+                              : 'border-glass t-muted hover:t-main hover:bg-white/5'
+                          }`}
+                        >
+                          <MessageSquare size={12} /> Add Comment
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Email compose form */}
+                    {composeMode === 'email' ? (
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-bold t-sub uppercase tracking-wider flex items-center gap-2">
+                          <Mail size={11} className="text-sky-500" />
+                          <span className="text-sky-500">Email Customer</span>
+                          <button
+                            onClick={() => setComposeMode('comment')}
+                            className="ml-auto text-[10px] t-muted hover:t-main"
+                          >✕ Cancel</button>
                         </div>
-                        <span className="text-xs t-sub flex items-center gap-1">
-                          <Mail size={11} className={sendToCustomer ? 'text-sky-500' : ''} />
-                          {sendToCustomer ? <span className="text-sky-500 font-medium">Send to customer</span> : 'Internal only'}
-                        </span>
-                      </label>
-                      <Button variant={sendToCustomer ? 'primary' : 'ghost'} size="sm" onClick={handleComment} className="flex-shrink-0">
-                        {sendToCustomer ? <Send size={13} /> : <MessageSquare size={13} />}
-                        {sendToCustomer ? 'Send Email' : 'Post'}
-                      </Button>
-                    </div>
+
+                        {/* To */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold t-sub w-6">To</span>
+                          <input
+                            className="glass-input flex-1 text-xs py-1.5"
+                            value={composeTo}
+                            onChange={e => setComposeTo(e.target.value)}
+                            placeholder="recipient@example.com"
+                          />
+                        </div>
+
+                        {/* CC */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold t-sub w-6">CC</span>
+                          <input
+                            className="glass-input flex-1 text-xs py-1.5"
+                            value={composeCc}
+                            onChange={e => setComposeCc(e.target.value)}
+                            placeholder="cc@example.com (optional)"
+                          />
+                        </div>
+
+                        {/* Subject */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold t-sub w-6">Re</span>
+                          <input
+                            className="glass-input flex-1 text-xs py-1.5"
+                            value={composeSubject}
+                            onChange={e => setComposeSubject(e.target.value)}
+                            placeholder="Subject"
+                          />
+                        </div>
+
+                        {/* Body */}
+                        <textarea
+                          value={composeBody}
+                          onChange={e => setComposeBody(e.target.value)}
+                          className="glass-input w-full text-sm resize-none"
+                          rows={5}
+                          placeholder="Write your email message…"
+                          autoFocus
+                        />
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setComposeMode('comment')}
+                            className="px-3 py-1.5 rounded-lg text-xs t-muted hover:t-main transition-colors"
+                          >Cancel</button>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleSendEmail}
+                            disabled={!composeTo.trim() || !composeBody.trim()}
+                          >
+                            <Send size={13} /> Send Email
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Internal comment form */
+                      <>
+                        <div className={labelCls}>{t('addComment')}</div>
+                        <textarea
+                          value={comment}
+                          onChange={e => setComment(e.target.value)}
+                          className="glass-input w-full text-sm resize-none"
+                          rows={3}
+                          placeholder="Write an internal comment or reply to customer…"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <div
+                              onClick={() => setSendToCustomer(v => !v)}
+                              className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${sendToCustomer ? 'bg-sky-500' : 'bg-black/15 dark:bg-white/15'}`}
+                            >
+                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${sendToCustomer ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                            </div>
+                            <span className="text-xs t-sub flex items-center gap-1">
+                              <Mail size={11} className={sendToCustomer ? 'text-sky-500' : ''} />
+                              {sendToCustomer ? <span className="text-sky-500 font-medium">Send to customer</span> : 'Internal only'}
+                            </span>
+                          </label>
+                          <Button variant={sendToCustomer ? 'primary' : 'ghost'} size="sm" onClick={handleComment} className="flex-shrink-0">
+                            {sendToCustomer ? <Send size={13} /> : <MessageSquare size={13} />}
+                            {sendToCustomer ? 'Send Email' : 'Post'}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
+
                 </div>
               )}
 

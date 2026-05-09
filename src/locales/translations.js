@@ -91,6 +91,8 @@ export const translations = {
     allTickets:   'All Tickets',
     myTickets:    'My Tickets',
     submitTicket: 'Submit Ticket',
+    knowledge:    'Knowledge',
+    email:        'Email',
     analytics:    'Analytics',
     admin:        'Admin',
     navigation:   'Navigation',

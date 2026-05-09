@@ -10,6 +10,8 @@ import NewTicket from './pages/NewTicket'
 import Admin from './pages/Admin'
 import Analytics from './pages/Analytics'
 import DeletedItems from './pages/DeletedItems'
+import Knowledge from './pages/Knowledge'
+import EmailPage from './pages/Email'
 import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
@@ -59,6 +61,9 @@ export default function App() {
         <Route path="/admin"             element={<StaffOnly><Admin /></StaffOnly>} />
         <Route path="/analytics"         element={<StaffOnly><Analytics /></StaffOnly>} />
         <Route path="/deleted"           element={<StaffOnly><DeletedItems /></StaffOnly>} />
+        <Route path="/knowledge"         element={<StaffOnly><Knowledge /></StaffOnly>} />
+        <Route path="/knowledge/article/:slug" element={<StaffOnly><Knowledge /></StaffOnly>} />
+        <Route path="/email"             element={<StaffOnly><EmailPage /></StaffOnly>} />
         <Route path="*"                  element={<DefaultRedirect />} />
       </Route>
     </Routes>

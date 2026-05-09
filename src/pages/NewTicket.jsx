@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
@@ -61,6 +61,22 @@ export default function NewTicket() {
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [attachments, setAttachments] = useState([])
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef()
+
+  const fmtSize = (b) =>
+    b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`
+
+  const addFiles = (files) => {
+    const incoming = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024) // 10 MB limit
+    setAttachments(prev => {
+      const existing = new Set(prev.map(f => f.name + f.size))
+      return [...prev, ...incoming.filter(f => !existing.has(f.name + f.size))]
+    })
+  }
+
+  const removeAttachment = (idx) => setAttachments(prev => prev.filter((_, i) => i !== idx))
 
   const set = (key, val) => {
     setForm(f => ({ ...f, [key]: val }))
@@ -84,7 +100,7 @@ export default function NewTicket() {
     setSubmitting(true)
     setSubmitError('')
     try {
-      await addTicket(form)
+      await addTicket({ ...form, attachments })
       addToast('Ticket Submitted', 'success')
       navigate(isEndUser ? '/tickets/my-portal' : '/tickets/mine')
     } catch (err) {
@@ -247,6 +263,70 @@ export default function NewTicket() {
                 />
                 {errors.description && <p className="text-xs text-rose-500 mt-1">{errors.description}</p>}
               </div>
+
+              {/* Attachments */}
+              <div>
+                <label className={labelCls}>
+                  Attachments <span className="t-sub font-normal normal-case tracking-normal">(optional · max 10 MB each)</span>
+                </label>
+
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={e => { addFiles(e.target.files); e.target.value = '' }}
+                />
+
+                {/* Drop zone */}
+                <div
+                  onClick={() => fileInputRef.current.click()}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files) }}
+                  className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-all select-none ${
+                    dragOver
+                      ? 'border-indigo-400 bg-indigo-400/8 text-indigo-400'
+                      : 'border-glass t-muted hover:border-indigo-400/50 hover:bg-black/5 dark:hover:bg-white/3 hover:t-main'
+                  }`}
+                >
+                  <Paperclip size={20} className={dragOver ? 'text-indigo-400' : 'opacity-40'} />
+                  <div className="text-center">
+                    <p className="text-xs font-semibold">{dragOver ? 'Drop files here' : 'Click to browse or drag & drop'}</p>
+                    <p className="text-[11px] opacity-60 mt-0.5">Images, PDFs, documents, logs — up to 10 MB each</p>
+                  </div>
+                </div>
+
+                {/* File list */}
+                {attachments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map((file, idx) => {
+                      const isImage = file.type.startsWith('image/')
+                      return (
+                        <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl glass-card">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isImage ? 'bg-indigo-400/15 text-indigo-400' : 'bg-slate-400/15 t-muted'}`}>
+                            {isImage ? <ImageIcon size={15} /> : <FileText size={15} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium t-main truncate">{file.name}</p>
+                            <p className="text-[10px] t-muted mt-0.5">{fmtSize(file.size)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(idx)}
+                            className="p-1 rounded-lg t-muted hover:text-rose-400 hover:bg-rose-400/10 transition-all flex-shrink-0"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                    <p className="text-[10px] t-muted pl-1">{attachments.length} file{attachments.length !== 1 ? 's' : ''} selected</p>
+                  </div>
+                )}
+              </div>
+
             </div>
           </Card>
 

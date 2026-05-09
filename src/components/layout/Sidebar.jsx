@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
-  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2
+  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail
 } from 'lucide-react'
 import { useUserStore }   from '../../stores/userStore'
 import { useUiStore }     from '../../stores/uiStore'
@@ -17,6 +17,8 @@ const NAV_KEYS = [
 const ACTION_KEYS = [
   { to: '/tickets/new',      icon: PlusCircle, key: 'submitTicket' },
   { to: '/tickets/my-portal', icon: Ticket,    key: 'myTickets',   userOnly: true },
+  { to: '/knowledge',        icon: BookOpen,   key: 'knowledge',   staffOnly: true },
+  { to: '/email',            icon: Mail,       key: 'email',       staffOnly: true },
   { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true },
   { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true },
 ]
