@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { useAdminStore } from '../stores/adminStore'
+import { useKnowledgeStore } from '../stores/knowledgeStore'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
@@ -34,6 +35,76 @@ const PRIORITY_UI = {
   high:     { border: 'border-orange-500/40', text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/10', ring: 'ring-orange-500/50' },
   medium:   { border: 'border-amber-500/40',  text: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-500/10',  ring: 'ring-amber-500/50' },
   low:      { border: 'border-slate-500/40',  text: 't-muted',  bg: 'bg-slate-500/10',  ring: 'ring-slate-500/50' },
+}
+
+// ── Smart KB suggestions sidebar ─────────────────────────────────────────────
+function KbSuggestions({ subject, description }) {
+  const { fetchArticles } = useKnowledgeStore()
+  const [hits, setHits]   = useState([])
+  const [loading, setLoading] = useState(false)
+  const timerRef = useRef(null)
+  const navigate = useNavigate()
+
+  const query = [subject, description].filter(Boolean).join(' ').trim()
+
+  useEffect(() => {
+    clearTimeout(timerRef.current)
+    if (query.length < 5) { setHits([]); return }
+    timerRef.current = setTimeout(async () => {
+      setLoading(true)
+      try {
+        await fetchArticles({ search: query, page: 1, page_size: 4, language: 'en' })
+        setHits(useKnowledgeStore.getState().articles.slice(0, 4))
+      } finally {
+        setLoading(false)
+      }
+    }, 600)
+    return () => clearTimeout(timerRef.current)
+  }, [query])
+
+  if (!query || query.length < 5) return null
+
+  return (
+    <Card>
+      <div className="flex items-center gap-2 mb-3">
+        <Lightbulb size={14} className="text-amber-400 flex-shrink-0" />
+        <span className="text-xs font-bold t-sub uppercase tracking-wider">Similar Articles</span>
+        {loading && <span className="ml-auto text-[10px] t-muted animate-pulse">Searching…</span>}
+      </div>
+
+      {!loading && hits.length === 0 && query.length >= 5 && (
+        <p className="text-xs t-muted">No matching KB articles found.</p>
+      )}
+
+      {hits.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] t-muted mb-2">These articles may already answer your question:</p>
+          {hits.map(art => (
+            <button
+              key={art.id}
+              type="button"
+              onClick={() => navigate(`/knowledge/article/${art.slug}`)}
+              className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl border border-glass bg-black/3 dark:bg-white/3 text-left hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all group"
+            >
+              <BookOpen size={13} className="text-indigo-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold t-main group-hover:text-indigo-400 transition-colors truncate">{art.title}</p>
+                {art.category && (
+                  <p className="text-[10px] t-muted mt-0.5">
+                    {art.category?.translations?.[0]?.name || ''}
+                  </p>
+                )}
+              </div>
+              <ExternalLink size={11} className="text-indigo-400 opacity-0 group-hover:opacity-100 flex-shrink-0 mt-0.5 transition-opacity" />
+            </button>
+          ))}
+          <p className="text-[10px] t-muted pt-1">
+            If none of these help, continue filling the form below.
+          </p>
+        </div>
+      )}
+    </Card>
+  )
 }
 
 export default function NewTicket() {
@@ -350,6 +421,8 @@ export default function NewTicket() {
 
         {/* Sidebar */}
         <div className="space-y-4">
+          <KbSuggestions subject={form.subject} description={form.description} />
+
           {/* SLA info */}
           <Card>
             <CardHeader title="Response Times" />

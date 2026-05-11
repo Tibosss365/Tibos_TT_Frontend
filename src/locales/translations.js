@@ -94,6 +94,7 @@ export const translations = {
     knowledge:    'Knowledge',
     email:        'Email',
     analytics:    'Analytics',
+    activity:     'Activity Log',
     admin:        'Admin',
     navigation:   'Navigation',
     actions:      'Actions',

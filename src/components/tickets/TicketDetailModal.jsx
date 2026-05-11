@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Trash2, Save, MessageSquare, Pencil, X, CheckSquare, Square,
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
   CalendarDays, Briefcase, Mail, MailOpen, Send, Paperclip, Download, Loader2 as SpinIcon,
+  Image as ImageIcon,
 } from 'lucide-react'
-import { downloadAttachment } from '../../api/client'
+import { downloadAttachment, uploadAttachment } from '../../api/client'
 import { Modal } from '../ui/Modal'
 import { PriorityBadge, StatusBadge } from '../ui/Badge'
 import { Button } from '../ui/Button'
@@ -320,8 +321,34 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
   )
 }
 
+// ── Pending compose attachment chips ─────────────────────────────────────────
+function ComposeFileList({ files, onRemove }) {
+  const fmtSize = (b) => b < 1024 * 1024 ? `${(b / 1024).toFixed(0)} KB` : `${(b / (1024 * 1024)).toFixed(1)} MB`
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {files.map((f, i) => {
+        const isImg = f.type.startsWith('image/')
+        const preview = isImg ? URL.createObjectURL(f) : null
+        return (
+          <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-indigo-500/30 bg-indigo-500/5 text-xs t-main group">
+            {isImg
+              ? <img src={preview} onLoad={() => URL.revokeObjectURL(preview)} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+              : <FileText size={14} className="t-sub flex-shrink-0" />
+            }
+            <span className="max-w-[120px] truncate">{f.name}</span>
+            <span className="t-muted text-[10px]">{fmtSize(f.size)}</span>
+            <button onClick={() => onRemove(i)} className="ml-0.5 t-muted hover:text-rose-400 transition-colors">
+              <X size={11} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Attachment download row ────────────────────────────────────────────────────
-function AttachmentRow({ att, ticketUuid }) {
+function AttachmentRow({ att, ticketUuid, compact = false }) {
   const [downloading, setDownloading] = useState(false)
   const { addToast } = useUiStore()
 
@@ -340,6 +367,22 @@ function AttachmentRow({ att, ticketUuid }) {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  if (compact) {
+    return (
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-glass bg-black/3 dark:bg-white/3 hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all group text-left"
+      >
+        <FileText size={12} className="t-sub flex-shrink-0" />
+        <span className="text-[11px] t-main font-medium truncate max-w-[140px]">{att.filename}</span>
+        {downloading
+          ? <SpinIcon size={11} className="animate-spin text-indigo-400 flex-shrink-0" />
+          : <Download size={11} className="text-indigo-400 opacity-0 group-hover:opacity-100 flex-shrink-0 transition-opacity" />}
+      </button>
+    )
   }
 
   return (
@@ -507,6 +550,31 @@ export function TicketDetailModal({ ticket, onClose }) {
   const [composeBody, setComposeBody] = useState('')
   const [expandedEmail, setExpandedEmail] = useState(null) // track which email is expanded
 
+  // Compose attachments (files/pasted images pending upload)
+  const [composeFiles, setComposeFiles]   = useState([]) // Array<File>
+  const [uploading, setUploading]         = useState(false)
+  const attachFileRef = useRef(null)
+
+  const addComposeFiles = (fileList) => {
+    const valid = Array.from(fileList).filter(f => f.size <= 10 * 1024 * 1024)
+    setComposeFiles(prev => [...prev, ...valid])
+  }
+
+  const handleComposePaste = (e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file) addComposeFiles([file])
+        break
+      }
+    }
+  }
+
+  const removeComposeFile = (idx) => setComposeFiles(prev => prev.filter((_, i) => i !== idx))
+
   const openReply = (ev, replyAll = false) => {
     setComposeMode('email')
     setComposeTo(ev.from || liveTicket.email || '')
@@ -523,20 +591,39 @@ export function TicketDetailModal({ ticket, onClose }) {
     setComposeBody('')
   }
 
-  const handleComment = () => {
-    if (!comment.trim()) return
-    addTimelineEvent(ticket._uuid, {
-      type: 'comment',
-      text: comment,
-      author: currentUser?.name || 'Agent',
-      sendToCustomer,
-    })
+  const uploadPendingFiles = async () => {
+    if (composeFiles.length === 0) return
+    setUploading(true)
+    try {
+      await Promise.all(composeFiles.map(f => uploadAttachment(ticket._uuid, f)))
+      // refresh attachments in store after upload
+      await fetchTicket(ticket._uuid)
+    } catch {
+      addToast('Some files failed to upload', 'error')
+    } finally {
+      setUploading(false)
+      setComposeFiles([])
+    }
+  }
+
+  const handleComment = async () => {
+    if (!comment.trim() && composeFiles.length === 0) return
+    await uploadPendingFiles()
+    if (comment.trim()) {
+      addTimelineEvent(ticket._uuid, {
+        type: 'comment',
+        text: comment,
+        author: currentUser?.name || 'Agent',
+        sendToCustomer,
+      })
+    }
     setComment('')
     addToast(sendToCustomer ? 'Comment added & emailed to customer' : 'Comment added', 'success')
   }
 
-  const handleSendEmail = () => {
+  const handleSendEmail = async () => {
     if (!composeTo.trim() || !composeBody.trim()) return
+    await uploadPendingFiles()
     addTimelineEvent(ticket._uuid, {
       type: 'email_out',
       text: composeBody,
@@ -698,6 +785,20 @@ export function TicketDetailModal({ ticket, onClose }) {
               {activeTab === 'conversations' && (
                 <div className="space-y-3">
 
+                  {/* ── Ticket Attachments panel ── */}
+                  {(liveTicket.attachments || []).length > 0 && (
+                    <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+                      <div className="flex items-center gap-1.5 mb-2 text-[10px] font-bold t-sub uppercase tracking-wider">
+                        <Paperclip size={11} /> Attachments ({liveTicket.attachments.length})
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {liveTicket.attachments.map(att => (
+                          <AttachmentRow key={att.id} att={att} ticketUuid={liveTicket._uuid} compact />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Timeline ── */}
                   <div className="space-y-2">
                     {(liveTicket.timeline || []).length === 0 && (
@@ -858,6 +959,16 @@ export function TicketDetailModal({ ticket, onClose }) {
                       </div>
                     )}
 
+                    {/* Hidden file input for attach button */}
+                    <input
+                      ref={attachFileRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.log,.zip"
+                      className="hidden"
+                      onChange={e => { addComposeFiles(e.target.files); e.target.value = '' }}
+                    />
+
                     {/* Email compose form */}
                     {composeMode === 'email' ? (
                       <div className="space-y-2">
@@ -865,7 +976,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                           <Mail size={11} className="text-sky-500" />
                           <span className="text-sky-500">Email Customer</span>
                           <button
-                            onClick={() => setComposeMode('comment')}
+                            onClick={() => { setComposeMode('comment'); setComposeFiles([]) }}
                             className="ml-auto text-[10px] t-muted hover:t-main"
                           >✕ Cancel</button>
                         </div>
@@ -907,24 +1018,40 @@ export function TicketDetailModal({ ticket, onClose }) {
                         <textarea
                           value={composeBody}
                           onChange={e => setComposeBody(e.target.value)}
+                          onPaste={handleComposePaste}
                           className="glass-input w-full text-sm resize-none"
                           rows={5}
-                          placeholder="Write your email message…"
+                          placeholder="Write your email message… (paste screenshots directly)"
                           autoFocus
                         />
 
-                        <div className="flex items-center justify-end gap-2">
+                        {/* Attached files preview */}
+                        {composeFiles.length > 0 && (
+                          <ComposeFileList files={composeFiles} onRemove={removeComposeFile} />
+                        )}
+
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => setComposeMode('comment')}
+                            type="button"
+                            onClick={() => attachFileRef.current?.click()}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border border-glass t-muted hover:t-main hover:bg-white/5 transition-all"
+                            title="Attach file"
+                          >
+                            <Paperclip size={12} /> Attach
+                          </button>
+                          <div className="flex-1" />
+                          <button
+                            onClick={() => { setComposeMode('comment'); setComposeFiles([]) }}
                             className="px-3 py-1.5 rounded-lg text-xs t-muted hover:t-main transition-colors"
                           >Cancel</button>
                           <Button
                             variant="primary"
                             size="sm"
                             onClick={handleSendEmail}
-                            disabled={!composeTo.trim() || !composeBody.trim()}
+                            disabled={(!composeTo.trim() || !composeBody.trim()) || uploading}
                           >
-                            <Send size={13} /> Send Email
+                            {uploading ? <SpinIcon size={13} className="animate-spin" /> : <Send size={13} />}
+                            {uploading ? 'Uploading…' : 'Send Email'}
                           </Button>
                         </div>
                       </div>
@@ -935,26 +1062,45 @@ export function TicketDetailModal({ ticket, onClose }) {
                         <textarea
                           value={comment}
                           onChange={e => setComment(e.target.value)}
+                          onPaste={handleComposePaste}
                           className="glass-input w-full text-sm resize-none"
                           rows={3}
-                          placeholder="Write an internal comment or reply to customer…"
+                          placeholder="Write a comment… (paste screenshots directly with Ctrl+V)"
                         />
+
+                        {/* Attached files preview */}
+                        {composeFiles.length > 0 && (
+                          <ComposeFileList files={composeFiles} onRemove={removeComposeFile} />
+                        )}
+
                         <div className="flex items-center justify-between gap-2">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <div
-                              onClick={() => setSendToCustomer(v => !v)}
-                              className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${sendToCustomer ? 'bg-sky-500' : 'bg-black/15 dark:bg-white/15'}`}
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => attachFileRef.current?.click()}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border border-glass t-muted hover:t-main hover:bg-white/5 transition-all"
+                              title="Attach file"
                             >
-                              <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${sendToCustomer ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                            </div>
-                            <span className="text-xs t-sub flex items-center gap-1">
-                              <Mail size={11} className={sendToCustomer ? 'text-sky-500' : ''} />
-                              {sendToCustomer ? <span className="text-sky-500 font-medium">Send to customer</span> : 'Internal only'}
-                            </span>
-                          </label>
-                          <Button variant={sendToCustomer ? 'primary' : 'ghost'} size="sm" onClick={handleComment} className="flex-shrink-0">
-                            {sendToCustomer ? <Send size={13} /> : <MessageSquare size={13} />}
-                            {sendToCustomer ? 'Send Email' : 'Post'}
+                              <Paperclip size={12} /> Attach
+                            </button>
+                            {!isEndUser && (
+                              <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <div
+                                  onClick={() => setSendToCustomer(v => !v)}
+                                  className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative cursor-pointer ${sendToCustomer ? 'bg-sky-500' : 'bg-black/15 dark:bg-white/15'}`}
+                                >
+                                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${sendToCustomer ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                </div>
+                                <span className="text-xs t-sub flex items-center gap-1">
+                                  <Mail size={11} className={sendToCustomer ? 'text-sky-500' : ''} />
+                                  {sendToCustomer ? <span className="text-sky-500 font-medium">Send to customer</span> : 'Internal only'}
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                          <Button variant={sendToCustomer ? 'primary' : 'ghost'} size="sm" onClick={handleComment} disabled={uploading} className="flex-shrink-0">
+                            {uploading ? <SpinIcon size={13} className="animate-spin" /> : sendToCustomer ? <Send size={13} /> : <MessageSquare size={13} />}
+                            {uploading ? 'Uploading…' : sendToCustomer ? 'Send Email' : 'Post'}
                           </Button>
                         </div>
                       </>

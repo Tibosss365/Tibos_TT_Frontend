@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
-  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail
+  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail, Activity
 } from 'lucide-react'
 import { useUserStore }   from '../../stores/userStore'
 import { useUiStore }     from '../../stores/uiStore'
@@ -20,6 +20,7 @@ const ACTION_KEYS = [
   { to: '/knowledge',        icon: BookOpen,   key: 'knowledge',   staffOnly: true },
   { to: '/email',            icon: Mail,       key: 'email',       staffOnly: true },
   { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true },
+  { to: '/activity',         icon: Activity,   key: 'activity',    adminOnly: true },
   { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true },
 ]
 

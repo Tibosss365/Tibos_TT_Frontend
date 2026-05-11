@@ -166,6 +166,19 @@ export const useTicketStore = create(
         }
       },
 
+      // ── CSAT Rating ───────────────────────────────────────────────────────────
+      submitCsatRating: async (uuid, rating) => {
+        // Persist locally (backend call can be added when API supports it)
+        set(s => ({
+          myRequests: s.myRequests.map(t =>
+            t._uuid === uuid ? { ...t, _csatRating: rating } : t
+          ),
+          tickets: s.tickets.map(t =>
+            t._uuid === uuid ? { ...t, _csatRating: rating } : t
+          ),
+        }))
+      },
+
       addTimelineEvent: async (uuid, event) => {
         const data = await api.post(`/tickets/${uuid}/comments`, {
           text: event.text,

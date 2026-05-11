@@ -12,6 +12,7 @@ import Analytics from './pages/Analytics'
 import DeletedItems from './pages/DeletedItems'
 import Knowledge from './pages/Knowledge'
 import EmailPage from './pages/Email'
+import ActivityLog from './pages/ActivityLog'
 import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/knowledge"         element={<StaffOnly><Knowledge /></StaffOnly>} />
         <Route path="/knowledge/article/:slug" element={<StaffOnly><Knowledge /></StaffOnly>} />
         <Route path="/email"             element={<StaffOnly><EmailPage /></StaffOnly>} />
+        <Route path="/activity"          element={<StaffOnly><ActivityLog /></StaffOnly>} />
         <Route path="*"                  element={<DefaultRedirect />} />
       </Route>
     </Routes>

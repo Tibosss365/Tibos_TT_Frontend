@@ -99,6 +99,20 @@ export function attachmentDownloadUrl(ticketUuid, attachmentId) {
   return { ticketUuid, attachmentId, token }
 }
 
+/** Upload a file as a ticket attachment. Returns the saved attachment object. */
+export async function uploadAttachment(ticketUuid, file) {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${BASE}/tickets/${ticketUuid}/attachments`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+  if (!res.ok) throw new Error('Upload failed')
+  return await res.json()
+}
+
 /** Download an attachment by fetching as blob and triggering browser save. */
 export async function downloadAttachment(ticketUuid, attachmentId, filename) {
   const token = getToken()
