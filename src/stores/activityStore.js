@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+const RETENTION_DAYS = 30
+
 function parseBrowser(ua) {
   if (/Edg\//.test(ua))               return 'Edge'
   if (/OPR\/|Opera\//.test(ua))       return 'Opera'
@@ -18,6 +20,11 @@ function parseOS(ua) {
   if (/iPhone|iPad/.test(ua))         return 'iOS'
   if (/Linux/.test(ua))               return 'Linux'
   return 'Unknown OS'
+}
+
+function isWithin30Days(isoString) {
+  const cutoff = Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000
+  return new Date(isoString).getTime() >= cutoff
 }
 
 export const useActivityStore = create(
@@ -41,7 +48,10 @@ export const useActivityStore = create(
           ip: ip || null,
           active: true,
         }
-        set(s => ({ sessions: [session, ...s.sessions].slice(0, 1000) }))
+        // Prepend new session and drop anything older than 30 days
+        set(s => ({
+          sessions: [session, ...s.sessions].filter(sess => isWithin30Days(sess.loginAt))
+        }))
         return sessionId
       },
 
@@ -56,15 +66,18 @@ export const useActivityStore = create(
         }))
       },
 
-      // Sessions with no logout older than 24 h are considered expired
+      // Mark sessions with no logout older than 24 h as inactive
+      // AND hard-delete anything beyond 30 days
       purgeStale: () => {
-        const cutoff = Date.now() - 24 * 60 * 60 * 1000
+        const staleCutoff  = Date.now() - 24 * 60 * 60 * 1000
         set(s => ({
-          sessions: s.sessions.map(sess =>
-            (sess.active && new Date(sess.loginAt).getTime() < cutoff)
-              ? { ...sess, active: false }
-              : sess
-          ),
+          sessions: s.sessions
+            .filter(sess => isWithin30Days(sess.loginAt))          // hard-delete >30 days
+            .map(sess =>
+              (sess.active && new Date(sess.loginAt).getTime() < staleCutoff)
+                ? { ...sess, active: false }                       // mark stale as inactive
+                : sess
+            ),
         }))
       },
     }),
