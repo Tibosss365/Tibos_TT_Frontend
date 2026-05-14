@@ -50,7 +50,6 @@ export default function ActivityLog() {
   const [roleFilter, setRoleFilter]     = useState('')
   const [agentFilter, setAgentFilter]   = useState('')
   const [actionFilter, setActionFilter] = useState('')
-  const [viewMode, setViewMode]         = useState('table')
 
   const { sessions, purgeStale }            = useActivityStore()
   const { tickets, fetchTickets, loading }  = useTicketStore()
@@ -360,23 +359,6 @@ export default function ActivityLog() {
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs t-muted uppercase tracking-wider">View</span>
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${viewMode === 'table' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/15'}`}
-              >
-                Table
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${viewMode === 'list' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/15'}`}
-              >
-                List
-              </button>
-            </div>
           </div>
 
           {/* Table */}
@@ -390,7 +372,7 @@ export default function ActivityLog() {
                     : 'No activity matches your filters.'}
                 </p>
               </div>
-            ) : viewMode === 'table' ? (
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -436,43 +418,6 @@ export default function ActivityLog() {
                   </tbody>
                 </table>
                 <div className="px-4 py-2 border-t border-glass text-[11px] t-muted">
-                  {filteredActions.length} action{filteredActions.length !== 1 ? 's' : ''} shown
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredActions.map(act => {
-                  const meta = ACTION_META[act.action] || { label: act.action, color: 't-muted', bg: 'bg-slate-500/10 border-slate-500/25', Icon: Activity }
-                  const MetaIcon = meta.Icon
-                  return (
-                    <div key={act.id} className="glass-card rounded-2xl border border-glass p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold">
-                            {(act.agentName || '?').charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-semibold t-main truncate">{act.agentName}</div>
-                            <div className="text-[11px] t-muted truncate">{act.ticketId} · {act.ticketSubject}</div>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-right">
-                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border ${meta.bg} ${meta.color}`}>
-                            <MetaIcon size={12} /> {meta.label}
-                          </span>
-                          <div className="text-[11px] t-muted">
-                            <div>{timeAgo(act.ts)}</div>
-                            <div>{fmtDateTime(act.ts)}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 text-sm t-main">
-                        {act.text || <span className="opacity-50">No additional details.</span>}
-                      </div>
-                    </div>
-                  )
-                })}
-                <div className="px-4 py-2 border-t border-glass text-[11px] t-muted rounded-b-2xl">
                   {filteredActions.length} action{filteredActions.length !== 1 ? 's' : ''} shown
                 </div>
               </div>
