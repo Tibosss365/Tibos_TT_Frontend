@@ -10,8 +10,8 @@ import { Button } from '../components/ui/Button'
 import { fmtDateTime, timeAgo } from '../utils/ticketUtils'
 
 const TABS = [
-  { id: 'login',    label: 'Login History',  icon: LogIn },
-  { id: 'activity', label: 'Agent Activity', icon: Activity },
+  { id: 'login',    label: 'Login History',      icon: LogIn },
+  { id: 'activity', label: 'Modification History', icon: Activity },
 ]
 
 const ROLE_COLOR = {
@@ -50,9 +50,16 @@ export default function ActivityLog() {
   const [roleFilter, setRoleFilter]     = useState('')
   const [agentFilter, setAgentFilter]   = useState('')
   const [actionFilter, setActionFilter] = useState('')
+  const [viewMode, setViewMode]         = useState('table')
 
   const { sessions, purgeStale }            = useActivityStore()
   const { tickets, fetchTickets, loading }  = useTicketStore()
+
+  useEffect(() => {
+    if (activeTab === 'activity' && tickets.length === 0) {
+      fetchTickets()
+    }
+  }, [activeTab, tickets.length, fetchTickets])
 
   useEffect(() => { purgeStale() }, []) // eslint-disable-line
 
@@ -141,7 +148,7 @@ export default function ActivityLog() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold t-main">Activity Log</h1>
-          <p className="text-sm t-muted mt-0.5">Login sessions and agent ticket actions</p>
+          <p className="text-sm t-muted mt-0.5">Login sessions and ticket modification history</p>
         </div>
         {activeTab === 'activity' && (
           <Button variant="ghost" size="sm" onClick={() => fetchTickets()} disabled={loading}>
@@ -325,32 +332,51 @@ export default function ActivityLog() {
             </div>
           )}
 
-          {/* Filters */}
-          <div className="flex gap-3 flex-wrap">
-            <div className="relative">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted" />
-              <input
-                className={`${inputCls} pl-7 w-52`}
-                placeholder="Search agent, ticket ID…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 t-muted hover:t-main">
-                  <X size={11} />
-                </button>
-              )}
+          {/* Filters and view mode */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex gap-3 flex-wrap">
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted" />
+                <input
+                  className={`${inputCls} pl-7 w-52`}
+                  placeholder="Search agent, ticket ID…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 t-muted hover:t-main">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+              <select className={`${inputCls} w-40`} value={agentFilter} onChange={e => setAgentFilter(e.target.value)}>
+                <option value="">All Agents</option>
+                {uniqueAgents.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <select className={`${inputCls} w-36`} value={actionFilter} onChange={e => setActionFilter(e.target.value)}>
+                <option value="">All Actions</option>
+                {Object.entries(ACTION_META).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
             </div>
-            <select className={`${inputCls} w-40`} value={agentFilter} onChange={e => setAgentFilter(e.target.value)}>
-              <option value="">All Agents</option>
-              {uniqueAgents.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <select className={`${inputCls} w-36`} value={actionFilter} onChange={e => setActionFilter(e.target.value)}>
-              <option value="">All Actions</option>
-              {Object.entries(ACTION_META).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              <span className="text-xs t-muted uppercase tracking-wider">View</span>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${viewMode === 'table' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/15'}`}
+              >
+                Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition ${viewMode === 'list' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500 hover:bg-slate-500/15'}`}
+              >
+                List
+              </button>
+            </div>
           </div>
 
           {/* Table */}
@@ -360,11 +386,11 @@ export default function ActivityLog() {
                 <Activity size={36} className="opacity-25" />
                 <p className="text-sm">
                   {agentActions.length === 0
-                    ? 'No agent activity found. Click Refresh to load ticket data.'
+                    ? 'No ticket modification history found. Click Refresh to load ticket data.'
                     : 'No activity matches your filters.'}
                 </p>
               </div>
-            ) : (
+            ) : viewMode === 'table' ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -410,6 +436,43 @@ export default function ActivityLog() {
                   </tbody>
                 </table>
                 <div className="px-4 py-2 border-t border-glass text-[11px] t-muted">
+                  {filteredActions.length} action{filteredActions.length !== 1 ? 's' : ''} shown
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredActions.map(act => {
+                  const meta = ACTION_META[act.action] || { label: act.action, color: 't-muted', bg: 'bg-slate-500/10 border-slate-500/25', Icon: Activity }
+                  const MetaIcon = meta.Icon
+                  return (
+                    <div key={act.id} className="glass-card rounded-2xl border border-glass p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-sm font-bold">
+                            {(act.agentName || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold t-main truncate">{act.agentName}</div>
+                            <div className="text-[11px] t-muted truncate">{act.ticketId} · {act.ticketSubject}</div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-right">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold border ${meta.bg} ${meta.color}`}>
+                            <MetaIcon size={12} /> {meta.label}
+                          </span>
+                          <div className="text-[11px] t-muted">
+                            <div>{timeAgo(act.ts)}</div>
+                            <div>{fmtDateTime(act.ts)}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-sm t-main">
+                        {act.text || <span className="opacity-50">No additional details.</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div className="px-4 py-2 border-t border-glass text-[11px] t-muted rounded-b-2xl">
                   {filteredActions.length} action{filteredActions.length !== 1 ? 's' : ''} shown
                 </div>
               </div>
