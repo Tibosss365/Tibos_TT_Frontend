@@ -284,6 +284,44 @@ export const useTicketStore = create(
         get()._mergeTicket(existing?._uuid, normalizeTicket(data))
       },
 
+      // ── Linked Tickets ─────────────────────────────────────────────────────
+      linkedTickets: {},
+
+      addLink: (uuid, link) => set(s => ({
+        linkedTickets: {
+          ...s.linkedTickets,
+          [uuid]: [...(s.linkedTickets[uuid] || []), { ...link, id: 'lnk-' + Date.now() }],
+        },
+      })),
+
+      removeLink: (uuid, linkId) => set(s => ({
+        linkedTickets: {
+          ...s.linkedTickets,
+          [uuid]: (s.linkedTickets[uuid] || []).filter(l => l.id !== linkId),
+        },
+      })),
+
+      mergeTickets: async (primaryUuid, secondaryUuid, currentUserName) => {
+        const { tickets, addTimelineEvent, softDelete } = get()
+        const secondary = tickets.find(t => t._uuid === secondaryUuid)
+        if (!secondary) return
+        await addTimelineEvent(primaryUuid, {
+          type: 'comment',
+          text: `Merged with ticket <strong>${secondary.id}</strong>: "${secondary.subject}"`,
+          author: currentUserName || 'System',
+        })
+        softDelete(secondaryUuid)
+      },
+
+      splitTicket: async (uuid, splitData) => {
+        const { tickets, addTicket, addLink } = get()
+        const primary = tickets.find(t => t._uuid === uuid)
+        const newTicket = await addTicket(splitData)
+        addLink(uuid, { linkedUuid: newTicket._uuid, linkedId: newTicket.id, type: 'related' })
+        addLink(newTicket._uuid, { linkedUuid: uuid, linkedId: primary?.id, type: 'related' })
+        return newTicket
+      },
+
       // ── Filters & Selection ────────────────────────────────────────────────
       setFilter: (key, value) => {
         set(s => ({ filters: { ...s.filters, [key]: value } }))

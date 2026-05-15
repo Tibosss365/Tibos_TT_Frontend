@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
@@ -111,7 +111,7 @@ export default function NewTicket() {
   const { addTicket } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
-  const { slaSettings, categories, groups, agents, ticketSettings } = useAdminStore()
+  const { slaSettings, categories, groups, agents, ticketSettings, ticketTemplates, customFields } = useAdminStore()
   const navigate = useNavigate()
 
   const isEndUser = currentUser?.role === 'user'
@@ -135,6 +135,8 @@ export default function NewTicket() {
   const [attachments, setAttachments] = useState([])
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef()
+  const [customFieldValues, setCustomFieldValues] = useState({})
+  const [selectedTemplate, setSelectedTemplate] = useState('')
 
   const fmtSize = (b) =>
     b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`
@@ -196,6 +198,45 @@ export default function NewTicket() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main form */}
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
+
+          {/* Template selector */}
+          {!isEndUser && ticketTemplates && ticketTemplates.length > 0 && (
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <LayoutTemplate size={14} className="text-indigo-400" />
+                <span className="text-xs font-bold t-main uppercase tracking-wider">Use a Template</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  className="glass-input flex-1 text-sm"
+                  value={selectedTemplate}
+                  onChange={e => {
+                    const tpl = ticketTemplates.find(t => t.id === e.target.value)
+                    setSelectedTemplate(e.target.value)
+                    if (tpl) {
+                      setForm(f => ({
+                        ...f,
+                        subject:     tpl.subject || f.subject,
+                        description: tpl.description || f.description,
+                        priority:    tpl.priority || f.priority,
+                        type:        tpl.type || f.type,
+                        category:    tpl.category || f.category,
+                      }))
+                    }
+                  }}
+                >
+                  <option value="">— Select a template —</option>
+                  {ticketTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+                {selectedTemplate && (
+                  <button type="button" onClick={() => setSelectedTemplate('')} className="text-[11px] t-muted hover:text-rose-400 transition-colors px-2 py-1 rounded-lg border border-glass">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Ticket Type */}
           <Card>
             <CardHeader title="Ticket Type" />
@@ -303,6 +344,56 @@ export default function NewTicket() {
                   </div>
                 )}
               </div>
+
+              {/* Custom fields for selected category */}
+              {form.category && customFields && (customFields[form.category] || []).length > 0 && (
+                <div className="space-y-3 pt-1 border-t border-glass">
+                  <div className="text-[10px] font-bold t-sub uppercase tracking-wider">Additional Fields</div>
+                  {(customFields[form.category] || []).map(field => (
+                    <div key={field.id}>
+                      <label className={labelCls}>{field.name}{field.required && ' *'}</label>
+                      {field.type === 'textarea' ? (
+                        <textarea
+                          className="glass-input w-full text-sm resize-none"
+                          rows={3}
+                          value={customFieldValues[field.id] || ''}
+                          onChange={e => setCustomFieldValues(v => ({ ...v, [field.id]: e.target.value }))}
+                          placeholder={field.placeholder || ''}
+                        />
+                      ) : field.type === 'select' ? (
+                        <select
+                          className="glass-input w-full text-sm"
+                          value={customFieldValues[field.id] || ''}
+                          onChange={e => setCustomFieldValues(v => ({ ...v, [field.id]: e.target.value }))}
+                        >
+                          <option value="">— Select —</option>
+                          {(field.options || '').split('\n').filter(Boolean).map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : field.type === 'checkbox' ? (
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!customFieldValues[field.id]}
+                            onChange={e => setCustomFieldValues(v => ({ ...v, [field.id]: e.target.checked }))}
+                            className="w-4 h-4 rounded accent-indigo-500"
+                          />
+                          <span className="text-xs t-muted">{field.placeholder || field.name}</span>
+                        </label>
+                      ) : (
+                        <input
+                          type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                          className="glass-input w-full text-sm"
+                          value={customFieldValues[field.id] || ''}
+                          onChange={e => setCustomFieldValues(v => ({ ...v, [field.id]: e.target.value }))}
+                          placeholder={field.placeholder || ''}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Priority selector */}
               <div>

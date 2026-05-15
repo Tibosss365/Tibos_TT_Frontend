@@ -4,7 +4,7 @@ import {
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
   CalendarDays, Briefcase, Mail, MailOpen, Send, Paperclip, Download, Loader2 as SpinIcon,
-  Image as ImageIcon,
+  Image as ImageIcon, Link2, Link2Off, GitMerge, Scissors, BookOpen, Eye,
 } from 'lucide-react'
 import { downloadAttachment, uploadAttachment } from '../../api/client'
 import { Modal } from '../ui/Modal'
@@ -34,7 +34,15 @@ const MODAL_TABS = [
   { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
   { id: 'worklog',      icon: Timer,         label: 'Work Log' },
   { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
+  { id: 'linked',       icon: Link2,         label: 'Linked' },
   { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
+]
+
+const LINK_TYPES = [
+  { id: 'related',   label: 'Related',   color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' },
+  { id: 'duplicate', label: 'Duplicate', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  { id: 'parent',    label: 'Parent',    color: 'text-violet-400 bg-violet-500/10 border-violet-500/30' },
+  { id: 'child',     label: 'Child',     color: 'text-sky-400 bg-sky-500/10 border-sky-500/30' },
 ]
 
 const inputCls  = 'glass-input w-full text-sm py-1.5'
@@ -417,8 +425,12 @@ export function TicketDetailModal({ ticket, onClose }) {
     addWorkLog, deleteWorkLog,
     addReminder, toggleReminder, deleteReminder,
     addApproval, updateApprovalStatus,
+    addLink, removeLink, mergeTickets, splitTicket,
   } = useTicketStore()
-  const { agents, getAgentName, getCategoryName, categories, groups, slaSettings } = useAdminStore()
+  const linkedTickets = useTicketStore(s => s.linkedTickets[ticket._uuid] || [])
+  const allTickets    = useTicketStore(s => s.tickets)
+  const { agents, getAgentName, getCategoryName, categories, groups, slaSettings,
+          cannedResponses, resolutionCodes, onHoldReasons } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
   const t = useT()
@@ -426,7 +438,68 @@ export function TicketDetailModal({ ticket, onClose }) {
 
 
   const [activeTab, setActiveTab] = useState(isEndUser ? 'conversations' : 'details')
-  const [resolverId, setResolverId] = useState(currentUser?.id || '')
+  const [resolverId, setResolverId]     = useState(currentUser?.id || '')
+  const [resolutionCode, setResolutionCode] = useState('')
+
+  // On-hold reason modal
+  const [onHoldModalOpen, setOnHoldModalOpen]   = useState(false)
+  const [pendingOnHoldReason, setPendingOnHoldReason] = useState('')
+  const [onHoldNote, setOnHoldNote]             = useState('')
+
+  // Merge modal
+  const [mergeModalOpen, setMergeModalOpen]     = useState(false)
+  const [mergeSearch, setMergeSearch]           = useState('')
+  const [mergeTarget, setMergeTarget]           = useState(null)
+  const [merging, setMerging]                   = useState(false)
+
+  // Split modal
+  const [splitModalOpen, setSplitModalOpen]     = useState(false)
+  const [splitForm, setSplitForm]               = useState({ subject: '', description: '', priority: 'medium' })
+  const [splitting, setSplitting]               = useState(false)
+
+  // Canned responses picker
+  const [cannedOpen, setCannedOpen]             = useState(false)
+  const cannedRef = useRef(null)
+
+  // Linked ticket add-link form
+  const [linkSearch, setLinkSearch]             = useState('')
+  const [linkType, setLinkType]                 = useState('related')
+
+  // Agent collision detection via BroadcastChannel
+  const [otherViewers, setOtherViewers]         = useState([])
+  useEffect(() => {
+    if (!window.BroadcastChannel) return
+    const channel = new BroadcastChannel(`ticket-viewers-${ticket._uuid}`)
+    const myId    = currentUser?.id || 'unknown'
+    const myName  = currentUser?.name || 'An agent'
+    const announce = () => channel.postMessage({ type: 'presence', id: myId, name: myName, ts: Date.now() })
+    announce()
+    const interval = setInterval(announce, 15000)
+    channel.onmessage = (e) => {
+      if (e.data.type === 'presence' && e.data.id !== myId) {
+        setOtherViewers(prev => {
+          const without = prev.filter(v => v.id !== e.data.id)
+          return [...without, { id: e.data.id, name: e.data.name, ts: e.data.ts }]
+        })
+      }
+    }
+    return () => { clearInterval(interval); channel.close() }
+  }, [ticket._uuid]) // eslint-disable-line
+
+  // Expire stale viewers (>30s since last heartbeat)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setOtherViewers(prev => prev.filter(v => Date.now() - v.ts < 30000))
+    }, 5000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Close canned picker on outside click
+  useEffect(() => {
+    const handler = (e) => { if (cannedRef.current && !cannedRef.current.contains(e.target)) setCannedOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   // Load full ticket detail (with timeline) when modal opens
   useEffect(() => {
@@ -496,8 +569,71 @@ export function TicketDetailModal({ ticket, onClose }) {
     setIsEditing(false)
   }
 
+  // ── Confirm on-hold with reason ───────────────────────────────────────────
+  const handleConfirmOnHold = async () => {
+    if (!pendingOnHoldReason) { addToast('Please select a reason', 'error'); return }
+    const noteText = onHoldNote.trim() ? ` — ${onHoldNote}` : ''
+    addTimelineEvent(ticket._uuid, {
+      type: 'status',
+      text: `Status changed to <strong>On Hold</strong>: ${pendingOnHoldReason}${noteText}`,
+    })
+    await updateTicket(ticket._uuid, { status: 'on-hold' })
+    await fetchTicket(ticket._uuid)
+    set('status', 'on-hold')
+    addToast('Ticket placed on hold', 'success')
+    setOnHoldModalOpen(false)
+    setPendingOnHoldReason('')
+    setOnHoldNote('')
+    setIsEditing(false)
+  }
+
+  // ── Merge handler ─────────────────────────────────────────────────────────
+  const handleMerge = async () => {
+    if (!mergeTarget) return
+    setMerging(true)
+    try {
+      await mergeTickets(ticket._uuid, mergeTarget._uuid, currentUser?.name)
+      addToast(`Ticket ${mergeTarget.id} merged into this ticket`, 'success')
+      setMergeModalOpen(false)
+      setMergeTarget(null)
+      setMergeSearch('')
+    } catch { addToast('Merge failed', 'error') }
+    finally { setMerging(false) }
+  }
+
+  // ── Split handler ─────────────────────────────────────────────────────────
+  const handleSplit = async () => {
+    if (!splitForm.subject.trim() || !splitForm.description.trim()) {
+      addToast('Subject and description are required', 'error'); return
+    }
+    setSplitting(true)
+    try {
+      const newT = await splitTicket(ticket._uuid, {
+        subject:     splitForm.subject,
+        description: splitForm.description,
+        priority:    splitForm.priority,
+        category:    liveTicket.category || '',
+        contactName: liveTicket.submitter || '',
+        email:       liveTicket.email || '',
+        company:     liveTicket.company || '',
+        type:        liveTicket.type || 'request',
+      })
+      addToast(`Split ticket ${newT.id} created`, 'success')
+      setSplitModalOpen(false)
+      setSplitForm({ subject: '', description: '', priority: 'medium' })
+    } catch { addToast('Split failed', 'error') }
+    finally { setSplitting(false) }
+  }
+
   const handleSave = async (overrides = {}) => {
     const merged = { ...edits, ...overrides }
+
+    // Intercept on-hold to collect reason first
+    if ((merged.status === 'on-hold') && (liveTicket.status !== 'on-hold')) {
+      setOnHoldModalOpen(true)
+      return
+    }
+
     const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
     const changes = {}
     // Compare against liveTicket so we catch changes the backend already applied
@@ -680,10 +816,21 @@ export function TicketDetailModal({ ticket, onClose }) {
   const totalHours = (liveTicket.workLog||[]).reduce((s, w) => s + Number(w.hours||0), 0)
 
   return (
+    <>
     <Modal isOpen onClose={onClose} title="" size="xl" fillHeight>
       <div className="flex flex-col flex-1 min-h-0">
 
         {/* ── Top Status Bar ───────────────────────────────────────────── */}
+        {/* ── Agent Collision Banner ───────────────────────────────────── */}
+        {otherViewers.length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/25 flex-shrink-0 flex-wrap">
+            <Eye size={12} className="text-amber-500 flex-shrink-0" />
+            <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+              Also viewing: {otherViewers.map(v => v.name).join(', ')}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-glass flex-shrink-0 flex-wrap gap-y-1.5">
           <span className="text-sm font-bold t-main font-mono">{ticket.id}</span>
           <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
@@ -721,6 +868,25 @@ export function TicketDetailModal({ ticket, onClose }) {
             </span>
           )}
           <div className="flex-1" />
+          {/* Merge & Split actions (staff only) */}
+          {!isEndUser && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setMergeModalOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border border-glass t-muted hover:border-violet-500/40 hover:text-violet-500 hover:bg-violet-500/5 transition-all"
+                title="Merge with another ticket"
+              >
+                <GitMerge size={12} /> Merge
+              </button>
+              <button
+                onClick={() => setSplitModalOpen(true)}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border border-glass t-muted hover:border-sky-500/40 hover:text-sky-500 hover:bg-sky-500/5 transition-all"
+                title="Split into a new ticket"
+              >
+                <Scissors size={12} /> Split
+              </button>
+            </div>
+          )}
           {(() => {
             const sla = getSlaInfo(liveTicket)
             if (!sla || sla.done) return null
@@ -762,6 +928,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                 if (id === 'reminders') badge = (liveTicket.reminders||[]).filter(r=>!r.done).length
                 if (id === 'approvals') badge = (liveTicket.approvals||[]).filter(a=>a.status==='pending').length
                 if (id === 'worklog')   badge = (liveTicket.workLog||[]).length
+                if (id === 'linked')    badge = linkedTickets.length
                 return (
                   <button key={id} onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0
@@ -1083,6 +1250,44 @@ export function TicketDetailModal({ ticket, onClose }) {
                             >
                               <Paperclip size={12} /> Attach
                             </button>
+                            {/* Canned Response picker */}
+                            {!isEndUser && cannedResponses.length > 0 && (
+                              <div className="relative" ref={cannedRef}>
+                                <button
+                                  type="button"
+                                  onClick={() => setCannedOpen(v => !v)}
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border border-glass t-muted hover:t-main hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all"
+                                  title="Insert canned response"
+                                >
+                                  <BookOpen size={12} /> Canned
+                                </button>
+                                {cannedOpen && (
+                                  <div className="absolute bottom-full mb-1 left-0 z-50 w-72 rounded-xl border border-glass shadow-glass-lg animate-fade-in overflow-hidden" style={{ background: 'var(--c-card-bg)' }}>
+                                    <div className="px-3 py-2 border-b border-glass text-[10px] font-bold t-sub uppercase tracking-wider">Canned Responses</div>
+                                    <div className="max-h-48 overflow-y-auto">
+                                      {cannedResponses.map(cr => (
+                                        <button
+                                          key={cr.id}
+                                          type="button"
+                                          onClick={() => {
+                                            const body = cr.body
+                                              .replace(/{contact_name}/g, liveTicket.submitter || '')
+                                              .replace(/{ticket_id}/g, liveTicket.id || '')
+                                              .replace(/{agent_name}/g, currentUser?.name || '')
+                                            setComment(prev => prev ? prev + '\n\n' + body : body)
+                                            setCannedOpen(false)
+                                          }}
+                                          className="w-full text-left px-3 py-2.5 hover:bg-indigo-500/5 transition-colors border-b border-glass last:border-0"
+                                        >
+                                          <div className="text-xs font-semibold t-main">{cr.title}</div>
+                                          <div className="text-[10px] t-muted mt-0.5 line-clamp-2 whitespace-pre-line">{cr.body}</div>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {!isEndUser && (
                               <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <div
@@ -1239,6 +1444,21 @@ export function TicketDetailModal({ ticket, onClose }) {
                       </div>
                     </div>
                   )}
+                  {resolutionCodes.length > 0 && (
+                    <div>
+                      <div className={labelCls}>Resolution Code</div>
+                      <select
+                        className={inputCls}
+                        value={resolutionCode}
+                        onChange={e => setResolutionCode(e.target.value)}
+                      >
+                        <option value="">— Select a resolution code —</option>
+                        {resolutionCodes.map(rc => (
+                          <option key={rc.id} value={rc.id}>{rc.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <div className={labelCls}>Resolution Notes</div>
                     <textarea
@@ -1303,6 +1523,94 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <Save size={13}/> Save Notes
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {/* ── Linked Tickets ── */}
+              {activeTab === 'linked' && (
+                <div className="space-y-4">
+                  {/* Add link form */}
+                  <div className="p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3 space-y-3">
+                    <div className={labelCls}>Link a Ticket</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Relationship</div>
+                        <select className={inputCls} value={linkType} onChange={e => setLinkType(e.target.value)}>
+                          {LINK_TYPES.map(lt => <option key={lt.id} value={lt.id}>{lt.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="text-[10px] t-sub mb-1">Search Ticket ID / Subject</div>
+                        <input className={inputCls} value={linkSearch} onChange={e => setLinkSearch(e.target.value)} placeholder="e.g. TKT-0042" />
+                      </div>
+                    </div>
+                    {/* Search results */}
+                    {linkSearch.trim().length >= 2 && (() => {
+                      const q = linkSearch.toLowerCase()
+                      const hits = allTickets.filter(t =>
+                        t._uuid !== ticket._uuid &&
+                        !linkedTickets.some(l => l.linkedUuid === t._uuid) &&
+                        ((t.id||'').toLowerCase().includes(q) || (t.subject||'').toLowerCase().includes(q))
+                      ).slice(0, 5)
+                      return hits.length > 0 ? (
+                        <div className="space-y-1">
+                          {hits.map(t => (
+                            <button key={t._uuid} type="button"
+                              onClick={() => {
+                                addLink(ticket._uuid, { linkedUuid: t._uuid, linkedId: t.id, type: linkType })
+                                setLinkSearch('')
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-glass hover:bg-indigo-500/5 hover:border-indigo-500/30 text-left transition-all"
+                            >
+                              <span className="text-[10px] font-mono t-sub">{t.id}</span>
+                              <span className="text-xs t-main flex-1 truncate">{t.subject}</span>
+                              <Plus size={11} className="text-indigo-400 flex-shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs t-muted text-center py-2">No matching tickets</div>
+                      )
+                    })()}
+                  </div>
+
+                  {/* Linked tickets list */}
+                  {linkedTickets.length === 0 ? (
+                    <div className="text-sm t-muted text-center py-8">No linked tickets yet</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {linkedTickets.map(link => {
+                        const linked = allTickets.find(t => t._uuid === link.linkedUuid)
+                        const lt = LINK_TYPES.find(l => l.id === link.type) || LINK_TYPES[0]
+                        return (
+                          <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+                            <Link2 size={13} className="t-sub flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${lt.color}`}>{lt.label}</span>
+                                <span className="text-[10px] font-mono t-sub">{link.linkedId}</span>
+                              </div>
+                              <div className="text-xs t-main truncate mt-0.5">
+                                {linked ? linked.subject : <span className="opacity-40">Ticket not found / deleted</span>}
+                              </div>
+                              {linked && (
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                    linked.status === 'resolved' || linked.status === 'closed' ? 'bg-emerald-500/15 text-emerald-500' :
+                                    linked.status === 'on-hold' ? 'bg-amber-500/15 text-amber-500' : 'bg-indigo-500/15 text-indigo-400'
+                                  }`}>{linked.status}</span>
+                                  <span className="text-[10px] t-muted">{linked.priority}</span>
+                                </div>
+                              )}
+                            </div>
+                            <button onClick={() => removeLink(ticket._uuid, link.id)}
+                              className="p-1 hover:bg-rose-500/20 hover:text-rose-500 rounded t-sub transition-all flex-shrink-0"
+                            ><Link2Off size={12}/></button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1466,5 +1774,161 @@ export function TicketDetailModal({ ticket, onClose }) {
         </div>
       </div>
     </Modal>
+
+    {/* ── Overlay Modals (rendered outside <Modal> to avoid z-index conflicts) ─ */}
+
+    {/* ── On-Hold Reason Modal ─────────────────────────────────────────────── */}
+    {onHoldModalOpen && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50" onClick={() => setOnHoldModalOpen(false)} />
+        <div className="relative z-10 w-full max-w-md rounded-2xl p-6 animate-fade-in shadow-glass-lg" style={{ background: 'var(--c-card-bg)', border: '1px solid var(--c-border)' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+              <Clock size={16} className="text-amber-500" />
+            </div>
+            <div>
+              <div className="text-sm font-bold t-main">Place Ticket On Hold</div>
+              <div className="text-xs t-muted">Select a reason for putting this ticket on hold</div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <div className={labelCls}>Reason *</div>
+              <select className={inputCls} value={pendingOnHoldReason} onChange={e => setPendingOnHoldReason(e.target.value)}>
+                <option value="">— Select a reason —</option>
+                {onHoldReasons.map(r => <option key={r.id} value={r.label}>{r.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <div className={labelCls}>Additional Note <span className="font-normal t-muted normal-case tracking-normal">(optional)</span></div>
+              <input className={inputCls} value={onHoldNote} onChange={e => setOnHoldNote(e.target.value)} placeholder="e.g. Waiting for reply from John" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-5">
+            <Button variant="primary" size="sm" onClick={handleConfirmOnHold} disabled={!pendingOnHoldReason} className="flex-1">
+              <Clock size={13} /> Confirm On Hold
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setOnHoldModalOpen(false); setPendingOnHoldReason(''); setOnHoldNote('') }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Merge Modal ──────────────────────────────────────────────────────── */}
+    {mergeModalOpen && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50" onClick={() => { setMergeModalOpen(false); setMergeTarget(null); setMergeSearch('') }} />
+        <div className="relative z-10 w-full max-w-lg rounded-2xl p-6 animate-fade-in shadow-glass-lg" style={{ background: 'var(--c-card-bg)', border: '1px solid var(--c-border)' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+              <GitMerge size={16} className="text-violet-500" />
+            </div>
+            <div>
+              <div className="text-sm font-bold t-main">Merge Ticket</div>
+              <div className="text-xs t-muted">Select a ticket to merge into <strong>{ticket.id}</strong>. The selected ticket will be closed.</div>
+            </div>
+          </div>
+          <input
+            className={inputCls + ' mb-3'}
+            value={mergeSearch}
+            onChange={e => setMergeSearch(e.target.value)}
+            placeholder="Search by ticket ID or subject…"
+            autoFocus
+          />
+          <div className="max-h-60 overflow-y-auto space-y-1.5 mb-4">
+            {(() => {
+              const q = mergeSearch.toLowerCase()
+              const hits = allTickets.filter(t =>
+                t._uuid !== ticket._uuid &&
+                t.status !== 'resolved' && t.status !== 'closed' &&
+                (!q || (t.id||'').toLowerCase().includes(q) || (t.subject||'').toLowerCase().includes(q))
+              ).slice(0, 8)
+              return hits.length > 0 ? hits.map(t => (
+                <button key={t._uuid} type="button"
+                  onClick={() => setMergeTarget(mergeTarget?._uuid === t._uuid ? null : t)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                    mergeTarget?._uuid === t._uuid
+                      ? 'border-violet-500/50 bg-violet-500/10'
+                      : 'border-glass hover:bg-violet-500/5 hover:border-violet-500/30'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono t-sub">{t.id}</span>
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-indigo-500/15 text-indigo-400`}>{t.status}</span>
+                    </div>
+                    <div className="text-xs t-main truncate mt-0.5">{t.subject}</div>
+                  </div>
+                  {mergeTarget?._uuid === t._uuid && <CheckCircle2 size={14} className="text-violet-500 flex-shrink-0" />}
+                </button>
+              )) : <div className="text-xs t-muted text-center py-4">No tickets found</div>
+            })()}
+          </div>
+          {mergeTarget && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 mb-4 text-xs text-amber-600 dark:text-amber-400">
+              <strong>Warning:</strong> Ticket <strong>{mergeTarget.id}</strong> will be moved to trash and linked to this ticket.
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={handleMerge} disabled={!mergeTarget || merging} className="flex-1">
+              {merging ? <><SpinIcon size={13} className="animate-spin" /> Merging…</> : <><GitMerge size={13} /> Merge Ticket</>}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setMergeModalOpen(false); setMergeTarget(null); setMergeSearch('') }}>Cancel</Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Split Modal ───────────────────────────────────────────────────────── */}
+    {splitModalOpen && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/50" onClick={() => setSplitModalOpen(false)} />
+        <div className="relative z-10 w-full max-w-lg rounded-2xl p-6 animate-fade-in shadow-glass-lg" style={{ background: 'var(--c-card-bg)', border: '1px solid var(--c-border)' }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/25 flex items-center justify-center">
+              <Scissors size={16} className="text-sky-500" />
+            </div>
+            <div>
+              <div className="text-sm font-bold t-main">Split Ticket</div>
+              <div className="text-xs t-muted">Create a new linked ticket from part of this one</div>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <div className={labelCls}>New Ticket Subject *</div>
+              <input className={inputCls} value={splitForm.subject} onChange={e => setSplitForm(f => ({ ...f, subject: e.target.value }))} placeholder="Brief description of the split issue" />
+            </div>
+            <div>
+              <div className={labelCls}>Priority</div>
+              <select className={inputCls} value={splitForm.priority} onChange={e => setSplitForm(f => ({ ...f, priority: e.target.value }))}>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <div>
+              <div className={labelCls}>Description *</div>
+              <textarea
+                className={inputCls + ' resize-none'}
+                rows={4}
+                value={splitForm.description}
+                onChange={e => setSplitForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Describe the issue that needs to be split off…"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-5">
+            <Button variant="primary" size="sm" onClick={handleSplit} disabled={splitting || !splitForm.subject.trim()} className="flex-1">
+              {splitting ? <><SpinIcon size={13} className="animate-spin" /> Creating…</> : <><Scissors size={13} /> Create Split Ticket</>}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setSplitModalOpen(false); setSplitForm({ subject: '', description: '', priority: 'medium' }) }}>Cancel</Button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
