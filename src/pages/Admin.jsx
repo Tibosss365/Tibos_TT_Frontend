@@ -2085,6 +2085,254 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   )
 }
 
+// ── Simple list editor (on-hold reasons & resolution codes) ──────────────────
+function SimpleListPanel({ items, onAdd, onUpdate, onDelete, inputCls, placeholder }) {
+  const [newLabel, setNewLabel] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editLabel, setEditLabel] = useState('')
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <input className={inputCls + ' flex-1'} value={newLabel} onChange={e => setNewLabel(e.target.value)}
+          placeholder={placeholder} onKeyDown={e => { if (e.key === 'Enter' && newLabel.trim()) { onAdd(newLabel.trim()); setNewLabel('') } }} />
+        <Button variant="primary" size="sm" onClick={() => { if (newLabel.trim()) { onAdd(newLabel.trim()); setNewLabel('') } }}>
+          <Plus size={13} /> Add
+        </Button>
+      </div>
+      <div className="space-y-1.5">
+        {items.map(item => (
+          <div key={item.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-glass bg-black/3 dark:bg-white/3">
+            {editingId === item.id ? (
+              <>
+                <input className={inputCls + ' flex-1 py-1'} value={editLabel} onChange={e => setEditLabel(e.target.value)} autoFocus />
+                <button onClick={() => { onUpdate(item.id, editLabel.trim()); setEditingId(null) }}
+                  className="px-2 py-1 rounded text-[11px] bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 transition-all">Save</button>
+                <button onClick={() => setEditingId(null)} className="p-1 t-muted hover:text-rose-400 transition-colors"><X size={12}/></button>
+              </>
+            ) : (
+              <>
+                <span className="flex-1 text-xs t-main">{item.label}</span>
+                <button onClick={() => { setEditingId(item.id); setEditLabel(item.label) }}
+                  className="p-1 t-muted hover:text-indigo-400 transition-colors"><Pencil size={12}/></button>
+                <button onClick={() => onDelete(item.id)} className="p-1 t-muted hover:text-rose-400 transition-colors"><Trash2 size={12}/></button>
+              </>
+            )}
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-xs t-muted text-center py-3">None configured yet</p>}
+      </div>
+    </div>
+  )
+}
+function OnHoldReasonsPanel({ items, onAdd, onUpdate, onDelete, inputCls }) {
+  return <SimpleListPanel items={items} onAdd={onAdd} onUpdate={onUpdate} onDelete={onDelete} inputCls={inputCls} placeholder="e.g. Waiting for Customer Response" />
+}
+function ResolutionCodesPanel({ items, onAdd, onUpdate, onDelete, inputCls }) {
+  return <SimpleListPanel items={items} onAdd={onAdd} onUpdate={onUpdate} onDelete={onDelete} inputCls={inputCls} placeholder="e.g. Fixed — Software Issue" />
+}
+
+// ── Canned Responses Panel ────────────────────────────────────────────────────
+function CannedResponsesPanel({ items, onAdd, onUpdate, onDelete, inputCls }) {
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ title: '', body: '' })
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ title: '', body: '' })
+  const vars = ['{contact_name}', '{ticket_id}', '{agent_name}']
+  return (
+    <div className="space-y-3">
+      {!showForm ? (
+        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={13}/> Add Canned Response</Button>
+      ) : (
+        <div className="p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-2">
+          <input className={inputCls} value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} placeholder="Title (e.g. Password Reset Instructions)" />
+          <div className="flex flex-wrap gap-1 mb-1">
+            {vars.map(v => <button key={v} type="button" onClick={() => setForm(f=>({...f,body:f.body+v}))}
+              className="px-1.5 py-0.5 rounded text-[10px] border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition-all">{v}</button>)}
+          </div>
+          <textarea className={inputCls + ' resize-none'} rows={4} value={form.body}
+            onChange={e => setForm(f=>({...f,body:e.target.value}))} placeholder="Write the canned response body…" />
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => { if (form.title && form.body) { onAdd(form); setForm({title:'',body:''}); setShowForm(false) } }}><Save size={13}/> Save</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+      <div className="space-y-2">
+        {items.map(item => (
+          <div key={item.id} className="rounded-xl border border-glass bg-black/3 dark:bg-white/3 overflow-hidden">
+            {editingId === item.id ? (
+              <div className="p-3 space-y-2">
+                <input className={inputCls} value={editForm.title} onChange={e => setEditForm(f=>({...f,title:e.target.value}))} />
+                <textarea className={inputCls+' resize-none'} rows={4} value={editForm.body} onChange={e => setEditForm(f=>({...f,body:e.target.value}))} />
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" onClick={() => { onUpdate(item.id, editForm); setEditingId(null) }}><Save size={13}/> Save</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold t-main">{item.title}</div>
+                  <div className="text-[11px] t-muted mt-0.5 whitespace-pre-line line-clamp-2">{item.body}</div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => { setEditingId(item.id); setEditForm({ title: item.title, body: item.body }) }}
+                    className="p-1.5 rounded-lg t-muted hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"><Pencil size={12}/></button>
+                  <button onClick={() => onDelete(item.id)}
+                    className="p-1.5 rounded-lg t-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"><Trash2 size={12}/></button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-xs t-muted text-center py-3">No canned responses yet</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Ticket Templates Panel ────────────────────────────────────────────────────
+function TicketTemplatesPanel({ items, categories, onAdd, onUpdate, onDelete, inputCls }) {
+  const EMPTY_TPL = { name:'', subject:'', description:'', category:'', priority:'medium', type:'request' }
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState(EMPTY_TPL)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(EMPTY_TPL)
+  const f = (key, val, setter) => setter(prev => ({ ...prev, [key]: val }))
+  const FormFields = ({ data, setData }) => (
+    <div className="space-y-2">
+      <input className={inputCls} value={data.name} onChange={e => f('name',e.target.value,setData)} placeholder="Template name" />
+      <input className={inputCls} value={data.subject} onChange={e => f('subject',e.target.value,setData)} placeholder="Ticket subject" />
+      <div className="grid grid-cols-3 gap-2">
+        <select className={inputCls} value={data.type} onChange={e => f('type',e.target.value,setData)}>
+          <option value="request">Request</option><option value="incident">Incident</option>
+        </select>
+        <select className={inputCls} value={data.priority} onChange={e => f('priority',e.target.value,setData)}>
+          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
+        </select>
+        <select className={inputCls} value={data.category} onChange={e => f('category',e.target.value,setData)}>
+          <option value="">— Category —</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+      <textarea className={inputCls+' resize-none'} rows={5} value={data.description}
+        onChange={e => f('description',e.target.value,setData)} placeholder="Pre-filled description / checklist…" />
+    </div>
+  )
+  return (
+    <div className="space-y-3">
+      {!showForm ? (
+        <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={13}/> Add Template</Button>
+      ) : (
+        <div className="p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-2">
+          <FormFields data={form} setData={setForm} />
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => { if (form.name && form.subject) { onAdd(form); setForm(EMPTY_TPL); setShowForm(false) } }}><Save size={13}/> Save</Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+      <div className="space-y-2">
+        {items.map(item => (
+          <div key={item.id} className="rounded-xl border border-glass bg-black/3 dark:bg-white/3 overflow-hidden">
+            {editingId === item.id ? (
+              <div className="p-3 space-y-2">
+                <FormFields data={editForm} setData={setEditForm} />
+                <div className="flex gap-2">
+                  <Button variant="primary" size="sm" onClick={() => { onUpdate(item.id, editForm); setEditingId(null) }}><Save size={13}/> Save</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold t-main">{item.name}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400">{item.type}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">{item.priority}</span>
+                    {item.category && <span className="text-[10px] t-muted">{categories.find(c=>c.id===item.category)?.name}</span>}
+                  </div>
+                  <div className="text-[11px] t-muted mt-1 line-clamp-1">{item.subject}</div>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => { setEditingId(item.id); setEditForm(item) }}
+                    className="p-1.5 rounded-lg t-muted hover:text-indigo-400 hover:bg-indigo-500/10 transition-all"><Pencil size={12}/></button>
+                  <button onClick={() => onDelete(item.id)}
+                    className="p-1.5 rounded-lg t-muted hover:text-rose-400 hover:bg-rose-500/10 transition-all"><Trash2 size={12}/></button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-xs t-muted text-center py-3">No templates yet</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Custom Fields Panel ───────────────────────────────────────────────────────
+function CustomFieldsPanel({ categories, customFields, onAdd, onUpdate, onDelete, inputCls }) {
+  const [selectedCat, setSelectedCat] = useState('')
+  const [showForm, setShowForm] = useState(false)
+  const FIELD_TYPES = ['text','number','date','textarea','select','checkbox']
+  const EMPTY = { name:'', type:'text', placeholder:'', required:false, options:'' }
+  const [form, setForm] = useState(EMPTY)
+  const fields = selectedCat ? (customFields[selectedCat] || []) : []
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">Select Category</label>
+        <select className={inputCls} value={selectedCat} onChange={e => { setSelectedCat(e.target.value); setShowForm(false) }}>
+          <option value="">— Choose a category —</option>
+          {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+      </div>
+      {selectedCat && (
+        <>
+          {!showForm ? (
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Plus size={13}/> Add Field</Button>
+          ) : (
+            <div className="p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputCls} value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="Field label" />
+                <select className={inputCls} value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}>
+                  {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <input className={inputCls} value={form.placeholder} onChange={e => setForm(f=>({...f,placeholder:e.target.value}))} placeholder="Placeholder text (optional)" />
+              {form.type === 'select' && (
+                <textarea className={inputCls+' resize-none'} rows={3} value={form.options}
+                  onChange={e => setForm(f=>({...f,options:e.target.value}))} placeholder="One option per line" />
+              )}
+              <label className="flex items-center gap-2 text-xs t-muted cursor-pointer">
+                <input type="checkbox" checked={form.required} onChange={e => setForm(f=>({...f,required:e.target.checked}))} className="accent-indigo-500" />
+                Required field
+              </label>
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" onClick={() => { if (form.name) { onAdd(selectedCat, form); setForm(EMPTY); setShowForm(false) } }}><Save size={13}/> Add Field</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+          <div className="space-y-1.5">
+            {fields.map(field => (
+              <div key={field.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-glass bg-black/3 dark:bg-white/3">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-semibold t-main">{field.name}</span>
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400">{field.type}</span>
+                  {field.required && <span className="ml-1 text-[10px] text-rose-400">required</span>}
+                </div>
+                <button onClick={() => onDelete(selectedCat, field.id)} className="p-1 t-muted hover:text-rose-400 transition-colors"><Trash2 size={12}/></button>
+              </div>
+            ))}
+            {fields.length === 0 && <p className="text-xs t-muted text-center py-3">No custom fields for this category</p>}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function Admin() {
   const [tab, setTab] = useState('overview')
   const {
@@ -2105,6 +2353,11 @@ export default function Admin() {
     fetchInboundConfig, saveInboundConfig, pollInbound,
     fetchInboundLogs, clearInboundLogs,
     alertSettings, fetchAlertSettings, saveAlertSettings, sendTestAlert,
+    cannedResponses, addCannedResponse, updateCannedResponse, deleteCannedResponse,
+    ticketTemplates, addTicketTemplate, updateTicketTemplate, deleteTicketTemplate,
+    customFields, addCustomField, updateCustomField, deleteCustomField,
+    resolutionCodes, addResolutionCode, updateResolutionCode, deleteResolutionCode,
+    onHoldReasons, addOnHoldReason, updateOnHoldReason, deleteOnHoldReason,
   } = useAdminStore()
 
   // ── General / System settings state ───────────────────────────────────────
@@ -2961,6 +3214,68 @@ export default function Admin() {
                 </p>
               </div>
             </div>
+          </Card>
+
+          {/* ── On-Hold Reasons ─────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="On-Hold Reasons" subtitle="Reasons agents can select when placing a ticket on hold" />
+            <OnHoldReasonsPanel
+              items={onHoldReasons || []}
+              onAdd={addOnHoldReason}
+              onUpdate={updateOnHoldReason}
+              onDelete={deleteOnHoldReason}
+              inputCls={inputCls}
+            />
+          </Card>
+
+          {/* ── Resolution Codes ─────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Resolution Codes" subtitle="Categorize how tickets are resolved" />
+            <ResolutionCodesPanel
+              items={resolutionCodes || []}
+              onAdd={addResolutionCode}
+              onUpdate={updateResolutionCode}
+              onDelete={deleteResolutionCode}
+              inputCls={inputCls}
+            />
+          </Card>
+
+          {/* ── Canned Responses ─────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Canned Responses" subtitle="Pre-written replies agents can insert into comments" />
+            <CannedResponsesPanel
+              items={cannedResponses || []}
+              onAdd={addCannedResponse}
+              onUpdate={updateCannedResponse}
+              onDelete={deleteCannedResponse}
+              inputCls={inputCls}
+            />
+          </Card>
+
+          {/* ── Ticket Templates ──────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Ticket Templates" subtitle="Pre-filled templates agents can use when creating tickets" />
+            <TicketTemplatesPanel
+              items={ticketTemplates || []}
+              categories={categories}
+              onAdd={addTicketTemplate}
+              onUpdate={updateTicketTemplate}
+              onDelete={deleteTicketTemplate}
+              inputCls={inputCls}
+            />
+          </Card>
+
+          {/* ── Custom Fields ─────────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader title="Custom Fields per Category" subtitle="Extra fields shown on the ticket form when a specific category is selected" />
+            <CustomFieldsPanel
+              categories={categories}
+              customFields={customFields || {}}
+              onAdd={addCustomField}
+              onUpdate={updateCustomField}
+              onDelete={deleteCustomField}
+              inputCls={inputCls}
+            />
           </Card>
 
         </div>

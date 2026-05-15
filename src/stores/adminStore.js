@@ -598,6 +598,67 @@ export const useAdminStore = create(
         return c ? c.name : id
       },
 
+      // ── Canned Responses ─────────────────────────────────────────────────
+      cannedResponses: [
+        { id: 'cr-1', title: 'Password Reset Instructions', body: 'Hi {contact_name},\n\nTo reset your password:\n1. Go to the login page\n2. Click "Forgot Password"\n3. Enter your email address\n4. Check your email for the reset link\n\nBest regards,\n{agent_name}' },
+        { id: 'cr-2', title: 'Ticket Acknowledged', body: 'Hi {contact_name},\n\nThank you for contacting us. We have received your request (#{ticket_id}) and our team is reviewing it. We will keep you updated on progress.\n\nBest regards,\n{agent_name}' },
+        { id: 'cr-3', title: 'Request for More Information', body: 'Hi {contact_name},\n\nThank you for reaching out. To assist you better, could you please provide the following additional information:\n\n- \n- \n\nBest regards,\n{agent_name}' },
+      ],
+      addCannedResponse: (data) => set(s => ({ cannedResponses: [...s.cannedResponses, { ...data, id: 'cr-' + Date.now() }] })),
+      updateCannedResponse: (id, changes) => set(s => ({ cannedResponses: s.cannedResponses.map(r => r.id === id ? { ...r, ...changes } : r) })),
+      deleteCannedResponse: (id) => set(s => ({ cannedResponses: s.cannedResponses.filter(r => r.id !== id) })),
+
+      // ── Ticket Templates ──────────────────────────────────────────────────
+      ticketTemplates: [
+        { id: 'tpl-1', name: 'New Employee Onboarding', subject: 'New Employee Setup – [Name]', description: 'Please set up the following for the new employee:\n\n☐ Email account\n☐ Laptop / Computer\n☐ Software licenses\n☐ Access permissions\n☐ Phone / Desk setup\n\nStart Date:\nDepartment:\nManager:', category: '', priority: 'medium', type: 'request' },
+        { id: 'tpl-2', name: 'Software Installation Request', subject: 'Software Installation Request', description: 'Software name:\nVersion:\nBusiness justification:\nTarget device(s):\nRequired by date:', category: '', priority: 'low', type: 'request' },
+        { id: 'tpl-3', name: 'Network / VPN Issue', subject: 'Network Connectivity Issue', description: 'Cannot connect to:\n☐ Internet\n☐ VPN\n☐ Internal network drive\n☐ Specific server\n\nError message:\nDevice affected:\nLocation:', category: '', priority: 'high', type: 'incident' },
+      ],
+      addTicketTemplate: (data) => set(s => ({ ticketTemplates: [...s.ticketTemplates, { ...data, id: 'tpl-' + Date.now() }] })),
+      updateTicketTemplate: (id, changes) => set(s => ({ ticketTemplates: s.ticketTemplates.map(t => t.id === id ? { ...t, ...changes } : t) })),
+      deleteTicketTemplate: (id) => set(s => ({ ticketTemplates: s.ticketTemplates.filter(t => t.id !== id) })),
+
+      // ── Custom Fields per Category ────────────────────────────────────────
+      customFields: {},
+      addCustomField: (categoryId, field) => set(s => ({
+        customFields: { ...s.customFields, [categoryId]: [...(s.customFields[categoryId] || []), { ...field, id: 'cf-' + Date.now() }] }
+      })),
+      updateCustomField: (categoryId, fieldId, changes) => set(s => ({
+        customFields: { ...s.customFields, [categoryId]: (s.customFields[categoryId] || []).map(f => f.id === fieldId ? { ...f, ...changes } : f) }
+      })),
+      deleteCustomField: (categoryId, fieldId) => set(s => ({
+        customFields: { ...s.customFields, [categoryId]: (s.customFields[categoryId] || []).filter(f => f.id !== fieldId) }
+      })),
+
+      // ── Resolution Codes ──────────────────────────────────────────────────
+      resolutionCodes: [
+        { id: 'rc-1', label: 'Fixed — Software Issue' },
+        { id: 'rc-2', label: 'Fixed — Hardware Issue' },
+        { id: 'rc-3', label: 'Fixed — Configuration Change' },
+        { id: 'rc-4', label: 'Fixed — Network / Connectivity' },
+        { id: 'rc-5', label: 'Workaround Provided' },
+        { id: 'rc-6', label: 'User Training / Guidance' },
+        { id: 'rc-7', label: 'Third Party / Vendor Action' },
+        { id: 'rc-8', label: 'No Issue Found' },
+        { id: 'rc-9', label: 'Duplicate Ticket' },
+      ],
+      addResolutionCode: (label) => set(s => ({ resolutionCodes: [...s.resolutionCodes, { id: 'rc-' + Date.now(), label }] })),
+      updateResolutionCode: (id, label) => set(s => ({ resolutionCodes: s.resolutionCodes.map(r => r.id === id ? { ...r, label } : r) })),
+      deleteResolutionCode: (id) => set(s => ({ resolutionCodes: s.resolutionCodes.filter(r => r.id !== id) })),
+
+      // ── On-Hold Reasons ───────────────────────────────────────────────────
+      onHoldReasons: [
+        { id: 'oh-1', label: 'Waiting for Customer Response' },
+        { id: 'oh-2', label: 'Waiting for Third Party / Vendor' },
+        { id: 'oh-3', label: 'Waiting for Parts / Hardware' },
+        { id: 'oh-4', label: 'Scheduled Maintenance Window' },
+        { id: 'oh-5', label: 'Pending Internal Approval' },
+        { id: 'oh-6', label: 'Customer Requested Delay' },
+      ],
+      addOnHoldReason: (label) => set(s => ({ onHoldReasons: [...s.onHoldReasons, { id: 'oh-' + Date.now(), label }] })),
+      updateOnHoldReason: (id, label) => set(s => ({ onHoldReasons: s.onHoldReasons.map(r => r.id === id ? { ...r, label } : r) })),
+      deleteOnHoldReason: (id) => set(s => ({ onHoldReasons: s.onHoldReasons.filter(r => r.id !== id) })),
+
       resetAgents: () => set({ agents: DEFAULT_AGENTS }),
 
       getAgentById: (id) => get().agents.find(a => String(a.id) === String(id)),
