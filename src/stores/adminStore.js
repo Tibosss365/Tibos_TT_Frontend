@@ -659,6 +659,39 @@ export const useAdminStore = create(
       updateOnHoldReason: (id, label) => set(s => ({ onHoldReasons: s.onHoldReasons.map(r => r.id === id ? { ...r, label } : r) })),
       deleteOnHoldReason: (id) => set(s => ({ onHoldReasons: s.onHoldReasons.filter(r => r.id !== id) })),
 
+      // ── Domain Companies ──────────────────────────────────────────────────
+      domainCompanies: [],
+
+      fetchDomainCompanies: async () => {
+        try {
+          const data = await api.get('/admin/domain-companies')
+          set({ domainCompanies: data || [] })
+        } catch (e) {
+          console.error('fetchDomainCompanies error', e)
+        }
+      },
+
+      addDomainCompany: async (payload) => {
+        const data = await api.post('/admin/domain-companies', payload)
+        set(s => ({ domainCompanies: [...s.domainCompanies, data] }))
+        return data
+      },
+
+      updateDomainCompany: async (id, changes) => {
+        const data = await api.patch(`/admin/domain-companies/${id}`, changes)
+        set(s => ({ domainCompanies: s.domainCompanies.map(d => d.id === id ? data : d) }))
+        return data
+      },
+
+      deleteDomainCompany: async (id) => {
+        await api.delete(`/admin/domain-companies/${id}`)
+        set(s => ({ domainCompanies: s.domainCompanies.filter(d => d.id !== id) }))
+      },
+
+      lookupDomain: async (domain) => {
+        return await api.get(`/admin/domain-companies/lookup?domain=${encodeURIComponent(domain)}`)
+      },
+
       resetAgents: () => set({ agents: DEFAULT_AGENTS }),
 
       getAgentById: (id) => get().agents.find(a => String(a.id) === String(id)),
@@ -673,7 +706,7 @@ export const useAdminStore = create(
       // categories and groups come from the backend / DEFAULT_GROUPS on every
       // login — never persist them so stale data can't block fresh data.
       partialize: (state) => {
-        const { categories, groups, alertSettings, ...rest } = state
+        const { categories, groups, alertSettings, domainCompanies, ...rest } = state
         return rest
       },
     }

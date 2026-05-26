@@ -667,11 +667,18 @@ export function TicketDetailModal({ ticket, onClose }) {
   }
 
   const [deleting, setDeleting] = useState(false)
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('Move this ticket to trash? You can restore it within 30 days.')) return
-    softDelete(ticket._uuid)
-    addToast('Ticket moved to trash', 'info')
-    onClose()
+    setDeleting(true)
+    try {
+      await softDelete(ticket._uuid)
+      addToast('Ticket moved to trash', 'info')
+      onClose()
+    } catch (e) {
+      addToast(e.message || 'Failed to delete ticket', 'error')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   // ── Comment / Email compose ────────────────────────────────────────────────

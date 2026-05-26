@@ -1,6 +1,7 @@
 // const BASE = 'https://tt.tibostech.in'
-export const BASE = 'https://tibos-tt-api.azurewebsites.net'
-// const BASE = 'http://127.0.0.1:8000'
+// export const BASE = 'https://tibos-tt-api.azurewebsites.net'
+export const BASE = 'http://127.0.0.1:8000'
+
 
 
 function getToken() {
@@ -167,6 +168,7 @@ export function normalizeTicket(t) {
     // ──────────────────────────────────────────────────────────────────
     created:     t.created_at,
     updated:     t.updated_at,
+    deletedAt:   t.deleted_at || null,
     timeline: (t.timeline || []).map(ev => ({
       type:   ev.type,
       text:   ev.text,

@@ -14,14 +14,14 @@ function daysRemaining(deletedAt) {
 }
 
 export default function DeletedItems() {
-  const { deletedTickets, restoreTicket, permanentDelete, permanentBulkDelete, purgeExpiredDeleted } = useTicketStore()
+  const { deletedTickets, fetchDeletedTickets, restoreTicket, permanentDelete, permanentBulkDelete } = useTicketStore()
   const { addToast } = useUiStore()
   const [deleting, setDeleting] = useState({})
 
-  useEffect(() => { purgeExpiredDeleted() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchDeletedTickets() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRestore = (uuid, ticketId) => {
-    restoreTicket(uuid)
+  const handleRestore = async (uuid, ticketId) => {
+    await restoreTicket(uuid)
     addToast(`${ticketId} restored`, 'success')
   }
 

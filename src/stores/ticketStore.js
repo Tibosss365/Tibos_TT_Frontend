@@ -26,8 +26,7 @@ export const useTicketStore = create(
             if (page >= (data.pages || 1) || items.length === 0) break
             page++
           }
-          const deletedUuids = new Set(get().deletedTickets.map(t => t._uuid))
-          set({ tickets: allTickets.filter(t => !deletedUuids.has(t._uuid)), loading: false })
+          set({ tickets: allTickets, loading: false })
         } catch (e) {
           console.error('fetchTickets error', e)
           set({ loading: false })
@@ -103,56 +102,43 @@ export const useTicketStore = create(
         set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
       },
 
-      // ── Recycle Bin ───────────────────────────────────────────────────────────
-      softDelete: (uuid) => {
-        const ticket = get().tickets.find(t => t._uuid === uuid)
-        if (!ticket) return
-        set(s => ({
-          tickets: s.tickets.filter(t => t._uuid !== uuid),
-          deletedTickets: [{ ...ticket, deletedAt: new Date().toISOString() }, ...s.deletedTickets],
-        }))
+      // ── Recycle Bin (server-backed soft delete) ───────────────────────────────
+      fetchDeletedTickets: async () => {
+        try {
+          const data = await api.get('/tickets/deleted?page_size=100')
+          const items = (data.items || []).map(normalizeTicket)
+          set({ deletedTickets: items })
+        } catch (e) {
+          console.error('fetchDeletedTickets error', e)
+        }
       },
 
-      softBulkDelete: (uuids) => {
-        const toDelete = get().tickets.filter(t => uuids.includes(t._uuid))
-        const now = new Date().toISOString()
+      softDelete: async (uuid) => {
+        await api.delete(`/tickets/${uuid}`)
+        set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
+      },
+
+      softBulkDelete: async (uuids) => {
+        await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
         set(s => ({
           tickets: s.tickets.filter(t => !uuids.includes(t._uuid)),
-          deletedTickets: [...toDelete.map(t => ({ ...t, deletedAt: now })), ...s.deletedTickets],
           selectedIds: [],
         }))
       },
 
-      restoreTicket: (uuid) => {
-        const ticket = get().deletedTickets.find(t => t._uuid === uuid)
-        if (!ticket) return
-        const { deletedAt, ...restored } = ticket
-        set(s => ({
-          deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid),
-          tickets: [restored, ...s.tickets],
-        }))
+      restoreTicket: async (uuid) => {
+        await api.post(`/tickets/${uuid}/restore`, {})
+        set(s => ({ deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid) }))
       },
 
       permanentDelete: async (uuid) => {
-        await api.delete(`/tickets/${uuid}`)
+        await api.delete(`/tickets/${uuid}/permanent`)
         set(s => ({ deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid) }))
       },
 
       permanentBulkDelete: async (uuids) => {
-        await Promise.allSettled(uuids.map(uuid => api.delete(`/tickets/${uuid}`)))
+        await Promise.allSettled(uuids.map(uuid => api.delete(`/tickets/${uuid}/permanent`)))
         set(s => ({ deletedTickets: s.deletedTickets.filter(t => !uuids.includes(t._uuid)) }))
-      },
-
-      purgeExpiredDeleted: async () => {
-        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
-        const now = Date.now()
-        const expired = get().deletedTickets.filter(
-          t => now - new Date(t.deletedAt).getTime() >= THIRTY_DAYS_MS
-        )
-        if (expired.length === 0) return
-        await Promise.allSettled(expired.map(t => api.delete(`/tickets/${t._uuid}`)))
-        const expiredUuids = new Set(expired.map(t => t._uuid))
-        set(s => ({ deletedTickets: s.deletedTickets.filter(t => !expiredUuids.has(t._uuid)) }))
       },
 
       fetchTicket: async (uuid) => {
@@ -380,6 +366,13 @@ export const useTicketStore = create(
         return result
       },
     }),
-    { name: 'helpdesk-tickets' }
+    {
+      name: 'helpdesk-tickets',
+      partialize: (s) => {
+        // eslint-disable-next-line no-unused-vars
+        const { deletedTickets, ...rest } = s
+        return rest
+      },
+    }
   )
 )

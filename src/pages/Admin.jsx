@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2 } from 'lucide-react'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
@@ -24,6 +24,7 @@ const TABS = [
   { id: 'email',     icon: Mail,              label: 'Email' },
   { id: 'alerts',    icon: Bell,              label: 'Alerts' },
   { id: 'sso',       icon: Shield,            label: 'SSO / OIDC' },
+  { id: 'domains',   icon: Globe2,            label: 'Domain Companies' },
 ]
 
 const GROUP_COLORS = [
@@ -2358,6 +2359,8 @@ export default function Admin() {
     customFields, addCustomField, updateCustomField, deleteCustomField,
     resolutionCodes, addResolutionCode, updateResolutionCode, deleteResolutionCode,
     onHoldReasons, addOnHoldReason, updateOnHoldReason, deleteOnHoldReason,
+    domainCompanies, fetchDomainCompanies, addDomainCompany, updateDomainCompany,
+    deleteDomainCompany, lookupDomain,
   } = useAdminStore()
 
   // ── General / System settings state ───────────────────────────────────────
@@ -2393,6 +2396,9 @@ export default function Admin() {
     if (tab === 'groups') {
       fetchCategories()
       fetchGroups()
+    }
+    if (tab === 'domains') {
+      fetchDomainCompanies()
     }
   }, [tab])
 
@@ -4071,7 +4077,329 @@ export default function Admin() {
         </div>
       )}
 
+      {/* ── Domain Companies Tab ─────────────────────────────────────────── */}
+      {tab === 'domains' && (
+        <DomainCompaniesTab
+          domainCompanies={domainCompanies}
+          onAdd={addDomainCompany}
+          onUpdate={updateDomainCompany}
+          onDelete={deleteDomainCompany}
+          onLookup={lookupDomain}
+          addToast={addToast}
+          inputCls={inputCls}
+        />
+      )}
+
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
+    </div>
+  )
+}
+
+// ── Domain Companies Tab Component ────────────────────────────────────────────
+const EMPTY_DOMAIN = { domain: '', company_name: '', contact_name: '', contact_email: '', contact_phone: '' }
+
+function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLookup, addToast, inputCls }) {
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ ...EMPTY_DOMAIN })
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [lookingUp, setLookingUp] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [search, setSearch] = useState('')
+
+  const filtered = (domainCompanies || []).filter(d =>
+    !search || d.domain.includes(search.toLowerCase()) || d.company_name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handleLookup = async () => {
+    if (!form.domain.trim()) return
+    setLookingUp(true)
+    try {
+      const result = await onLookup(form.domain.trim())
+      if (result.found) {
+        setForm(f => ({
+          ...f,
+          company_name: result.company_name || f.company_name,
+        }))
+        addToast(`Found: ${result.company_name}`, 'success')
+      } else {
+        addToast('No company info found — fill in manually', 'info')
+      }
+    } catch (e) {
+      addToast(e.message || 'Lookup failed', 'error')
+    } finally {
+      setLookingUp(false)
+    }
+  }
+
+  const handleAdd = async () => {
+    if (!form.domain.trim() || !form.company_name.trim()) {
+      addToast('Domain and Company Name are required', 'error'); return
+    }
+    setSaving(true)
+    try {
+      await onAdd({
+        domain: form.domain.trim().toLowerCase().replace(/^@/, ''),
+        company_name: form.company_name.trim(),
+        contact_name: form.contact_name.trim() || null,
+        contact_email: form.contact_email.trim() || null,
+        contact_phone: form.contact_phone.trim() || null,
+      })
+      addToast('Domain company added', 'success')
+      setForm({ ...EMPTY_DOMAIN })
+      setShowForm(false)
+    } catch (e) {
+      addToast(e.message || 'Failed to add', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const startEdit = (d) => {
+    setEditingId(d.id)
+    setEditForm({
+      company_name: d.company_name,
+      contact_name: d.contact_name || '',
+      contact_email: d.contact_email || '',
+      contact_phone: d.contact_phone || '',
+    })
+  }
+
+  const handleSaveEdit = async (id) => {
+    setSaving(true)
+    try {
+      await onUpdate(id, {
+        company_name: editForm.company_name || undefined,
+        contact_name: editForm.contact_name || null,
+        contact_email: editForm.contact_email || null,
+        contact_phone: editForm.contact_phone || null,
+      })
+      addToast('Domain company updated', 'success')
+      setEditingId(null)
+    } catch (e) {
+      addToast(e.message || 'Update failed', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (id, domain) => {
+    if (!window.confirm(`Remove domain mapping for "${domain}"?`)) return
+    setDeletingId(id)
+    try {
+      await onDelete(id)
+      addToast('Domain removed', 'info')
+    } catch (e) {
+      addToast(e.message || 'Delete failed', 'error')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-5 max-w-5xl animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-semibold t-main flex items-center gap-2">
+            <Globe2 size={16} className="t-sub" /> Domain Companies
+          </h2>
+          <p className="text-xs t-muted mt-0.5">
+            Map email domains to company names. When a ticket arrives from a known domain, the company field is filled automatically.
+          </p>
+        </div>
+        <Button variant="primary" size="sm" onClick={() => { setShowForm(true); setForm({ ...EMPTY_DOMAIN }) }}>
+          <Plus size={13} /> Add Domain
+        </Button>
+      </div>
+
+      {/* Add Form */}
+      {showForm && (
+        <Card>
+          <CardHeader title="Add Domain Mapping" subtitle="Enter the domain and company details" />
+          <div className="space-y-3">
+            {/* Domain row with lookup */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block text-xs t-muted mb-1">Email Domain <span className="text-rose-400">*</span></label>
+                <input
+                  className={inputCls}
+                  value={form.domain}
+                  onChange={e => setForm(f => ({ ...f, domain: e.target.value }))}
+                  placeholder="e.g. tibos.in or tibos.co.in"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button variant="ghost" size="sm" onClick={handleLookup} disabled={lookingUp || !form.domain.trim()}>
+                  {lookingUp ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+                  {lookingUp ? 'Looking up…' : 'Auto-Lookup'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Company name */}
+            <div>
+              <label className="block text-xs t-muted mb-1">Company Name <span className="text-rose-400">*</span></label>
+              <input
+                className={inputCls}
+                value={form.company_name}
+                onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))}
+                placeholder="e.g. Tibos Technologies Pvt Ltd"
+              />
+            </div>
+
+            {/* Contact row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs t-muted mb-1">IT Contact Name</label>
+                <input className={inputCls} value={form.contact_name}
+                  onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))}
+                  placeholder="e.g. Ravi Kumar" />
+              </div>
+              <div>
+                <label className="block text-xs t-muted mb-1">Contact Email</label>
+                <input className={inputCls} value={form.contact_email} type="email"
+                  onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                  placeholder="e.g. it@tibos.in" />
+              </div>
+              <div>
+                <label className="block text-xs t-muted mb-1">Contact Phone</label>
+                <input className={inputCls} value={form.contact_phone}
+                  onChange={e => setForm(f => ({ ...f, contact_phone: e.target.value }))}
+                  placeholder="e.g. +91 98765 43210" />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="primary" size="sm" onClick={handleAdd} disabled={saving}>
+                {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                Save Domain
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Search */}
+      {domainCompanies.length > 4 && (
+        <div className="relative max-w-xs">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
+          <input
+            className={`${inputCls} pl-8`}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search domains…"
+          />
+        </div>
+      )}
+
+      {/* Table */}
+      <Card>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--c-hover)' }}>
+              <Globe2 size={22} className="t-sub opacity-40" />
+            </div>
+            <p className="font-medium t-main text-sm">No domain mappings yet</p>
+            <p className="text-xs t-muted">Add a domain to auto-fill company info on incoming tickets.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+                  {['Domain', 'Company Name', 'IT Contact', 'Email', 'Phone', ''].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(d => (
+                  <tr key={d.id} style={{ borderBottom: '1px solid var(--c-border)' }} className="group">
+                    {editingId === d.id ? (
+                      <>
+                        <td className="px-4 py-2">
+                          <span className="text-xs font-mono t-muted">{d.domain}</span>
+                        </td>
+                        <td className="px-4 py-2">
+                          <input className={`${inputCls} text-xs py-1.5`} value={editForm.company_name}
+                            onChange={e => setEditForm(f => ({ ...f, company_name: e.target.value }))} />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input className={`${inputCls} text-xs py-1.5`} value={editForm.contact_name}
+                            onChange={e => setEditForm(f => ({ ...f, contact_name: e.target.value }))}
+                            placeholder="Contact name" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input className={`${inputCls} text-xs py-1.5`} value={editForm.contact_email} type="email"
+                            onChange={e => setEditForm(f => ({ ...f, contact_email: e.target.value }))}
+                            placeholder="Contact email" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input className={`${inputCls} text-xs py-1.5`} value={editForm.contact_phone}
+                            onChange={e => setEditForm(f => ({ ...f, contact_phone: e.target.value }))}
+                            placeholder="Contact phone" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => handleSaveEdit(d.id)} disabled={saving}
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50">
+                              {saving ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}
+                            </button>
+                            <button onClick={() => setEditingId(null)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium t-muted hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                              <X size={11} />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs font-semibold text-indigo-500">{d.domain}</span>
+                          {d.auto_discovered && (
+                            <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-500 font-semibold">auto</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {d.logo_url && (
+                              <img src={d.logo_url} alt="" className="w-5 h-5 rounded object-contain" onError={e => e.target.style.display='none'} />
+                            )}
+                            <span className="text-xs font-medium t-main">{d.company_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-xs t-muted">{d.contact_name || <span className="opacity-30">—</span>}</td>
+                        <td className="px-4 py-3 text-xs t-muted">{d.contact_email || <span className="opacity-30">—</span>}</td>
+                        <td className="px-4 py-3 text-xs t-muted">{d.contact_phone || <span className="opacity-30">—</span>}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                            <button onClick={() => startEdit(d)}
+                              className="p-1.5 rounded-lg t-muted hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors">
+                              <Pencil size={12} />
+                            </button>
+                            <button onClick={() => handleDelete(d.id, d.domain)} disabled={deletingId === d.id}
+                              className="p-1.5 rounded-lg t-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50">
+                              {deletingId === d.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <p className="text-xs t-muted">
+        <Info size={11} className="inline mr-1 opacity-60" />
+        Auto-Lookup uses Clearbit's free company directory. Results may not always be available for all domains — you can always fill in details manually.
+      </p>
     </div>
   )
 }

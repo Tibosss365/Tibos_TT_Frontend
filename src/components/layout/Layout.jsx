@@ -13,7 +13,7 @@ import { TicketDetailModal } from '../tickets/TicketDetailModal'
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
-  const { fetchTickets } = useTicketStore()
+  const { fetchTickets, fetchDeletedTickets } = useTicketStore()
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
@@ -35,6 +35,7 @@ export function Layout() {
 
     // Load all data on mount
     fetchTickets()
+    fetchDeletedTickets()
     fetchAgents()
     fetchSla()
     fetchEmailConfig()
@@ -54,10 +55,17 @@ export function Layout() {
       fetchNotifications()
     }
 
+    const handleDeleteEvent = () => {
+      fetchTickets()
+      fetchDeletedTickets()
+      fetchNotifications()
+    }
+
     es.addEventListener('ticket_created',      handleTicketEvent)
     es.addEventListener('ticket_updated',      handleTicketEvent)
-    es.addEventListener('ticket_deleted',      handleTicketEvent)
-    es.addEventListener('tickets_bulk_updated', handleTicketEvent)
+    es.addEventListener('ticket_deleted',      handleDeleteEvent)
+    es.addEventListener('ticket_restored',     handleDeleteEvent)
+    es.addEventListener('tickets_bulk_updated', handleDeleteEvent)
     es.addEventListener('ticket_comment',      handleTicketEvent)
 
     es.addEventListener('notification', (e) => {
