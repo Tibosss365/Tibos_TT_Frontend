@@ -1,5 +1,16 @@
+/**
+ * activityStore — login sessions + modification history.
+ *
+ * Login sessions are stored in both:
+ *   1. The backend DB (persistent, cross-device, admin-visible)
+ *   2. localStorage (kept as a fallback for the current browser)
+ *
+ * Modification history is fetched directly from the backend API
+ * (/activity/modifications) — no local derivation needed.
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { api } from '../api/client'
 
 const RETENTION_DAYS = 30
 
@@ -30,7 +41,23 @@ function isWithin30Days(isoString) {
 export const useActivityStore = create(
   persist(
     (set, get) => ({
+      // ── Local session cache (current browser) ──────────────────────────
       sessions: [],
+
+      // ── API-backed state ──────────────────────────────────────────────
+      loginHistory: [],      // fetched from /activity/logins
+      loginTotal: 0,
+      loginPage: 1,
+      loginLoading: false,
+
+      modifications: [],     // fetched from /activity/modifications
+      modTotal: 0,
+      modPage: 1,
+      modLoading: false,
+
+      agentSummary: [],      // fetched from /activity/agent-summary
+
+      // ── Local session helpers (kept for backward compat) ───────────────
 
       recordLogin: (user, ip = null) => {
         const ua = navigator.userAgent
@@ -48,7 +75,6 @@ export const useActivityStore = create(
           ip: ip || null,
           active: true,
         }
-        // Prepend new session and drop anything older than 30 days
         set(s => ({
           sessions: [session, ...s.sessions].filter(sess => isWithin30Days(sess.loginAt))
         }))
@@ -66,21 +92,78 @@ export const useActivityStore = create(
         }))
       },
 
-      // Mark sessions with no logout older than 24 h as inactive
-      // AND hard-delete anything beyond 30 days
       purgeStale: () => {
-        const staleCutoff  = Date.now() - 24 * 60 * 60 * 1000
+        const staleCutoff = Date.now() - 24 * 60 * 60 * 1000
         set(s => ({
           sessions: s.sessions
-            .filter(sess => isWithin30Days(sess.loginAt))          // hard-delete >30 days
+            .filter(sess => isWithin30Days(sess.loginAt))
             .map(sess =>
               (sess.active && new Date(sess.loginAt).getTime() < staleCutoff)
-                ? { ...sess, active: false }                       // mark stale as inactive
+                ? { ...sess, active: false }
                 : sess
             ),
         }))
       },
+
+      // ── API fetch methods ─────────────────────────────────────────────
+
+      fetchLoginHistory: async (opts = {}) => {
+        const { page = 1, pageSize = 50, search = '', role = '', activeOnly = false } = opts
+        set({ loginLoading: true })
+        try {
+          const params = new URLSearchParams({ page, page_size: pageSize })
+          if (search) params.set('search', search)
+          if (role) params.set('role', role)
+          if (activeOnly) params.set('active_only', 'true')
+
+          const data = await api.get(`/activity/logins?${params}`)
+          set({
+            loginHistory: data.items || [],
+            loginTotal: data.total || 0,
+            loginPage: data.page || 1,
+            loginLoading: false,
+          })
+        } catch (e) {
+          console.error('fetchLoginHistory error', e)
+          set({ loginLoading: false })
+        }
+      },
+
+      fetchModifications: async (opts = {}) => {
+        const { page = 1, pageSize = 50, search = '', action = '', agentName = '' } = opts
+        set({ modLoading: true })
+        try {
+          const params = new URLSearchParams({ page, page_size: pageSize })
+          if (search) params.set('search', search)
+          if (action) params.set('action', action)
+          if (agentName) params.set('agent_name', agentName)
+
+          const data = await api.get(`/activity/modifications?${params}`)
+          set({
+            modifications: data.items || [],
+            modTotal: data.total || 0,
+            modPage: data.page || 1,
+            modLoading: false,
+          })
+        } catch (e) {
+          console.error('fetchModifications error', e)
+          set({ modLoading: false })
+        }
+      },
+
+      fetchAgentSummary: async () => {
+        try {
+          const data = await api.get('/activity/agent-summary')
+          set({ agentSummary: Array.isArray(data) ? data : [] })
+        } catch (e) {
+          console.error('fetchAgentSummary error', e)
+        }
+      },
     }),
-    { name: 'helpdesk-activity' }
+    {
+      name: 'helpdesk-activity',
+      // Only persist the local session list — API data is always fresh
+      partialize: (s) => ({ sessions: s.sessions }),
+    }
   )
 )

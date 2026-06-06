@@ -1,6 +1,8 @@
 // const BASE = 'https://tt.tibostech.in'
 // export const BASE = 'https://tibos-tt-api.azurewebsites.net'
 export const BASE = 'http://127.0.0.1:8000'
+// Alias for dynamic imports that need to pass the base URL to fetch()
+export const API_BASE = BASE
 
 
 
@@ -181,5 +183,15 @@ export function normalizeTicket(t) {
       contentType: a.content_type,
       size:        a.size,
     })),
+    // ── Extended fields (migration 030) ────────────────────────────────
+    source:          t.source            || 'portal',
+    tags:            t.tags              || [],
+    firstRespondedAt: t.first_responded_at || null,
+    reopenCount:     t.reopen_count      || 0,
+    csatRating:      t.csat_rating       || null,
+    csatComment:     t.csat_comment      || null,
+    csatSentAt:      t.csat_sent_at      || null,
+    customFieldData: t.custom_field_data || {},
+    dueDate:         t.due_date          || null,
   }
 }

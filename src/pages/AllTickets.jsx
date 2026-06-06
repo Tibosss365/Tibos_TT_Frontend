@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import {
   Search, Download, Trash2, CheckSquare, Square, X, Check,
-  SlidersHorizontal, Filter, RotateCcw
+  SlidersHorizontal, Filter, RotateCcw, Tag,
 } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
@@ -11,6 +11,7 @@ import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
+import SourceBadge from '../components/tickets/SourceBadge'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo } from '../utils/ticketUtils'
 import { useT } from '../utils/i18n'
 
@@ -22,6 +23,7 @@ const ALL_COLUMNS = [
   { key: 'priority',  label: 'Priority' },
   { key: 'status',    label: 'Status' },
   { key: 'sla',       label: 'SLA' },
+  { key: 'source',    label: 'Source' },
   { key: 'group',     label: 'Group' },
   { key: 'category',  label: 'Category' },
   { key: 'assignee',  label: 'Assignee' },
@@ -250,6 +252,23 @@ export default function AllTickets() {
         <td key={key} className="py-3 px-3 max-w-xs">
           <div className="t-main font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{ticket.subject}</div>
           <div className="text-[10px] t-muted mt-0.5">{ticket.submitter}</div>
+          {ticket.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {ticket.tags.slice(0, 3).map(tag => (
+                <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-medium">
+                  <Tag size={8} />{tag}
+                </span>
+              ))}
+              {ticket.tags.length > 3 && (
+                <span className="text-[9px] t-muted">+{ticket.tags.length - 3}</span>
+              )}
+            </div>
+          )}
+        </td>
+      )
+      case 'source': return (
+        <td key={key} className="py-3 px-3 whitespace-nowrap">
+          <SourceBadge source={ticket.source} />
         </td>
       )
       case 'priority': return <td key={key} className="py-3 px-3 whitespace-nowrap"><PriorityBadge priority={ticket.priority} /></td>

@@ -4,7 +4,7 @@ import {
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
   CalendarDays, Briefcase, Mail, MailOpen, Send, Paperclip, Download, Loader2 as SpinIcon,
-  Image as ImageIcon, Link2, Link2Off, GitMerge, Scissors, BookOpen, Eye,
+  Image as ImageIcon, Link2, Link2Off, GitMerge, Scissors, BookOpen, Eye, Tag, Star,
 } from 'lucide-react'
 import { downloadAttachment, uploadAttachment } from '../../api/client'
 import { Modal } from '../ui/Modal'
@@ -16,6 +16,7 @@ import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 import { useT } from '../../utils/i18n'
+import SourceBadge from './SourceBadge'
 
 const TIMELINE_STYLES = {
   created:   { dot: 'bg-blue-500',    label: 'Opened' },
@@ -254,6 +255,55 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
           <div className={labelCls}>{t('updated')}</div>
           <div className="text-xs t-main">{fmtDateTime(ticket.updated)}</div>
         </div>
+        {/* Source */}
+        <div>
+          <div className={labelCls}>Source</div>
+          <SourceBadge source={ticket.source} />
+        </div>
+        {/* Due Date */}
+        {ticket.dueDate && (
+          <div>
+            <div className={labelCls}>Due Date</div>
+            <div className="text-xs t-main flex items-center gap-1">
+              <CalendarDays size={11} className="opacity-60" />
+              {fmtDate(ticket.dueDate)}
+            </div>
+          </div>
+        )}
+        {/* First Response Time */}
+        {ticket.firstRespondedAt && (
+          <div>
+            <div className={labelCls}>First Response</div>
+            <div className="text-xs t-main">{fmtDateTime(ticket.firstRespondedAt)}</div>
+          </div>
+        )}
+        {/* CSAT Rating */}
+        {ticket.csatRating && (
+          <div className="col-span-2 lg:col-span-1">
+            <div className={labelCls}>CSAT Rating</div>
+            <div className="flex items-center gap-0.5 mt-0.5">
+              {[1,2,3,4,5].map(n => (
+                <Star key={n} size={14} className={n <= ticket.csatRating ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'} />
+              ))}
+              {ticket.csatComment && (
+                <span className="ml-2 text-xs t-sub italic truncate max-w-[120px]" title={ticket.csatComment}>"{ticket.csatComment}"</span>
+              )}
+            </div>
+          </div>
+        )}
+        {/* Tags */}
+        {ticket.tags?.length > 0 && (
+          <div className="col-span-2 lg:col-span-1">
+            <div className={labelCls}>Tags</div>
+            <div className="flex flex-wrap gap-1 mt-0.5">
+              {ticket.tags.map(tag => (
+                <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-medium">
+                  <Tag size={9} />{tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="col-span-2 lg:col-span-1 p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
           <div className={labelCls + ' mb-2'}>{t('slaStatus')}</div>
           <SlaCountdown ticket={ticket} slaSettings={slaSettings} />
@@ -306,6 +356,30 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
             <div className="text-xs t-main py-1">{edits.asset || '—'}</div>
           )}
         </div>
+        {/* Due Date (editable) */}
+        <div>
+          <div className={labelCls}>Due Date</div>
+          {isEditing ? (
+            <input type="date" className={inputCls} value={edits.dueDate ? edits.dueDate.slice(0,10) : ''} onChange={e => set('dueDate', e.target.value)} />
+          ) : (
+            <div className="text-xs t-main py-1">{edits.dueDate ? fmtDate(edits.dueDate) : '—'}</div>
+          )}
+        </div>
+        {/* Source (editable by staff, read-only for end users via hideActions) */}
+        {!hideActions && (
+          <div>
+            <div className={labelCls}>Source</div>
+            {isEditing ? (
+              <select className={inputCls} value={edits.source} onChange={e => set('source', e.target.value)}>
+                {['portal','email','phone','api','walk_in','chat'].map(s => (
+                  <option key={s} value={s}>{s.replace('_',' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
+                ))}
+              </select>
+            ) : (
+              <SourceBadge source={edits.source} />
+            )}
+          </div>
+        )}
         </div>{/* end grid */}
       </div>
 
@@ -507,19 +581,23 @@ export function TicketDetailModal({ ticket, onClose }) {
   }, [ticket._uuid])
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
-    subject:     ticket.subject     || '',
-    status:      ticket.status      || 'open',
-    priority:    ticket.priority    || 'medium',
-    type:        ticket.type        || 'request',
-    assignee:    ticket.assignee    || '',
-    group:       ticket.group       || '',
-    description: ticket.description || '',
-    submitter:   ticket.submitter   || '',
-    company:     ticket.company     || '',
-    email:       ticket.email       || '',
-    category:    ticket.category    || '',
-    asset:       ticket.asset       || '',
-    resolution:  ticket.resolution  || '',
+    subject:         ticket.subject         || '',
+    status:          ticket.status          || 'open',
+    priority:        ticket.priority        || 'medium',
+    type:            ticket.type            || 'request',
+    assignee:        ticket.assignee        || '',
+    group:           ticket.group           || '',
+    description:     ticket.description     || '',
+    submitter:       ticket.submitter       || '',
+    company:         ticket.company         || '',
+    email:           ticket.email           || '',
+    category:        ticket.category        || '',
+    asset:           ticket.asset           || '',
+    resolution:      ticket.resolution      || '',
+    source:          ticket.source          || 'portal',
+    tags:            ticket.tags            || [],
+    customFieldData: ticket.customFieldData || {},
+    dueDate:         ticket.dueDate         || '',
   })
 
   const set = (k, v) => setEdits(x => ({ ...x, [k]: v }))
@@ -634,10 +712,14 @@ export function TicketDetailModal({ ticket, onClose }) {
       return
     }
 
-    const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution']
+    const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution','source','dueDate']
     const changes = {}
     // Compare against liveTicket so we catch changes the backend already applied
     fields.forEach(k => { if ((merged[k]||'') !== (liveTicket[k]||'')) changes[k] = merged[k] })
+    // Tags (array comparison)
+    if (JSON.stringify(merged.tags||[]) !== JSON.stringify(liveTicket.tags||[])) changes.tags = merged.tags || []
+    // Custom field data
+    if (JSON.stringify(merged.customFieldData||{}) !== JSON.stringify(liveTicket.customFieldData||{})) changes.customFieldData = merged.customFieldData || {}
     if (changes.status && changes.status !== 'resolved' && changes.status !== 'closed')
       addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
     if (changes.assignee) addTimelineEvent(ticket._uuid, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })

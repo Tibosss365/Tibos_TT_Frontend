@@ -47,18 +47,22 @@ export const useTicketStore = create(
 
       addTicket: async (formData) => {
         const body = {
-          subject:        formData.subject,
-          category:       formData.category,
-          priority:       formData.priority,
-          submitter_name: formData.contactName || formData.submitter || '',
-          company:        formData.company || '',
-          contact_name:   formData.contactName || '',
-          email:          formData.email || '',
-          phone:          formData.phone || null,
-          asset:          formData.asset || null,
-          description:    formData.description,
-          assignee_id:    formData.assignee || null,
-          group_id:       formData.group_id || null
+          subject:           formData.subject,
+          category:          formData.category,
+          priority:          formData.priority,
+          submitter_name:    formData.contactName || formData.submitter || '',
+          company:           formData.company || '',
+          contact_name:      formData.contactName || '',
+          email:             formData.email || '',
+          phone:             formData.phone || null,
+          asset:             formData.asset || null,
+          description:       formData.description,
+          assignee_id:       formData.assignee || null,
+          group_id:          formData.group_id || null,
+          source:            formData.source || 'portal',
+          tags:              formData.tags || [],
+          custom_field_data: formData.customFieldData || {},
+          due_date:          formData.dueDate || null,
         }
         const data = await api.post('/tickets', body)
         const ticket = normalizeTicket(data)
@@ -85,7 +89,11 @@ export const useTicketStore = create(
         if (changes.asset        !== undefined) body.asset        = changes.asset
         if (changes.description  !== undefined) body.description  = changes.description
         if (changes.resolution   !== undefined) body.resolution   = changes.resolution
-        if (changes.group        !== undefined) body.group_id     = changes.group || null
+        if (changes.group        !== undefined) body.group_id          = changes.group || null
+        if (changes.source       !== undefined) body.source            = changes.source
+        if (changes.tags         !== undefined) body.tags              = changes.tags
+        if (changes.customFieldData !== undefined) body.custom_field_data = changes.customFieldData
+        if (changes.dueDate      !== undefined) body.due_date          = changes.dueDate || null
         const data = await api.patch(`/tickets/${uuid}`, body)
         const updated = normalizeTicket(data)
         // Preserve attachments already loaded in the store — PATCH response returns [] for attachments
@@ -153,16 +161,45 @@ export const useTicketStore = create(
       },
 
       // ── CSAT Rating ───────────────────────────────────────────────────────────
-      submitCsatRating: async (uuid, rating) => {
-        // Persist locally (backend call can be added when API supports it)
+      // Public survey uses /csat/{token} — this is for agents viewing a rating
+      submitCsatRating: async (uuid, rating, comment = '') => {
         set(s => ({
           myRequests: s.myRequests.map(t =>
-            t._uuid === uuid ? { ...t, _csatRating: rating } : t
+            t._uuid === uuid ? { ...t, csatRating: rating } : t
           ),
           tickets: s.tickets.map(t =>
-            t._uuid === uuid ? { ...t, _csatRating: rating } : t
+            t._uuid === uuid ? { ...t, csatRating: rating } : t
           ),
         }))
+      },
+
+      // Export filtered tickets as PDF (downloads via blob)
+      exportPdf: async (filters = {}) => {
+        const params = new URLSearchParams()
+        if (filters.search)   params.set('search', filters.search)
+        if (filters.status)   params.set('status', filters.status)
+        if (filters.priority) params.set('priority', filters.priority)
+        if (filters.category) params.set('category', filters.category)
+        if (filters.dateFrom) params.set('date_from', filters.dateFrom)
+        if (filters.dateTo)   params.set('date_to', filters.dateTo)
+        const qs = params.toString()
+        const url = `/tickets/export-pdf${qs ? '?' + qs : ''}`
+        // Use raw fetch so we get a blob
+        const { API_BASE, BASE } = await import('../api/client')
+        const base = API_BASE || BASE
+        const rawToken = localStorage.getItem('helpdesk-user')
+        const token = rawToken ? (JSON.parse(rawToken)?.state?.token ?? null) : null
+        const resp = await fetch(`${base}${url}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!resp.ok) throw new Error('PDF export failed')
+        const blob = await resp.blob()
+        const objUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = objUrl
+        a.download = 'tickets.pdf'
+        a.click()
+        URL.revokeObjectURL(objUrl)
       },
 
       addTimelineEvent: async (uuid, event) => {

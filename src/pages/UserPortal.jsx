@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   PlusCircle, Search, X, RefreshCw, Inbox,
-  ListOrdered, Star, ThumbsUp, ThumbsDown, CheckCircle2,
+  ListOrdered, Star, ThumbsUp, ThumbsDown, CheckCircle2, Tag,
 } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore }   from '../stores/userStore'
@@ -243,6 +243,15 @@ export default function UserPortal() {
                       <td className="px-4 py-3 font-mono text-xs t-muted whitespace-nowrap">{ticket.id}</td>
                       <td className="px-4 py-3 max-w-xs">
                         <span className="t-main font-medium line-clamp-1">{ticket.subject}</span>
+                        {ticket.tags?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {ticket.tags.slice(0,2).map(tag => (
+                              <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-medium">
+                                <Tag size={8} />{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3"><PriorityBadge priority={ticket.priority} /></td>
                       <td className="px-4 py-3"><StatusBadge status={ticket.status} /></td>

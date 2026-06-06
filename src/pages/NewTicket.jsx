@@ -6,9 +6,12 @@ import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
 import { useAdminStore } from '../stores/adminStore'
 import { useKnowledgeStore } from '../stores/knowledgeStore'
+import { useFeatureStore } from '../stores/featureStore'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
+import TagsInput from '../components/tickets/TagsInput'
+import DuplicateWarning from '../components/tickets/DuplicateWarning'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '' }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -137,6 +140,23 @@ export default function NewTicket() {
   const fileInputRef = useRef()
   const [customFieldValues, setCustomFieldValues] = useState({})
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [tags, setTags] = useState([])
+  const [duplicates, setDuplicates] = useState([])
+  const [dupDismissed, setDupDismissed] = useState(false)
+
+  const { checkDuplicate } = useFeatureStore()
+
+  // Debounce duplicate check on subject change
+  const dupTimer = useRef(null)
+  const checkDuplicates = (subject) => {
+    clearTimeout(dupTimer.current)
+    setDupDismissed(false)
+    if (subject.length < 8) { setDuplicates([]); return }
+    dupTimer.current = setTimeout(async () => {
+      const results = await checkDuplicate(subject)
+      setDuplicates(results || [])
+    }, 800)
+  }
 
   const fmtSize = (b) =>
     b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`
@@ -173,7 +193,7 @@ export default function NewTicket() {
     setSubmitting(true)
     setSubmitError('')
     try {
-      await addTicket({ ...form, attachments })
+      await addTicket({ ...form, attachments, tags, customFieldData: customFieldValues })
       addToast('Ticket Submitted', 'success')
       navigate(isEndUser ? '/tickets/my-portal' : '/tickets/mine')
     } catch (err) {
@@ -186,23 +206,23 @@ export default function NewTicket() {
   }
 
   const inputCls = (key) => `glass-input w-full text-sm ${errors[key] ? 'border-rose-500 text-rose-600 dark:text-rose-400 focus:border-rose-500' : ''}`
-  const labelCls = 'block text-xs font-bold t-sub uppercase tracking-wider mb-1.5'
+  const labelCls = 'block text-xs font-bold t-sub uppercase tracking-wider mb-1'
 
   return (
-    <div className="max-w-4xl space-y-4 animate-fade-in">
-      <div>
+    <div className="max-w-4xl space-y-2 animate-fade-in">
+      <div className="pb-0.5">
         <h1 className="text-xl font-bold t-main">Submit New Ticket</h1>
         <p className="text-sm t-muted mt-0.5">Fill in the details below to create a support request</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {/* Main form */}
-        <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
+        <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-3">
 
           {/* Template selector */}
           {!isEndUser && ticketTemplates && ticketTemplates.length > 0 && (
             <Card>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-2">
                 <LayoutTemplate size={14} className="text-indigo-400" />
                 <span className="text-xs font-bold t-main uppercase tracking-wider">Use a Template</span>
               </div>
@@ -240,7 +260,7 @@ export default function NewTicket() {
           {/* Ticket Type */}
           <Card>
             <CardHeader title="Ticket Type" />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {Object.entries(TICKET_TYPE_CONFIG).map(([key, cfg]) => {
                 const Icon = cfg.icon
                 const active = form.type === key
@@ -249,7 +269,7 @@ export default function NewTicket() {
                     key={key}
                     type="button"
                     onClick={() => set('type', key)}
-                    className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${active ? cfg.active : cfg.inactive}`}
+                    className={`flex items-start gap-2.5 px-3 py-2 rounded-xl border text-left transition-all ${active ? cfg.active : cfg.inactive}`}
                   >
                     <Icon size={18} className={`mt-0.5 flex-shrink-0 ${active ? '' : 't-sub'}`} />
                     <div>
@@ -265,7 +285,7 @@ export default function NewTicket() {
           {/* Contact info — simplified for end users */}
           <Card>
             <CardHeader title="Contact Information" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>Company *</label>
@@ -301,14 +321,27 @@ export default function NewTicket() {
           {/* Ticket details */}
           <Card>
             <CardHeader title="Ticket Details" />
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
                 <label className={labelCls}>Subject *</label>
-                <input className={inputCls('subject')} value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Brief description of the issue" />
+                <input
+                  className={inputCls('subject')}
+                  value={form.subject}
+                  onChange={e => { set('subject', e.target.value); checkDuplicates(e.target.value) }}
+                  placeholder="Brief description of the issue"
+                />
                 {errors.subject && <p className="text-xs text-rose-500 mt-1">{errors.subject}</p>}
+                {duplicates.length > 0 && !dupDismissed && (
+                  <div className="mt-2">
+                    <DuplicateWarning
+                      duplicates={duplicates}
+                      onDismiss={() => setDupDismissed(true)}
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Group / Team</label>
                   <select className="glass-input w-full text-sm" value={form.group_id} onChange={e => { set('group_id', e.target.value); set('category', '') }}>
@@ -327,7 +360,7 @@ export default function NewTicket() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Asset / Device</label>
                   <input className="glass-input w-full text-sm" value={form.asset} onChange={e => set('asset', e.target.value)} placeholder="e.g. LAPTOP-042" />
@@ -347,7 +380,7 @@ export default function NewTicket() {
 
               {/* Custom fields for selected category */}
               {form.category && customFields && (customFields[form.category] || []).length > 0 && (
-                <div className="space-y-3 pt-1 border-t border-glass">
+                <div className="space-y-2.5 pt-1 border-t border-glass">
                   <div className="text-[10px] font-bold t-sub uppercase tracking-wider">Additional Fields</div>
                   {(customFields[form.category] || []).map(field => (
                     <div key={field.id}>
@@ -404,7 +437,7 @@ export default function NewTicket() {
                     const active = form.priority === p
                     return (
                       <button key={p} type="button" onClick={() => set('priority', p)}
-                        className={`px-3 py-2.5 rounded-lg border text-xs font-bold transition-all ${active ? `${ui.bg} ${ui.border} ${ui.text} ring-1 ${ui.ring}` : 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8 hover:t-main'}`}>
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${active ? `${ui.bg} ${ui.border} ${ui.text} ring-1 ${ui.ring}` : 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8 hover:t-main'}`}>
                         {p.charAt(0).toUpperCase() + p.slice(1)}
                       </button>
                     )
@@ -418,12 +451,18 @@ export default function NewTicket() {
                 </label>
                 <textarea
                   className={`${inputCls('description')} resize-none leading-relaxed`}
-                  rows={5}
+                  rows={4}
                   value={form.description}
                   onChange={e => set('description', e.target.value.slice(0, 2000))}
                   placeholder="Please describe the issue in detail. Include error messages, steps to reproduce, and any troubleshooting already attempted."
                 />
                 {errors.description && <p className="text-xs text-rose-500 mt-1">{errors.description}</p>}
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className={labelCls}>Tags <span className="t-sub font-normal normal-case tracking-normal">(optional)</span></label>
+                <TagsInput tags={tags} onChange={setTags} placeholder="Add tags…" />
               </div>
 
               {/* Attachments */}
@@ -447,7 +486,7 @@ export default function NewTicket() {
                   onDragOver={e => { e.preventDefault(); setDragOver(true) }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files) }}
-                  className={`flex flex-col items-center justify-center gap-2 px-4 py-6 rounded-xl border-2 border-dashed cursor-pointer transition-all select-none ${
+                  className={`flex flex-col items-center justify-center gap-1.5 px-4 py-4 rounded-xl border-2 border-dashed cursor-pointer transition-all select-none ${
                     dragOver
                       ? 'border-indigo-400 bg-indigo-400/8 text-indigo-400'
                       : 'border-glass t-muted hover:border-indigo-400/50 hover:bg-black/5 dark:hover:bg-white/3 hover:t-main'
@@ -462,11 +501,11 @@ export default function NewTicket() {
 
                 {/* File list */}
                 {attachments.length > 0 && (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-2 space-y-1.5">
                     {attachments.map((file, idx) => {
                       const isImage = file.type.startsWith('image/')
                       return (
-                        <div key={idx} className="flex items-center gap-3 px-3 py-2.5 rounded-xl glass-card">
+                        <div key={idx} className="flex items-center gap-3 px-3 py-2 rounded-xl glass-card">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${isImage ? 'bg-indigo-400/15 text-indigo-400' : 'bg-slate-400/15 t-muted'}`}>
                             {isImage ? <ImageIcon size={15} /> : <FileText size={15} />}
                           </div>
@@ -493,7 +532,7 @@ export default function NewTicket() {
           </Card>
 
           {submitError && (
-            <div className="flex gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 animate-fade-in">
+            <div className="flex gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 animate-fade-in">
               <AlertTriangle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <div className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Ticket submission failed</div>
@@ -511,18 +550,18 @@ export default function NewTicket() {
         </form>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <KbSuggestions subject={form.subject} description={form.description} />
 
           {/* SLA info */}
           <Card>
             <CardHeader title="Response Times" />
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {PRIORITIES.map(p => {
                 const ui = PRIORITY_UI[p]
                 const hours = slaSettings[p]
                 return (
-                  <div key={p} className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all ${form.priority === p ? `${ui.bg} ${ui.border}` : 'bg-black/5 dark:bg-white/3 border-glass'}`}>
+                  <div key={p} className={`flex items-center justify-between px-3 py-1.5 rounded-lg border transition-all ${form.priority === p ? `${ui.bg} ${ui.border}` : 'bg-black/5 dark:bg-white/3 border-glass'}`}>
                     <span className={`text-xs font-bold ${form.priority === p ? ui.text : 't-muted'}`}>
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </span>
@@ -535,11 +574,11 @@ export default function NewTicket() {
 
           {/* Tips */}
           <Card>
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-2">
               <Info size={14} className="text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
               <span className="text-xs font-bold t-main uppercase tracking-wider">Tips for faster resolution</span>
             </div>
-            <ul className="space-y-2 text-xs t-muted leading-relaxed">
+            <ul className="space-y-1.5 text-xs t-muted leading-relaxed">
               <li>• Include asset tags or device names when relevant</li>
               <li>• List any error messages exactly as they appear</li>
               <li>• Describe steps you've already tried</li>
@@ -550,7 +589,7 @@ export default function NewTicket() {
 
           {/* Critical warning */}
           {form.priority === 'critical' && (
-            <div className="flex gap-3 p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 animate-fade-in">
+            <div className="flex gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 animate-fade-in">
               <AlertTriangle size={16} className="text-rose-500 dark:text-rose-400 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-rose-600 dark:text-rose-300/80">
                 <div className="font-bold mb-1 uppercase tracking-wider">Critical priority selected</div>

@@ -13,6 +13,7 @@ import DeletedItems from './pages/DeletedItems'
 import Knowledge from './pages/Knowledge'
 import EmailPage from './pages/Email'
 import ActivityLog from './pages/ActivityLog'
+import CsatSurvey from './pages/CsatSurvey'
 import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
@@ -51,6 +52,8 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Public — no auth required */}
+      <Route path="/csat/:token" element={<CsatSurvey />} />
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
         <Route index element={<DefaultRedirect />} />

@@ -6,10 +6,11 @@ import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
+import SourceBadge from '../components/tickets/SourceBadge'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
 import { useAdminStore } from '../stores/adminStore'
 import { useT } from '../utils/i18n'
-import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw, Inbox, HandMetal, Loader2, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
+import { SlidersHorizontal, Check, Search, X, Filter, RotateCcw, Inbox, HandMetal, Loader2, ChevronDown, ChevronUp, Trash2, Tag } from 'lucide-react'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -259,8 +260,19 @@ export default function MyTickets() {
         <td key={key} className="py-3 px-4 max-w-xs">
           <div className="t-main font-medium group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">{ticket.subject}</div>
           <div className="text-[10px] t-muted mt-0.5">{ticket.submitter_name}</div>
+          {ticket.tags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {ticket.tags.slice(0,3).map(tag => (
+                <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-medium">
+                  <Tag size={8} />{tag}
+                </span>
+              ))}
+              {ticket.tags.length > 3 && <span className="text-[9px] t-muted">+{ticket.tags.length-3}</span>}
+            </div>
+          )}
         </td>
       )
+      case 'source': return <td key={key} className="py-3 px-4 whitespace-nowrap"><SourceBadge source={ticket.source} /></td>
       case 'priority':   return <td key={key} className="py-3 px-4"><PriorityBadge priority={ticket.priority} /></td>
       case 'status':     return <td key={key} className="py-3 px-4"><StatusBadge status={ticket.status} /></td>
       case 'assignedTo': return (

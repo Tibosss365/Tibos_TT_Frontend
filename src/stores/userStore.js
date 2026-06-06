@@ -10,28 +10,35 @@ export const useUserStore = create(
       token:          null,
       isLoggedIn:     false,
       loginSessionId: null,
+      dbSessionId:    null,
 
       login: async (username, password) => {
         try {
           const data = await api.post('/auth/login', { username, password })
           if (!data?.access_token) throw new Error('Invalid response from server')
           set({ currentUser: data.user, token: data.access_token, isLoggedIn: true })
-          // Record login session (client_ip comes from backend if provided)
+          // Record login session in localStorage (for local tab tracking)
           const sessionId = useActivityStore.getState().recordLogin(
             data.user,
             data.client_ip || null
           )
-          set({ loginSessionId: sessionId })
+          // Also persist the DB session ID so logout can mark it ended
+          set({ loginSessionId: sessionId, dbSessionId: data.session_id || null })
           return { success: true, role: data.user?.role }
         } catch (e) {
           return { success: false, error: e.message }
         }
       },
 
-      logout: () => {
-        const { loginSessionId } = get()
+      logout: async () => {
+        const { loginSessionId, dbSessionId } = get()
+        // Mark local (browser) session ended
         useActivityStore.getState().recordLogout(loginSessionId)
-        set({ currentUser: null, token: null, isLoggedIn: false, loginSessionId: null })
+        // Mark DB session ended (best-effort, don't block logout if it fails)
+        try {
+          await api.post('/auth/logout', { session_id: dbSessionId || null })
+        } catch (_) { /* ignore */ }
+        set({ currentUser: null, token: null, isLoggedIn: false, loginSessionId: null, dbSessionId: null })
       },
 
       // Called after a successful SSO callback — token + user come from URL params
@@ -48,6 +55,7 @@ export const useUserStore = create(
         currentUser:    s.currentUser,
         isLoggedIn:     s.isLoggedIn,
         loginSessionId: s.loginSessionId,
+        dbSessionId:    s.dbSessionId,
       }),
     }
   )

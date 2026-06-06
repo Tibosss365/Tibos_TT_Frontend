@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  LineChart, Line, CartesianGrid
+  LineChart, Line, CartesianGrid, PieChart, Pie, Legend,
 } from 'recharts'
+import { Star, Clock, RotateCcw } from 'lucide-react'
 import { useAdminStore } from '../stores/adminStore'
 import { api, normalizeTicket } from '../api/client'
 import { Card, CardHeader } from '../components/ui/Card'
@@ -262,6 +263,108 @@ export default function Analytics() {
           </table>
         </div>
       </Card>
+
+      {/* CSAT + Response metrics row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        {/* CSAT Score Card */}
+        <Card>
+          <CardHeader title="CSAT Score" subtitle={`${data.csat_count || 0} ratings received`} />
+          {data.csat_avg != null ? (
+            <div className="flex flex-col items-center justify-center py-6">
+              <div className="text-5xl font-bold text-gradient mb-2">{data.csat_avg?.toFixed(1)}</div>
+              <div className="flex items-center gap-0.5 mb-2">
+                {[1,2,3,4,5].map(n => (
+                  <Star key={n} size={20} className={n <= Math.round(data.csat_avg) ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'} />
+                ))}
+              </div>
+              <div className="text-xs t-muted">out of 5.0</div>
+              {/* Star distribution */}
+              <div className="w-full mt-4 space-y-1.5">
+                {[5,4,3,2,1].map(n => {
+                  const cnt = data.csat_distribution?.[String(n)] || 0
+                  const pct = data.csat_count ? (cnt / data.csat_count) * 100 : 0
+                  return (
+                    <div key={n} className="flex items-center gap-2">
+                      <div className="flex items-center gap-0.5 w-14 flex-shrink-0">
+                        <Star size={10} className="text-amber-400 fill-amber-400" />
+                        <span className="text-[10px] t-muted">{n}</span>
+                      </div>
+                      <div className="flex-1 h-1.5 rounded-full bg-black/5 dark:bg-white/8 overflow-hidden">
+                        <div className="h-full rounded-full bg-amber-400/70 transition-all duration-700" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-[10px] t-sub w-5 text-right">{cnt}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-10 text-sm t-muted">No CSAT data yet</div>
+          )}
+        </Card>
+
+        {/* First Response Time */}
+        <Card>
+          <CardHeader title="Avg First Response" subtitle="Time to first staff reply" />
+          <div className="flex flex-col items-center justify-center py-8">
+            <Clock size={36} className="text-indigo-400 mb-3" />
+            {data.avg_first_response_hours != null ? (
+              <>
+                <div className="text-4xl font-bold text-gradient mb-1">
+                  {data.avg_first_response_hours < 1
+                    ? `${Math.round(data.avg_first_response_hours * 60)}m`
+                    : `${data.avg_first_response_hours.toFixed(1)}h`}
+                </div>
+                <div className="text-xs t-muted">average first response time</div>
+              </>
+            ) : (
+              <div className="text-sm t-muted">No data yet</div>
+            )}
+          </div>
+        </Card>
+
+        {/* Reopen Rate */}
+        <Card>
+          <CardHeader title="Reopen Rate" subtitle="Tickets reopened after resolution" />
+          <div className="flex flex-col items-center justify-center py-8">
+            <RotateCcw size={36} className={`mb-3 ${(data.reopen_rate || 0) > 10 ? 'text-rose-400' : 'text-emerald-400'}`} />
+            <div className={`text-4xl font-bold mb-1 ${(data.reopen_rate || 0) > 10 ? 'text-rose-400' : 'text-emerald-500'}`}>
+              {data.reopen_rate || 0}%
+            </div>
+            <div className="text-xs t-muted">
+              {(data.reopen_rate || 0) > 10 ? 'Above average — review resolution quality' : 'Within healthy range'}
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Source distribution */}
+      {Object.keys(data.source_distribution || {}).length > 0 && (
+        <Card>
+          <CardHeader title="Ticket Sources" subtitle="How tickets are being submitted" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-2">
+            {(() => {
+              const sourceIcons = { portal:'🌐', email:'📧', phone:'📞', api:'⚙️', walk_in:'🚶', chat:'💬' }
+              const sourceColors = { portal:'#6366f1', email:'#3b82f6', phone:'#10b981', api:'#f59e0b', walk_in:'#8b5cf6', chat:'#06b6d4' }
+              const total = Object.values(data.source_distribution).reduce((a,b) => a+b, 0)
+              return Object.entries(data.source_distribution)
+                .sort((a,b) => b[1] - a[1])
+                .map(([src, cnt]) => {
+                  const pct = total ? Math.round(cnt / total * 100) : 0
+                  return (
+                    <div key={src} className="text-center p-3 rounded-xl border border-glass bg-black/3 dark:bg-white/3">
+                      <div className="text-2xl mb-1">{sourceIcons[src] || '📋'}</div>
+                      <div className="text-lg font-bold t-main">{cnt}</div>
+                      <div className="text-[10px] t-muted capitalize">{src.replace('_',' ')}</div>
+                      <div className="text-[10px] font-bold mt-0.5" style={{ color: sourceColors[src] || '#6366f1' }}>{pct}%</div>
+                    </div>
+                  )
+                })
+            })()}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

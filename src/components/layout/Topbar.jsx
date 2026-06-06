@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu } from 'lucide-react'
+import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu, Settings } from 'lucide-react'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useUserStore } from '../../stores/userStore'
+import UserSettingsModal from './UserSettingsModal'
 import { timeAgo } from '../../utils/ticketUtils'
 
 const NOTIF_ICON = {
@@ -25,8 +27,10 @@ export function Topbar() {
   const { tickets } = useTicketStore()
   const { setFilter } = useTicketStore()
   const { isDark, toggleTheme, openModal, toggleSidebar } = useUiStore()
+  const currentUser = useUserStore(s => s.currentUser)
   const [notifOpen, setNotifOpen] = useState(false)
   const [searchVal, setSearchVal] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
 
   const handleSearch = (val) => {
     setSearchVal(val)
@@ -147,7 +151,28 @@ export function Topbar() {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
           )}
         </button>
+
+        {/* User avatar / settings */}
+        {currentUser && (
+          <button
+            onClick={() => setShowSettings(true)}
+            title="My Settings"
+            className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold text-white flex-shrink-0 transition-all ring-2 ring-transparent hover:ring-indigo-500/60"
+            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+          >
+            {(currentUser.initials || currentUser.name?.slice(0,2) || 'U').toUpperCase()}
+          </button>
+        )}
       </header>
+
+      {/* User Settings Modal */}
+      {showSettings && (
+        <UserSettingsModal
+          user={currentUser}
+          onClose={() => setShowSettings(false)}
+          onSaved={() => setShowSettings(false)}
+        />
+      )}
 
       {/* ── Notification Drawer ───────────────────────────────────────────────── */}
       {/* Backdrop */}

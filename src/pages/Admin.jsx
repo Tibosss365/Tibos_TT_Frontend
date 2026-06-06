@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2 } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush } from 'lucide-react'
+import AdminFeatureTabs from '../components/admin/AdminFeatureTabs'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
@@ -14,18 +15,29 @@ import { api } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
 const TABS = [
-  { id: 'general',   icon: Settings2,         label: 'General' },
-  { id: 'overview',  icon: LayoutGrid,        label: 'Overview' },
-  { id: 'company',   icon: Building2,         label: 'Company' },
-  { id: 'tickets',   icon: Ticket,            label: 'Tickets' },
-  { id: 'groups',    icon: Users2,            label: 'Groups' },
-  { id: 'agents',    icon: Users,             label: 'Agents' },
-  { id: 'sla',       icon: SlidersHorizontal, label: 'SLA' },
-  { id: 'email',     icon: Mail,              label: 'Email' },
-  { id: 'alerts',    icon: Bell,              label: 'Alerts' },
-  { id: 'sso',       icon: Shield,            label: 'SSO / OIDC' },
-  { id: 'domains',   icon: Globe2,            label: 'Domain Companies' },
+  { id: 'general',              icon: Settings2,         label: 'General' },
+  { id: 'overview',             icon: LayoutGrid,        label: 'Overview' },
+  { id: 'company',              icon: Building2,         label: 'Company' },
+  { id: 'tickets',              icon: Ticket,            label: 'Tickets' },
+  { id: 'groups',               icon: Users2,            label: 'Groups' },
+  { id: 'agents',               icon: Users,             label: 'Agents' },
+  { id: 'sla',                  icon: SlidersHorizontal, label: 'SLA' },
+  { id: 'email',                icon: Mail,              label: 'Email' },
+  { id: 'alerts',               icon: Bell,              label: 'Alerts' },
+  { id: 'sso',                  icon: Shield,            label: 'SSO / OIDC' },
+  { id: 'domains',              icon: Globe2,            label: 'Domain Companies' },
+  // ── Feature tabs ──────────────────────────────────────────────────────────
+  { id: 'customFields',         icon: Tag,               label: 'Custom Fields',   group: 'features' },
+  { id: 'automation',           icon: Zap,               label: 'Automation',      group: 'features' },
+  { id: 'webhooks',             icon: Globe,             label: 'Webhooks',        group: 'features' },
+  { id: 'notificationChannels', icon: Bell,              label: 'Notifications',   group: 'features' },
+  { id: 'assets',               icon: Monitor,           label: 'Assets',          group: 'features' },
+  { id: 'escalation',           icon: AlertTriangle,     label: 'Escalation',      group: 'features' },
+  { id: 'recurring',            icon: RotateCcw,         label: 'Recurring',       group: 'features' },
+  { id: 'branding',             icon: Paintbrush,        label: 'Branding',        group: 'features' },
 ]
+
+const FEATURE_TABS = new Set(['customFields','automation','webhooks','notificationChannels','assets','escalation','recurring','branding'])
 
 const GROUP_COLORS = [
   '#EF4444','#F97316','#F59E0B','#84CC16','#10B981',
@@ -4088,6 +4100,11 @@ export default function Admin() {
           addToast={addToast}
           inputCls={inputCls}
         />
+      )}
+
+      {/* ── Feature Tabs (customFields, automation, webhooks, etc.) ──────── */}
+      {FEATURE_TABS.has(tab) && (
+        <AdminFeatureTabs activeTab={tab} />
       )}
 
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
