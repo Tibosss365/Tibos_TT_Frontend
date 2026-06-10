@@ -187,20 +187,6 @@ export default function Login() {
               ) : 'Sign in'}
             </button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-glass">
-            <p className="text-xs t-sub text-center mb-2 font-medium opacity-60">Demo credentials</p>
-            <div className="grid grid-cols-1 gap-2">
-              {[['admin', 'admin', 'Admin']].map(([u, p, label]) => (
-                <button key={u} type="button"
-                  onClick={() => setForm({ username: u, password: p })}
-                  className="px-3 py-2 rounded-lg bg-indigo-50/50 dark:bg-white/5 hover:bg-indigo-100/50 dark:hover:bg-white/10 border border-indigo-100 dark:border-white/10 text-xs t-muted hover:t-main transition-all text-left">
-                  <div className="font-semibold text-indigo-600 dark:text-inherit">{label}</div>
-                  <div className="t-sub font-mono text-[10px] mt-0.5">{u} / {p}</div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
