@@ -193,6 +193,16 @@ export const useActivityStore = create(
           console.error('fetchAgentSummary error', e)
         }
       },
+
+      // Forcibly terminate an active session on the server
+      revokeSession: async (sessionId) => {
+        await api.post(`/activity/sessions/${sessionId}/revoke`, {})
+      },
+
+      // Force a user to reset their password on next login
+      forcePasswordReset: async (userId) => {
+        await api.post(`/activity/users/${userId}/force-password-reset`, {})
+      },
     }),
     {
       name: 'helpdesk-activity',

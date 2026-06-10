@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Activity, LogIn, RefreshCw, Search, X,
   MessageSquare, CheckCircle2, UserCheck, Send, MailOpen,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, LogOut, KeyRound, ShieldAlert,
+  AlertTriangle, CheckCircle,
 } from 'lucide-react'
 import { useActivityStore } from '../stores/activityStore'
 import { Card } from '../components/ui/Card'
@@ -100,17 +101,51 @@ export default function ActivityLog() {
   const [modAgent, setModAgent]           = useState('')
   const [modPage, setModPage]             = useState(1)
 
+  // ── Session action state ───────────────────────────────────────────────
+  const [confirmAction, setConfirmAction] = useState(null) // { type:'kill'|'reset', sess }
+  const [actionBusy, setActionBusy]       = useState(null) // session id being acted on
+  const [actionFeedback, setActionFeedback] = useState(null) // { ok, msg }
+
   const {
     loginHistory, loginTotal, loginLoading, loginError, loginFromLocal,
     modifications, modTotal, modLoading, modError,
     agentSummary,
     fetchLoginHistory, fetchModifications, fetchAgentSummary,
+    revokeSession, forcePasswordReset,
     purgeStale,
   } = useActivityStore()
 
   // ── Derived pages ──────────────────────────────────────────────────────
   const loginPages = Math.ceil(loginTotal / 50) || 1
   const modPages   = Math.ceil(modTotal   / 50) || 1
+
+  // ── Session security actions ───────────────────────────────────────────
+  const showFeedback = (ok, msg) => {
+    setActionFeedback({ ok, msg })
+    setTimeout(() => setActionFeedback(null), 4000)
+  }
+
+  const executeAction = async () => {
+    if (!confirmAction) return
+    const { type, sess } = confirmAction
+    setConfirmAction(null)
+    setActionBusy(sess.id)
+    try {
+      if (type === 'kill') {
+        await revokeSession(sess.id)
+        showFeedback(true, `Session for ${sess.user_name || 'user'} has been terminated.`)
+        loadLogins()
+      } else {
+        const uid = sess.user_id || sess.userId || sess.id
+        await forcePasswordReset(uid)
+        showFeedback(true, `Password reset forced for ${sess.user_name || 'user'}. They must change it on next login.`)
+      }
+    } catch (e) {
+      showFeedback(false, e.message || 'Action failed — check if the backend supports this endpoint.')
+    } finally {
+      setActionBusy(null)
+    }
+  }
 
   // ── Fetch helpers ──────────────────────────────────────────────────────
   const loadLogins = useCallback(() => {
@@ -181,6 +216,44 @@ export default function ActivityLog() {
           Refresh
         </Button>
       </div>
+
+      {/* Global action feedback */}
+      {actionFeedback && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-medium ${
+          actionFeedback.ok
+            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+            : 'border-red-500/30 bg-red-500/10 text-red-400'
+        }`}>
+          {actionFeedback.ok ? <CheckCircle size={14} /> : <AlertTriangle size={14} />}
+          {actionFeedback.msg}
+        </div>
+      )}
+
+      {/* Confirm dialog */}
+      {confirmAction && (
+        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-red-500/40 bg-red-500/10">
+          <div className="flex items-center gap-2 text-xs text-red-400">
+            <ShieldAlert size={14} />
+            {confirmAction.type === 'kill'
+              ? `Force sign out "${confirmAction.sess.user_name || 'this user'}"? Their session will end immediately.`
+              : `Force password reset for "${confirmAction.sess.user_name || 'this user'}"? They must change it on next login.`}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={executeAction}
+              className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500 text-white hover:bg-red-600 transition-colors"
+            >
+              Confirm
+            </button>
+            <button
+              onClick={() => setConfirmAction(null)}
+              className="px-3 py-1 rounded-lg text-xs font-semibold border border-glass t-muted hover:t-main transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex border-b border-glass">
@@ -257,16 +330,17 @@ export default function ActivityLog() {
             </Button>
           </div>
 
-          {/* Error / fallback notices */}
-          {loginError && (
+          {/* Notices — only show red error when fallback has no data either */}
+          {loginError && loginHistory.length === 0 && (
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs">
-              <span className="font-semibold shrink-0">API Error:</span>
+              <span className="font-semibold shrink-0">Server unavailable:</span>
               <span>{loginError}</span>
             </div>
           )}
           {loginFromLocal && loginHistory.length > 0 && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs">
-              Showing sessions recorded in this browser only — server history unavailable.
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs">
+              <AlertTriangle size={12} />
+              Showing this browser's sessions only — server history endpoint not yet available.
             </div>
           )}
 
@@ -294,7 +368,7 @@ export default function ActivityLog() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b" style={{ borderColor: 'var(--c-border)' }}>
-                        {['User', 'Role', 'Browser', 'OS', 'IP Address', 'Login Time', 'Logout Time', 'Duration', 'Status'].map(h => (
+                        {['User', 'Role', 'Browser', 'OS', 'IP Address', 'Login Time', 'Logout Time', 'Duration', 'Status', 'Actions'].map(h => (
                           <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -343,6 +417,32 @@ export default function ActivityLog() {
                                 </span>
                               )
                             }
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {sess.is_active && (
+                                <button
+                                  title="Force sign out this session immediately"
+                                  disabled={actionBusy === sess.id}
+                                  onClick={() => setConfirmAction({ type: 'kill', sess })}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20 disabled:opacity-40 transition-colors whitespace-nowrap"
+                                >
+                                  {actionBusy === sess.id
+                                    ? <RefreshCw size={9} className="animate-spin" />
+                                    : <LogOut size={9} />}
+                                  Kill Session
+                                </button>
+                              )}
+                              <button
+                                title="Force this user to reset their password on next login"
+                                disabled={actionBusy === sess.id}
+                                onClick={() => setConfirmAction({ type: 'reset', sess })}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/25 hover:bg-orange-500/20 disabled:opacity-40 transition-colors whitespace-nowrap"
+                              >
+                                <KeyRound size={9} />
+                                Reset PW
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
