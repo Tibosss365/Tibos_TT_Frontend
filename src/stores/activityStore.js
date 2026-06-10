@@ -49,11 +49,14 @@ export const useActivityStore = create(
       loginTotal: 0,
       loginPage: 1,
       loginLoading: false,
+      loginError: null,
+      loginFromLocal: false, // true when data came from localStorage fallback
 
       modifications: [],     // fetched from /activity/modifications
       modTotal: 0,
       modPage: 1,
       modLoading: false,
+      modError: null,
 
       agentSummary: [],      // fetched from /activity/agent-summary
 
@@ -109,7 +112,7 @@ export const useActivityStore = create(
 
       fetchLoginHistory: async (opts = {}) => {
         const { page = 1, pageSize = 50, search = '', role = '', activeOnly = false } = opts
-        set({ loginLoading: true })
+        set({ loginLoading: true, loginError: null })
         try {
           const params = new URLSearchParams({ page, page_size: pageSize })
           if (search) params.set('search', search)
@@ -117,21 +120,46 @@ export const useActivityStore = create(
           if (activeOnly) params.set('active_only', 'true')
 
           const data = await api.get(`/activity/logins?${params}`)
+          // Support both { items, total, page } and a plain array response
+          const items = Array.isArray(data) ? data : (data?.items || data?.sessions || [])
+          const total = Array.isArray(data) ? data.length : (data?.total ?? items.length)
           set({
-            loginHistory: data.items || [],
-            loginTotal: data.total || 0,
-            loginPage: data.page || 1,
+            loginHistory: items,
+            loginTotal: total,
+            loginPage: Array.isArray(data) ? 1 : (data?.page || 1),
             loginLoading: false,
+            loginFromLocal: false,
           })
         } catch (e) {
           console.error('fetchLoginHistory error', e)
-          set({ loginLoading: false })
+          // Fall back to local sessions persisted in this browser
+          const localSessions = get().sessions
+          const normalized = localSessions.map(s => ({
+            id:            s.id,
+            user_name:     s.userName,
+            user_email:    s.email,
+            user_role:     s.userRole,
+            browser:       s.browser,
+            os:            s.os,
+            ip_address:    s.ip,
+            logged_in_at:  s.loginAt,
+            logged_out_at: s.logoutAt,
+            is_active:     s.active,
+          }))
+          set({
+            loginLoading: false,
+            loginError: e.message || 'Failed to load login history from server',
+            loginHistory: normalized,
+            loginTotal: normalized.length,
+            loginPage: 1,
+            loginFromLocal: true,
+          })
         }
       },
 
       fetchModifications: async (opts = {}) => {
         const { page = 1, pageSize = 50, search = '', action = '', agentName = '' } = opts
-        set({ modLoading: true })
+        set({ modLoading: true, modError: null })
         try {
           const params = new URLSearchParams({ page, page_size: pageSize })
           if (search) params.set('search', search)
@@ -139,15 +167,21 @@ export const useActivityStore = create(
           if (agentName) params.set('agent_name', agentName)
 
           const data = await api.get(`/activity/modifications?${params}`)
+          // Support both { items, total, page } and a plain array response
+          const items = Array.isArray(data) ? data : (data?.items || data?.activities || data?.history || [])
+          const total = Array.isArray(data) ? data.length : (data?.total ?? items.length)
           set({
-            modifications: data.items || [],
-            modTotal: data.total || 0,
-            modPage: data.page || 1,
+            modifications: items,
+            modTotal: total,
+            modPage: Array.isArray(data) ? 1 : (data?.page || 1),
             modLoading: false,
           })
         } catch (e) {
           console.error('fetchModifications error', e)
-          set({ modLoading: false })
+          set({
+            modLoading: false,
+            modError: e.message || 'Failed to load modification history from server',
+          })
         }
       },
 

@@ -101,8 +101,8 @@ export default function ActivityLog() {
   const [modPage, setModPage]             = useState(1)
 
   const {
-    loginHistory, loginTotal, loginLoading,
-    modifications, modTotal, modLoading,
+    loginHistory, loginTotal, loginLoading, loginError, loginFromLocal,
+    modifications, modTotal, modLoading, modError,
     agentSummary,
     fetchLoginHistory, fetchModifications, fetchAgentSummary,
     purgeStale,
@@ -257,6 +257,19 @@ export default function ActivityLog() {
             </Button>
           </div>
 
+          {/* Error / fallback notices */}
+          {loginError && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs">
+              <span className="font-semibold shrink-0">API Error:</span>
+              <span>{loginError}</span>
+            </div>
+          )}
+          {loginFromLocal && loginHistory.length > 0 && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs">
+              Showing sessions recorded in this browser only — server history unavailable.
+            </div>
+          )}
+
           {/* Table */}
           <Card>
             {loginLoading ? (
@@ -268,9 +281,11 @@ export default function ActivityLog() {
               <div className="flex flex-col items-center py-16 gap-3 t-muted">
                 <LogIn size={36} className="opacity-25" />
                 <p className="text-sm">
-                  {loginTotal === 0
-                    ? 'No login sessions recorded yet. Sessions are recorded on next login.'
-                    : 'No sessions match your filters.'}
+                  {loginError
+                    ? 'Could not reach server. No local sessions found either.'
+                    : loginTotal === 0
+                      ? 'No login sessions recorded yet. Sessions are recorded on next login.'
+                      : 'No sessions match your filters.'}
                 </p>
               </div>
             ) : (
@@ -415,6 +430,14 @@ export default function ActivityLog() {
             </Button>
           </div>
 
+          {/* Error notice */}
+          {modError && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs">
+              <span className="font-semibold shrink-0">API Error:</span>
+              <span>{modError}</span>
+            </div>
+          )}
+
           {/* Table */}
           <Card>
             {modLoading ? (
@@ -426,9 +449,11 @@ export default function ActivityLog() {
               <div className="flex flex-col items-center py-16 gap-3 t-muted">
                 <Activity size={36} className="opacity-25" />
                 <p className="text-sm">
-                  {modTotal === 0
-                    ? 'No modification history found.'
-                    : 'No activity matches your filters.'}
+                  {modError
+                    ? 'Could not reach server — check API error above.'
+                    : modTotal === 0
+                      ? 'No modification history found.'
+                      : 'No activity matches your filters.'}
                 </p>
               </div>
             ) : (
