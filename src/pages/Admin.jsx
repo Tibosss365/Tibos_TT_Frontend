@@ -4415,7 +4415,7 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
 
       <p className="text-xs t-muted">
         <Info size={11} className="inline mr-1 opacity-60" />
-        Auto-Lookup uses Clearbit's free company directory. Results may not always be available for all domains — you can always fill in details manually.
+        Auto-Lookup checks the domain's official registration record (WHOIS), then company directories and the website itself. Some domains hide their registration details — you can always fill in details manually.
       </p>
     </div>
   )
