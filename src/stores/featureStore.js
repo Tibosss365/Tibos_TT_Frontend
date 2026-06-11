@@ -219,6 +219,10 @@ export const useFeatureStore = create((set, get) => ({
     set(s => ({ assets: s.assets.filter(a => a.id !== id) }))
   },
 
+  fetchAssetHistory: async (id) => {
+    return await api.get(`/admin/assets/${id}/history`)
+  },
+
   // ── Escalation Rules ───────────────────────────────────────────────────────
   escalationRules: [],
   escalationLoading: false,

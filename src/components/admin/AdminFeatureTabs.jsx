@@ -425,11 +425,21 @@ function NotificationChannelsTab() {
 }
 
 // ── Assets Tab ─────────────────────────────────────────────────────────────────
+const EMPTY_ASSET_FORM = {
+  name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active',
+  assigned_to_name: '', assigned_to_email: '', employee_code: '',
+}
+
 function AssetsTab() {
-  const { assets, assetsLoading, fetchAssets, createAsset, deleteAsset } = useFeatureStore()
+  const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory } = useFeatureStore()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active' })
+  const [form, setForm] = useState({ ...EMPTY_ASSET_FORM })
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [historyFor, setHistoryFor] = useState(null)
+  const [history, setHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => { fetchAssets() }, [])
 
@@ -438,20 +448,57 @@ function AssetsTab() {
     try {
       await createAsset(form)
       setShowForm(false)
-      setForm({ name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active' })
+      setForm({ ...EMPTY_ASSET_FORM })
     } finally {
       setSaving(false)
     }
   }
 
+  const startAssign = (a) => {
+    setHistoryFor(null)
+    setEditingId(a.id)
+    setEditForm({
+      assigned_to_name: a.assigned_to_name || '',
+      assigned_to_email: a.assigned_to_email || '',
+      employee_code: a.employee_code || '',
+      status: a.status,
+    })
+  }
+
+  const handleAssignSave = async () => {
+    setSaving(true)
+    try {
+      await updateAsset(editingId, editForm)
+      setEditingId(null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const showHistory = async (a) => {
+    setEditingId(null)
+    if (historyFor === a.id) { setHistoryFor(null); return }
+    setHistoryFor(a.id)
+    setHistoryLoading(true)
+    try {
+      setHistory(await fetchAssetHistory(a.id) || [])
+    } catch {
+      setHistory([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   const STATUS_COLOR = { active: 'bg-green-100 text-green-700', retired: 'bg-gray-100 text-gray-500', in_repair: 'bg-yellow-100 text-yellow-700', lost: 'bg-red-100 text-red-600' }
+  const ACTION_COLOR = { assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 text-gray-500' }
+  const inputCls = "rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900">Assets</h3>
-          <p className="text-sm text-gray-500">Track laptops, phones, servers, and other hardware.</p>
+          <p className="text-sm text-gray-500">Track laptops, phones, servers, and other hardware — and who they're assigned to.</p>
         </div>
         <AddButton label="Add Asset" onClick={() => setShowForm(true)} />
       </div>
@@ -461,18 +508,24 @@ function AssetsTab() {
           <h4 className="font-semibold text-gray-800">New Asset</h4>
           <div className="grid grid-cols-2 gap-4">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Asset name *"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              placeholder="Asset name *" className={inputCls} />
             <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+              className={inputCls}>
               {['laptop','desktop','monitor','printer','phone','server','network','other'].map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <input value={form.asset_tag} onChange={e => setForm(f => ({ ...f, asset_tag: e.target.value }))}
-              placeholder="Asset tag (e.g. TIB-001)"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              placeholder="Asset tag (e.g. TIB-001)" className={inputCls} />
             <input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
-              placeholder="Serial number"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              placeholder="Serial number" className={inputCls} />
+          </div>
+          <p className="text-xs font-medium text-gray-500 pt-1">Assigned to (optional)</p>
+          <div className="grid grid-cols-3 gap-4">
+            <input value={form.assigned_to_name} onChange={e => setForm(f => ({ ...f, assigned_to_name: e.target.value }))}
+              placeholder="User name (e.g. Ravi Kumar)" className={inputCls} />
+            <input value={form.assigned_to_email} onChange={e => setForm(f => ({ ...f, assigned_to_email: e.target.value }))}
+              placeholder="User email (e.g. ravi@tibos.in)" className={inputCls} />
+            <input value={form.employee_code} onChange={e => setForm(f => ({ ...f, employee_code: e.target.value }))}
+              placeholder="Employee code (e.g. EMP-042)" className={inputCls} />
           </div>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name}
@@ -491,16 +544,84 @@ function AssetsTab() {
       ) : (
         <div className="space-y-2">
           {assets.map(a => (
-            <div key={a.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <div>
-                <span className="text-sm font-medium text-gray-800">{a.name}</span>
-                {a.asset_tag && <span className="ml-2 text-xs font-mono text-gray-400">{a.asset_tag}</span>}
-                <span className="ml-2 text-xs text-gray-400">{a.type}</span>
+            <div key={a.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-800">{a.name}</span>
+                  {a.asset_tag && <span className="ml-2 text-xs font-mono text-gray-400">{a.asset_tag}</span>}
+                  <span className="ml-2 text-xs text-gray-400">{a.type}</span>
+                  {a.assigned_to_name || a.assigned_to_email ? (
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Assigned to <span className="font-medium text-gray-700">{a.assigned_to_name || a.assigned_to_email}</span>
+                      {a.assigned_to_email && a.assigned_to_name && <span className="text-gray-400"> · {a.assigned_to_email}</span>}
+                      {a.employee_code && <span className="ml-1 font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{a.employee_code}</span>}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-400 mt-0.5 italic">Unassigned</div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[a.status] || 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
+                  <button onClick={() => startAssign(a)} className="text-indigo-500 hover:text-indigo-700 text-sm">
+                    {a.assigned_to_name || a.assigned_to_email ? 'Reassign' : 'Assign'}
+                  </button>
+                  <button onClick={() => showHistory(a)} className="text-gray-500 hover:text-gray-700 text-sm">History</button>
+                  <button onClick={() => deleteAsset(a.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[a.status] || 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
-                <button onClick={() => deleteAsset(a.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
-              </div>
+
+              {editingId === a.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    <input value={editForm.assigned_to_name} onChange={e => setEditForm(f => ({ ...f, assigned_to_name: e.target.value }))}
+                      placeholder="User name" className={inputCls} />
+                    <input value={editForm.assigned_to_email} onChange={e => setEditForm(f => ({ ...f, assigned_to_email: e.target.value }))}
+                      placeholder="User email" className={inputCls} />
+                    <input value={editForm.employee_code} onChange={e => setEditForm(f => ({ ...f, employee_code: e.target.value }))}
+                      placeholder="Employee code" className={inputCls} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleAssignSave} disabled={saving}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                      {saving ? 'Saving…' : 'Save assignment'}
+                    </button>
+                    <button onClick={() => setEditForm(f => ({ ...f, assigned_to_name: '', assigned_to_email: '', employee_code: '' }))}
+                      className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Clear (unassign)</button>
+                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-gray-500 text-xs">Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              {historyFor === a.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Assignment history</p>
+                  {historyLoading ? (
+                    <p className="text-xs text-gray-400">Loading…</p>
+                  ) : history.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">No assignment changes recorded yet.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {history.map(h => (
+                        <div key={h.id} className="flex items-start gap-2 text-xs">
+                          <span className={`px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>{h.action}</span>
+                          <div className="text-gray-600">
+                            {(h.assigned_to_name || h.assigned_to_email) && (
+                              <span>
+                                <span className="font-medium text-gray-800">{h.assigned_to_name || h.assigned_to_email}</span>
+                                {h.assigned_to_email && h.assigned_to_name && <span className="text-gray-400"> · {h.assigned_to_email}</span>}
+                                {h.employee_code && <span className="ml-1 font-mono text-[10px] text-gray-400">{h.employee_code}</span>}
+                              </span>
+                            )}
+                            {h.note && <span className="text-gray-400"> — {h.note}</span>}
+                            <span className="text-gray-400"> · {new Date(h.created_at).toLocaleString()}</span>
+                            {h.changed_by_name && <span className="text-gray-400"> · by {h.changed_by_name}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
