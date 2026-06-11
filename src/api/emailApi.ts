@@ -8,17 +8,36 @@ import type {
   PaginatedThreads, SendEmailRequest, ThreadFilters,
 } from '../types/email'
 
-const BASE = '/api/email'
+import { BASE as API_BASE } from './client'
+
+const BASE = `${API_BASE}/email`
+
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem('helpdesk-user')
+    if (!raw) return null
+    return JSON.parse(raw)?.state?.token ?? null
+  } catch {
+    return null
+  }
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken()
   const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail ?? 'Request failed')
+    const detail = err.detail
+    throw new Error(
+      typeof detail === 'string' ? detail : detail ? JSON.stringify(detail) : 'Request failed',
+    )
   }
   if (res.status === 204) return undefined as T
   return res.json()
