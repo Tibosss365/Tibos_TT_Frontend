@@ -9,7 +9,7 @@ import { api, normalizeTicket } from '../api/client'
 import { Card, CardHeader } from '../components/ui/Card'
 import { fmtSlaSeconds, getSlaRemainingSeconds } from '../utils/ticketUtils'
 
-const STATUS_FILL = { open:'#3b82f6','in-progress':'#a855f7','on-hold':'#f59e0b',resolved:'#10b981',closed:'#64748b' }
+const STATUS_FILL = { open:'#3b82f6','in-progress':'#0ea5e9','on-hold':'#f59e0b',resolved:'#10b981',closed:'#64748b' }
 const slaColors = { critical: '#ef4444', high: '#f97316', medium: '#f59e0b', low: '#64748b' }
 
 const PRIORITY_BADGE = {
@@ -77,7 +77,7 @@ export default function Analytics() {
   const apiStatusData = Object.entries(data.status_distribution || {}).map(([s, count]) => ({
     name: s.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
     count,
-    fill: STATUS_FILL[s] || '#6366f1',
+    fill: STATUS_FILL[s] || '#0ea5e9',
   }))
 
   const apiCategoryData = Object.entries(data.category_distribution || {})
@@ -146,8 +146,8 @@ export default function Analytics() {
                   style={{ transition: 'stroke-dasharray 1s ease' }} />
                 <defs>
                   <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%" stopColor="#0ea5e9" />
+                    <stop offset="100%" stopColor="#2563eb" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -174,7 +174,7 @@ export default function Analytics() {
               <XAxis dataKey="date" tick={{ fill: 'var(--c-text-30)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--c-text-30)', fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} />
+              <Line type="monotone" dataKey="count" stroke="#0ea5e9" strokeWidth={2} dot={{ fill: '#0ea5e9', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -186,7 +186,7 @@ export default function Analytics() {
             {apiCategoryData.slice(0, 6).map((cat, i) => {
               const max = apiCategoryData[0]?.count || 1
               const pct = (cat.count / max) * 100
-              const colors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444']
+              const colors = ['#0ea5e9','#2563eb','#06b6d4','#10b981','#f59e0b','#ef4444']
               return (
                 <div key={cat.name} className="flex items-center gap-3">
                   <div className="w-20 text-xs t-muted truncate flex-shrink-0">{cat.name}</div>
@@ -206,7 +206,7 @@ export default function Analytics() {
         <CardHeader title="SLA Compliance" subtitle="Response time targets met per priority" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {apiSlaData.map(item => {
-            const color = slaColors[item.priority.toLowerCase()] || '#6366f1'
+            const color = slaColors[item.priority.toLowerCase()] || '#0ea5e9'
             return (
               <div key={item.priority} className="text-center p-4 rounded-xl bg-black/5 dark:bg-white/3 border border-glass">
                 <div className="text-xs font-bold mb-3" style={{ color }}>{item.priority}</div>
@@ -346,7 +346,7 @@ export default function Analytics() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-2">
             {(() => {
               const sourceIcons = { portal:'🌐', email:'📧', phone:'📞', api:'⚙️', walk_in:'🚶', chat:'💬' }
-              const sourceColors = { portal:'#6366f1', email:'#3b82f6', phone:'#10b981', api:'#f59e0b', walk_in:'#8b5cf6', chat:'#06b6d4' }
+              const sourceColors = { portal:'#0ea5e9', email:'#3b82f6', phone:'#10b981', api:'#f59e0b', walk_in:'#2563eb', chat:'#06b6d4' }
               const total = Object.values(data.source_distribution).reduce((a,b) => a+b, 0)
               return Object.entries(data.source_distribution)
                 .sort((a,b) => b[1] - a[1])
@@ -357,7 +357,7 @@ export default function Analytics() {
                       <div className="text-2xl mb-1">{sourceIcons[src] || '📋'}</div>
                       <div className="text-lg font-bold t-main">{cnt}</div>
                       <div className="text-[10px] t-muted capitalize">{src.replace('_',' ')}</div>
-                      <div className="text-[10px] font-bold mt-0.5" style={{ color: sourceColors[src] || '#6366f1' }}>{pct}%</div>
+                      <div className="text-[10px] font-bold mt-0.5" style={{ color: sourceColors[src] || '#0ea5e9' }}>{pct}%</div>
                     </div>
                   )
                 })

@@ -809,7 +809,7 @@ function BrandingTab() {
   useEffect(() => {
     fetchBranding().then(() => {
       const b = useFeatureStore.getState().branding
-      setForm(b || { company_name: 'Help Desk', primary_color: '#6366f1', logo_url: '', favicon_url: '', support_email: '', welcome_message: '' })
+      setForm(b || { company_name: 'Help Desk', primary_color: '#0ea5e9', logo_url: '', favicon_url: '', support_email: '', welcome_message: '' })
     })
   }, [])
 
@@ -850,9 +850,9 @@ function BrandingTab() {
       <div>
         <label className="text-xs font-medium text-gray-600 mb-1 block">Primary Colour</label>
         <div className="flex items-center gap-3">
-          <input type="color" value={form.primary_color || '#6366f1'} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
+          <input type="color" value={form.primary_color || '#0ea5e9'} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
             className="h-10 w-16 rounded-lg border border-gray-300 cursor-pointer" />
-          <span className="text-sm font-mono text-gray-600">{form.primary_color || '#6366f1'}</span>
+          <span className="text-sm font-mono text-gray-600">{form.primary_color || '#0ea5e9'}</span>
         </div>
       </div>
       <div>

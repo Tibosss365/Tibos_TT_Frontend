@@ -105,13 +105,13 @@ export function Topbar() {
           className="relative p-2.5 rounded-xl transition-all duration-300 group"
           style={{
             background: isDark
-              ? 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.12))'
+              ? 'linear-gradient(135deg, rgba(14,165,233,0.15), rgba(37,99,235,0.12))'
               : 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(249,115,22,0.1))',
             border: isDark
-              ? '1px solid rgba(99,102,241,0.3)'
+              ? '1px solid rgba(14,165,233,0.3)'
               : '1px solid rgba(251,191,36,0.4)',
             boxShadow: isDark
-              ? '0 0 14px rgba(99,102,241,0.18), inset 0 1px 0 rgba(255,255,255,0.06)'
+              ? '0 0 14px rgba(14,165,233,0.18), inset 0 1px 0 rgba(255,255,255,0.06)'
               : '0 0 14px rgba(251,191,36,0.22), inset 0 1px 0 rgba(255,255,255,0.4)',
           }}
         >
@@ -158,7 +158,7 @@ export function Topbar() {
             onClick={() => setShowSettings(true)}
             title="My Settings"
             className="flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold text-white flex-shrink-0 transition-all ring-2 ring-transparent hover:ring-indigo-500/60"
-            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+            style={{ background: 'linear-gradient(135deg,#0ea5e9,#2563eb)' }}
           >
             {(currentUser.initials || currentUser.name?.slice(0,2) || 'U').toUpperCase()}
           </button>

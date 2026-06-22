@@ -83,7 +83,7 @@ export default function Login() {
 
       {/* Grid overlay */}
       <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02]"
-        style={{ backgroundImage: 'linear-gradient(rgba(99,102,241,1) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        style={{ backgroundImage: 'linear-gradient(rgba(14,165,233,1) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
       {/* Login card */}
       <div className="relative w-full max-w-md mx-3 sm:mx-4 animate-slide-up">

@@ -906,7 +906,7 @@ export function TicketDetailModal({ ticket, onClose }) {
 
   return (
     <>
-    <Modal isOpen onClose={onClose} title="" size="xl" fillHeight>
+    <Modal isOpen onClose={onClose} title="" size="xl" fillHeight fullScreen>
       <div className="flex flex-col flex-1 min-h-0">
 
         {/* ── Top Status Bar ───────────────────────────────────────────── */}

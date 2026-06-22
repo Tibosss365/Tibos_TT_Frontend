@@ -12,7 +12,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
 
-const DEFAULT_CHART_COLORS = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
+const DEFAULT_CHART_COLORS = ['#0ea5e9','#2563eb','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
 
 const DATE_RANGES = [
   { key: 'all',   label: 'All Time'   },
@@ -294,7 +294,7 @@ export default function Dashboard() {
     const counts = {}
     displayTickets.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
     return Object.entries(counts)
-      .map(([cat, count]) => ({ name: getCategoryName(cat), count, fill: catColorMap[cat] || '#6366f1' }))
+      .map(([cat, count]) => ({ name: getCategoryName(cat), count, fill: catColorMap[cat] || '#0ea5e9' }))
       .sort((a, b) => b.count - a.count)
   }, [displayTickets, categories, getCategoryName])
 
@@ -304,7 +304,7 @@ export default function Dashboard() {
     return Object.entries(counts).map(([status, count]) => ({
       name: status.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
       count,
-      fill: { open:'#3b82f6', 'in-progress':'#a855f7', 'on-hold':'#f59e0b', resolved:'#10b981', closed:'#64748b' }[status] || '#6366f1',
+      fill: { open:'#3b82f6', 'in-progress':'#0ea5e9', 'on-hold':'#f59e0b', resolved:'#10b981', closed:'#64748b' }[status] || '#0ea5e9',
     }))
   }, [displayTickets])
 

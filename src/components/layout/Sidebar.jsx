@@ -10,18 +10,18 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useT }           from '../../utils/i18n'
 
 const NAV_KEYS = [
-  { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true },
-  { to: '/tickets',      icon: List,            key: 'allTickets', staffOnly: true },
-  { to: '/tickets/mine', icon: Ticket,          key: 'myTickets',  staffOnly: true },
+  { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true, color: 'text-indigo-500' },
+  { to: '/tickets',      icon: List,            key: 'allTickets', staffOnly: true, color: 'text-blue-500' },
+  { to: '/tickets/mine', icon: Ticket,          key: 'myTickets',  staffOnly: true, color: 'text-sky-500' },
 ]
 const ACTION_KEYS = [
-  { to: '/tickets/new',      icon: PlusCircle, key: 'submitTicket' },
-  { to: '/tickets/my-portal', icon: Ticket,    key: 'myTickets',   userOnly: true },
-  { to: '/knowledge',        icon: BookOpen,   key: 'knowledge',   staffOnly: true },
-  { to: '/email',            icon: Mail,       key: 'email',       staffOnly: true },
-  { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true },
-  { to: '/activity',         icon: Activity,   key: 'activity',    adminOnly: true },
-  { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true },
+  { to: '/tickets/new',      icon: PlusCircle, key: 'submitTicket',                  color: 'text-emerald-500' },
+  { to: '/tickets/my-portal', icon: Ticket,    key: 'myTickets',   userOnly: true,  color: 'text-sky-500' },
+  { to: '/knowledge',        icon: BookOpen,   key: 'knowledge',   staffOnly: true, color: 'text-amber-500' },
+  { to: '/email',            icon: Mail,       key: 'email',       staffOnly: true, color: 'text-rose-500' },
+  { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true, color: 'text-violet-500' },
+  { to: '/activity',         icon: Activity,   key: 'activity',    adminOnly: true, color: 'text-orange-500' },
+  { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true, color: 'text-teal-500' },
 ]
 
 export function Sidebar() {
@@ -88,7 +88,7 @@ export function Sidebar() {
             {t('navigation')}
           </div>
         )}
-        {NAV_KEYS.filter(n => !n.staffOnly || isStaff).map(({ to, icon: Icon, key }) => (
+        {NAV_KEYS.filter(n => !n.staffOnly || isStaff).map(({ to, icon: Icon, key, color }) => (
           <NavLink
             key={to}
             to={to}
@@ -96,7 +96,7 @@ export function Sidebar() {
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
             title={!sidebarOpen ? t(key) : undefined}
           >
-            <Icon size={16} className="flex-shrink-0" />
+            <Icon size={16} className={`flex-shrink-0 ${color || ''}`} />
             {sidebarOpen && <span>{t(key)}</span>}
           </NavLink>
         ))}
@@ -112,7 +112,7 @@ export function Sidebar() {
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
             title={!sidebarOpen ? 'Deleted Items' : undefined}
           >
-            <Trash2 size={16} className="flex-shrink-0" />
+            <Trash2 size={16} className="flex-shrink-0 text-rose-500" />
             {sidebarOpen && (
               <span className="flex-1">Deleted Items</span>
             )}
@@ -129,14 +129,14 @@ export function Sidebar() {
           (!a.adminOnly || isAdmin) &&
           (!a.staffOnly || isStaff) &&
           (!a.userOnly  || isEndUser)
-        ).map(({ to, icon: Icon, key }) => (
+        ).map(({ to, icon: Icon, key, color }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
             title={!sidebarOpen ? t(key) : undefined}
           >
-            <Icon size={16} className="flex-shrink-0" />
+            <Icon size={16} className={`flex-shrink-0 ${color || ''}`} />
             {sidebarOpen && <span>{t(key)}</span>}
           </NavLink>
         ))}

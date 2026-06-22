@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeight = false }) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeight = false, fullScreen = false }) {
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose() }
     if (isOpen) {
@@ -18,6 +18,27 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeigh
   if (!isOpen) return null
 
   const sizes = { sm: 'sm:max-w-md', md: 'sm:max-w-2xl', lg: 'sm:max-w-4xl', xl: 'sm:max-w-6xl' }
+
+  // Full-page variant: fills the whole viewport edge-to-edge, no floating card.
+  if (fullScreen) {
+    return (
+      <div className="fixed inset-0 z-50 animate-fade-in flex flex-col bg-glass">
+        {/* Slim top bar — back/close + optional title */}
+        <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-glass flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium t-sub hover:t-main hover:bg-black/5 dark:hover:bg-white/10 transition-all"
+          >
+            <X size={16} /> Close
+          </button>
+          {title && <h2 className="text-base font-bold t-main">{title}</h2>}
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {children}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">

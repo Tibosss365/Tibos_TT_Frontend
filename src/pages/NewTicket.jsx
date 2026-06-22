@@ -209,7 +209,7 @@ export default function NewTicket() {
   const labelCls = 'block text-xs font-bold t-sub uppercase tracking-wider mb-1'
 
   return (
-    <div className="max-w-4xl space-y-2 animate-fade-in">
+    <div className="w-full space-y-2 animate-fade-in">
       <div className="pb-0.5">
         <h1 className="text-xl font-bold t-main">Submit New Ticket</h1>
         <p className="text-sm t-muted mt-0.5">Fill in the details below to create a support request</p>

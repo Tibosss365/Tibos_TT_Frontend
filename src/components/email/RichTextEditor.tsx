@@ -137,10 +137,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your mess
           color: var(--c-text-muted);
           pointer-events: none;
         }
-        .email-editor-content a { color: #818cf8; text-decoration: underline; }
+        .email-editor-content a { color: #38bdf8; text-decoration: underline; }
         .email-editor-content pre { background: rgba(255,255,255,0.05); padding: 0.5rem; border-radius: 0.375rem; font-size: 0.8em; }
         .email-body img { max-width: 100%; height: auto; }
-        .email-body a { color: #818cf8; }
+        .email-body a { color: #38bdf8; }
         .email-body blockquote { border-left: 3px solid var(--c-border); padding-left: 1rem; color: var(--c-text-muted); margin: 0.5rem 0; }
       `}</style>
     </div>
