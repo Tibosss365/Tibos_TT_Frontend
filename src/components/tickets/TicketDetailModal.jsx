@@ -4,7 +4,7 @@ import {
   Clock, Bell, ThumbsUp, ThumbsDown, ClipboardList, FileText,
   Plus, Timer, User, CheckCircle2, AlertCircle, MoreHorizontal,
   CalendarDays, Briefcase, Mail, MailOpen, Send, Paperclip, Download, Loader2 as SpinIcon,
-  Image as ImageIcon, Link2, Link2Off, GitMerge, Scissors, BookOpen, Eye, Tag, Star,
+  Image as ImageIcon, Link2, Link2Off, GitMerge, Scissors, BookOpen, Eye, Tag, Star, Lock,
 } from 'lucide-react'
 import { downloadAttachment, uploadAttachment } from '../../api/client'
 import { Modal } from '../ui/Modal'
@@ -30,13 +30,13 @@ const TIMELINE_STYLES = {
 
 const MODAL_TABS = [
   { id: 'details',       icon: FileText,      label: 'Details' },
-  { id: 'tasks',         icon: ClipboardList, label: 'Tasks' },
-  { id: 'reminders',    icon: Bell,          label: 'Reminders' },
-  { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
-  { id: 'worklog',      icon: Timer,         label: 'Work Log' },
-  { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
-  { id: 'linked',       icon: Link2,         label: 'Linked' },
   { id: 'conversations', icon: MessageSquare, label: 'Conversations' },
+  { id: 'tasks',         icon: ClipboardList, label: 'Tasks' },
+  { id: 'approvals',    icon: ThumbsUp,      label: 'Approvals' },
+  { id: 'reminders',    icon: Bell,          label: 'Reminders' },
+  { id: 'worklog',      icon: Timer,         label: 'Work Log' },
+  { id: 'linked',       icon: Link2,         label: 'Linked' },
+  { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
 ]
 
 const LINK_TYPES = [
@@ -208,34 +208,25 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
 
   return (
     <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col lg:overflow-y-auto">
-      {/* Requester */}
+      {/* Requester — always locked (read-only), even in edit mode */}
       <div className="p-4 border-b border-glass">
-        <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-3">{t('requester')}</div>
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="text-[10px] font-bold t-sub uppercase tracking-wider">{t('requester')}</span>
+          <Lock size={10} className="t-sub opacity-60" />
+        </div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-md">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            {isEditing ? (
-              <input className={inputCls + ' mb-1 text-xs'} value={edits.submitter} onChange={e => set('submitter', e.target.value)} placeholder="Full name" />
-            ) : (
-              <div className="text-sm font-semibold t-main truncate">{edits.submitter || '—'}</div>
-            )}
-            {isEditing ? (
-              <input className={inputCls + ' text-xs'} type="email" value={edits.email} onChange={e => set('email', e.target.value)} placeholder="email@example.com" />
-            ) : (
-              <div className="text-xs t-muted truncate mt-0.5">{edits.email || '—'}</div>
-            )}
+            <div className="text-sm font-semibold t-main truncate">{edits.submitter || '—'}</div>
+            <div className="text-xs t-muted truncate mt-0.5">{edits.email || '—'}</div>
           </div>
         </div>
         <div className="mt-3 space-y-1.5">
           <div className="flex items-center gap-2 text-xs t-muted">
             <Briefcase size={11} className="flex-shrink-0" />
-            {isEditing ? (
-              <input className={inputCls + ' text-xs py-1'} value={edits.company} onChange={e => set('company', e.target.value)} placeholder="Company" />
-            ) : (
-              <span className="truncate">{edits.company || '—'}</span>
-            )}
+            <span className="truncate">{edits.company || '—'}</span>
           </div>
         </div>
       </div>
@@ -609,7 +600,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   // sidebar/SLA panel always reflects the latest backend values.
   useEffect(() => {
     if (isEditing) return             // don't clobber in-progress edits
-    setEdits({
+    setEdits(prev => ({
       subject:     liveTicket.subject     || '',
       status:      liveTicket.status      || 'open',
       priority:    liveTicket.priority    || 'medium',
@@ -622,8 +613,12 @@ export function TicketDetailModal({ ticket, onClose }) {
       email:       liveTicket.email       || '',
       category:    liveTicket.category    || '',
       asset:       liveTicket.asset       || '',
-      resolution:  liveTicket.resolution  || '',
-    })
+      // Preserve an unsaved resolution note the user is typing on the Resolution
+      // tab — a background refresh must not wipe it before they hit Resolve/Save.
+      resolution:  (prev?.resolution && prev.resolution !== (liveTicket.resolution || ''))
+        ? prev.resolution
+        : (liveTicket.resolution || ''),
+    }))
   }, [liveTicket, isEditing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
@@ -709,6 +704,13 @@ export function TicketDetailModal({ ticket, onClose }) {
     // Intercept on-hold to collect reason first
     if ((merged.status === 'on-hold') && (liveTicket.status !== 'on-hold')) {
       setOnHoldModalOpen(true)
+      return
+    }
+
+    // Resolution notes are mandatory when resolving a ticket
+    if (merged.status === 'resolved' && liveTicket.status !== 'resolved' && !(merged.resolution || '').trim()) {
+      addToast('Please enter resolution notes before resolving', 'error')
+      setActiveTab('resolution')
       return
     }
 
@@ -1549,13 +1551,13 @@ export function TicketDetailModal({ ticket, onClose }) {
                     </div>
                   )}
                   <div>
-                    <div className={labelCls}>Resolution Notes</div>
+                    <div className={labelCls}>Resolution Notes <span className="text-rose-500">*</span></div>
                     <textarea
                       className={inputCls + ' resize-none leading-relaxed'}
                       rows={5}
                       value={edits.resolution}
                       onChange={e => set('resolution', e.target.value)}
-                      placeholder="Describe how the issue was resolved…"
+                      placeholder="Describe how the issue was resolved… (required to resolve)"
                     />
                   </div>
                   {/* Resolver — shown when ticket is NOT yet resolved */}
@@ -1591,9 +1593,10 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <Button
                         variant="primary"
                         size="sm"
-                        disabled={!resolverId}
+                        disabled={!resolverId || !edits.resolution.trim()}
                         onClick={async () => {
                           if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
+                          if (!edits.resolution.trim()) { addToast('Please enter resolution notes before resolving', 'error'); return }
                           const resolverAgentName = getAgentName(resolverId)
                           set('status', 'resolved')
                           await handleSave({ status: 'resolved', resolution: edits.resolution })

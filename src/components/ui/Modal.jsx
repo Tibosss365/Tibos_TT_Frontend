@@ -22,7 +22,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeigh
   // Full-page variant: fills the whole viewport edge-to-edge, no floating card.
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 animate-fade-in flex flex-col bg-glass">
+      <div className="fixed inset-0 z-50 animate-fade-in flex flex-col" style={{ background: 'var(--c-body-bg)' }}>
         {/* Slim top bar — back/close + optional title */}
         <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-glass flex-shrink-0">
           <button
