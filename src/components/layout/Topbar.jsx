@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu, Settings } from 'lucide-react'
+import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu, Settings, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -23,22 +23,36 @@ function extractTicketId(text) {
 
 export function Topbar() {
   const navigate = useNavigate()
-  const { notifications, markAllRead, markRead, unreadCount } = useNotificationStore()
+  const { notifications, markAllRead, markRead, unreadCount, clearAll,
+          pendingApprovals, fetchPendingApprovals, decideApproval } = useNotificationStore()
   const { tickets } = useTicketStore()
   const { setFilter } = useTicketStore()
   const { isDark, toggleTheme, openModal, toggleSidebar } = useUiStore()
   const currentUser = useUserStore(s => s.currentUser)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [drawerTab, setDrawerTab] = useState('approvals')  // 'approvals' | 'notifications'
   const [searchVal, setSearchVal] = useState('')
   const [showSettings, setShowSettings] = useState(false)
+
+  // Regular notifications only — approval requests live in their own tab.
+  const plainNotifs = notifications.filter(n => !n.isApproval)
 
   const handleSearch = (val) => {
     setSearchVal(val)
     setFilter('search', val)
   }
 
-  const openPanel = () => setNotifOpen(true)
+  const openPanel = () => {
+    setNotifOpen(true)
+    fetchPendingApprovals()
+    setDrawerTab(pendingApprovals.length > 0 ? 'approvals' : 'notifications')
+  }
   const closePanel = () => { setNotifOpen(false); markAllRead() }
+
+  const handleDecision = async (appr, status) => {
+    try { await decideApproval(appr.ticket_uuid, appr.approval_id, status) }
+    catch { /* store logs the error */ }
+  }
 
   const handleNotifClick = (n) => {
     markRead(n.id)
@@ -147,7 +161,7 @@ export function Topbar() {
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--c-text-40)' }}
         >
           <Bell size={18} />
-          {unreadCount > 0 && (
+          {(unreadCount > 0 || pendingApprovals.length > 0) && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
           )}
         </button>
@@ -210,112 +224,185 @@ export function Topbar() {
             <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
               <Bell size={15} className="text-indigo-500" />
             </div>
-            <div>
-              <div className="text-sm font-bold t-main">Notifications</div>
-              {unreadCount > 0 && (
-                <div className="text-[10px] t-sub">{unreadCount} unread</div>
-              )}
-            </div>
+            <div className="text-sm font-bold t-main">Inbox</div>
           </div>
-          <div className="flex items-center gap-2">
-            {notifications.some(n => !n.read) && (
-              <button
-                onClick={markAllRead}
-                className="flex items-center gap-1.5 text-[11px] text-indigo-500 hover:text-indigo-400 font-medium transition-colors px-2 py-1 rounded-lg hover:bg-indigo-500/10"
-              >
-                <CheckCheck size={12} /> Mark all read
-              </button>
-            )}
-            <button
-              onClick={closePanel}
-              className="p-1.5 rounded-lg transition-all t-sub hover:t-main"
-              style={{ ':hover': { background: 'var(--c-hover)' } }}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--c-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              <X size={16} />
-            </button>
-          </div>
+          <button
+            onClick={closePanel}
+            className="p-1.5 rounded-lg transition-all t-sub hover:t-main"
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--c-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Notification list */}
-        <div className="flex-1 overflow-y-auto">
-          {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
-              <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
-                <Bell size={24} className="t-sub" />
-              </div>
-              <div className="text-sm font-medium t-sub">All caught up!</div>
-              <div className="text-xs t-sub opacity-60">No notifications yet</div>
-            </div>
-          ) : (
-            <div className="py-2">
-              {notifications.map((n, i) => {
-                const cfg = NOTIF_ICON[n.type] || NOTIF_ICON.info
-                const Icon = cfg.icon
-                return (
-                  <div
-                    key={n.id}
-                    onClick={() => handleNotifClick(n)}
-                    className="group flex items-start gap-3 px-5 py-3.5 cursor-pointer transition-all relative"
-                    style={{
-                      borderBottom: i < notifications.length - 1 ? '1px solid var(--c-border)' : 'none',
-                      opacity: n.read ? 0.55 : 1,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--c-hover)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {/* Type icon */}
-                    <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center mt-0.5 ${cfg.bg}`}>
-                      <Icon size={15} className={cfg.cls} />
-                    </div>
+        {/* Tab switcher: Approval Requests | Notifications */}
+        <div className="flex px-3 pt-3 gap-2 flex-shrink-0">
+          {[
+            { id: 'approvals',     label: 'Approval Requests', count: pendingApprovals.length },
+            { id: 'notifications', label: 'Notifications',      count: plainNotifs.filter(n => !n.read).length },
+          ].map(tab => {
+            const active = drawerTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setDrawerTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-[11px] font-semibold transition-all border ${
+                  active
+                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400'
+                    : 'border-transparent t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center ${
+                    tab.id === 'approvals' ? 'bg-violet-500 text-white' : 'bg-indigo-500 text-white'
+                  }`}>{tab.count}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0 pr-5">
-                      <div className={`text-xs font-semibold leading-snug ${!n.read ? 't-main' : 't-sub'}`}>
-                        {(() => {
-                          const ticketId = extractTicketId(n.text)
-                          if (!ticketId) return n.text
-                          const [prefix, ...rest] = n.text.split(' — ')
-                          return (
-                            <>
-                              <span className="text-indigo-500 font-bold">{prefix}</span>
-                              {rest.length > 0 && <span className="t-main font-normal"> — {rest.join(' — ')}</span>}
-                            </>
-                          )
-                        })()}
-                      </div>
-                      <div className="text-[10px] t-sub mt-1 flex items-center gap-1.5">
-                        {timeAgo(n.time)}
-                        {extractTicketId(n.text) && (
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500 flex items-center gap-0.5 font-medium">
-                            · View ticket <ArrowRight size={9} />
-                          </span>
+        {/* ── Approval Requests tab ─────────────────────────────────────────── */}
+        {drawerTab === 'approvals' && (
+          <div className="flex-1 overflow-y-auto py-2 mt-1">
+            {pendingApprovals.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+                <div className="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center">
+                  <ThumbsUp size={24} className="text-violet-500" />
+                </div>
+                <div className="text-sm font-medium t-sub">No pending approvals</div>
+                <div className="text-xs t-sub opacity-60">You're all caught up</div>
+              </div>
+            ) : (
+              pendingApprovals.map(appr => (
+                <div
+                  key={appr.approval_id}
+                  className="px-5 py-3.5"
+                  style={{ borderBottom: '1px solid var(--c-border)', borderLeft: '3px solid rgb(139,92,246)', background: 'rgba(139,92,246,0.04)' }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-600 dark:text-violet-400 text-[9px] font-bold uppercase tracking-wider">
+                      <ThumbsUp size={8} /> Approval
+                    </span>
+                    <span className="text-indigo-500 font-bold text-xs">{appr.ticket_id}</span>
+                  </div>
+                  <div className="text-xs font-semibold t-main leading-snug">{appr.subject}</div>
+                  {appr.note && <div className="text-[11px] t-muted mt-1">"{appr.note}"</div>}
+                  <div className="text-[10px] t-sub mt-1">
+                    Requested by {appr.requested_by || '—'}{appr.ts ? ` · ${timeAgo(appr.ts)}` : ''}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <button
+                      onClick={() => handleDecision(appr, 'approved')}
+                      className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition-all border border-emerald-500/25"
+                    >
+                      <ThumbsUp size={11} /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleDecision(appr, 'rejected')}
+                      className="flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/30 transition-all border border-rose-500/25"
+                    >
+                      <ThumbsDown size={11} /> Reject
+                    </button>
+                    <button
+                      onClick={() => { setNotifOpen(false); const tk = tickets.find(t => t.id === appr.ticket_id); if (tk) openModal('ticket', tk); else navigate('/tickets', { state: { openTicketId: appr.ticket_id } }) }}
+                      className="ml-auto flex items-center gap-0.5 text-[10px] text-indigo-500 hover:text-indigo-400 font-medium"
+                    >
+                      View ticket <ArrowRight size={9} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── Notifications tab ─────────────────────────────────────────────── */}
+        {drawerTab === 'notifications' && (
+          <>
+            {plainNotifs.length > 0 && (
+              <div className="flex items-center justify-end gap-2 px-5 pt-2 flex-shrink-0">
+                {plainNotifs.some(n => !n.read) && (
+                  <button
+                    onClick={markAllRead}
+                    className="flex items-center gap-1.5 text-[11px] text-indigo-500 hover:text-indigo-400 font-medium transition-colors px-2 py-1 rounded-lg hover:bg-indigo-500/10"
+                  >
+                    <CheckCheck size={12} /> Mark all read
+                  </button>
+                )}
+                <button
+                  onClick={clearAll}
+                  title="Clear notifications (approval requests are kept)"
+                  className="flex items-center gap-1.5 text-[11px] text-rose-500 hover:text-rose-400 font-medium transition-colors px-2 py-1 rounded-lg hover:bg-rose-500/10"
+                >
+                  <Trash2 size={12} /> Clear
+                </button>
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto">
+              {plainNotifs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+                  <div className="w-14 h-14 rounded-2xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
+                    <Bell size={24} className="t-sub" />
+                  </div>
+                  <div className="text-sm font-medium t-sub">All caught up!</div>
+                  <div className="text-xs t-sub opacity-60">No notifications yet</div>
+                </div>
+              ) : (
+                <div className="py-2">
+                  {plainNotifs.map((n, i) => {
+                    const cfg = NOTIF_ICON[n.type] || NOTIF_ICON.info
+                    const Icon = cfg.icon
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotifClick(n)}
+                        className="group flex items-start gap-3 px-5 py-3.5 cursor-pointer transition-all relative"
+                        style={{
+                          borderBottom: i < plainNotifs.length - 1 ? '1px solid var(--c-border)' : 'none',
+                          opacity: n.read ? 0.55 : 1,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--c-hover)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center mt-0.5 ${cfg.bg}`}>
+                          <Icon size={15} className={cfg.cls} />
+                        </div>
+                        <div className="flex-1 min-w-0 pr-5">
+                          <div className={`text-xs font-semibold leading-snug ${!n.read ? 't-main' : 't-sub'}`}>
+                            {(() => {
+                              const ticketId = extractTicketId(n.text)
+                              if (!ticketId) return n.text
+                              const [prefix, ...rest] = n.text.split(' — ')
+                              return (
+                                <>
+                                  <span className="text-indigo-500 font-bold">{prefix}</span>
+                                  {rest.length > 0 && <span className="t-main font-normal"> — {rest.join(' — ')}</span>}
+                                </>
+                              )
+                            })()}
+                          </div>
+                          <div className="text-[10px] t-sub mt-1 flex items-center gap-1.5">
+                            {timeAgo(n.time)}
+                            {extractTicketId(n.text) && (
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500 flex items-center gap-0.5 font-medium">
+                                · View ticket <ArrowRight size={9} />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {!n.read && (
+                          <span className="absolute right-5 top-4 w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
                         )}
                       </div>
-                    </div>
-
-                    {/* Unread dot */}
-                    {!n.read && (
-                      <span className="absolute right-5 top-4 w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" />
-                    )}
-                  </div>
-                )
-              })}
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {notifications.length > 0 && (
-          <div
-            className="px-5 py-3 flex-shrink-0"
-            style={{ borderTop: '1px solid var(--c-border)' }}
-          >
-            <div className="text-[10px] t-sub text-center">
-              {notifications.length} total notification{notifications.length !== 1 ? 's' : ''}
-            </div>
-          </div>
+          </>
         )}
       </div>
     </>

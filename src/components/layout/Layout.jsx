@@ -18,7 +18,7 @@ export function Layout() {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
   } = useAdminStore()
-  const { fetchNotifications, addNotification } = useNotificationStore()
+  const { fetchNotifications, addNotification, fetchPendingApprovals } = useNotificationStore()
   const { activeModal, closeModal, sidebarOpen, toggleSidebar } = useUiStore()
   const sseRef = useRef(null)
   const location = useLocation()
@@ -45,6 +45,7 @@ export function Layout() {
     fetchGroups()
     fetchTicketSettings()
     fetchNotifications()
+    fetchPendingApprovals()
 
     // Open SSE connection
     const es = new EventSource(`${BASE}/events?token=${encodeURIComponent(token)}`)
@@ -53,12 +54,14 @@ export function Layout() {
     const handleTicketEvent = () => {
       fetchTickets()
       fetchNotifications()
+      fetchPendingApprovals()
     }
 
     const handleDeleteEvent = () => {
       fetchTickets()
       fetchDeletedTickets()
       fetchNotifications()
+      fetchPendingApprovals()
     }
 
     es.addEventListener('ticket_created',      handleTicketEvent)
@@ -71,7 +74,7 @@ export function Layout() {
     es.addEventListener('notification', (e) => {
       try {
         const payload = JSON.parse(e.data)
-        addNotification(payload.text || 'New notification', payload.type || 'info')
+        addNotification(payload.text || 'New notification', payload.type || 'info', !!payload.is_approval)
       } catch {
         // ignore malformed SSE data
       }
