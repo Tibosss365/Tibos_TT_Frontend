@@ -170,17 +170,37 @@ export default function Dashboard() {
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
 
-  // ── Report exports (status summary + today's counts + agent-wise + tickets) ──
+  // ── Report exports — respect the active dashboard filters ───────────────────
   const [exporting, setExporting] = useState(null) // 'excel' | 'pdf' | null
+  // Human-readable description of the currently applied filters (for the report
+  // header). Built at click time so it reflects exactly what's on screen.
+  const buildFilterLabel = () => {
+    const parts = []
+    if (dashFilters.dateRange && dashFilters.dateRange !== 'all') {
+      const dr = DATE_RANGES.find(r => r.key === dashFilters.dateRange)
+      if (dashFilters.dateRange === 'custom') {
+        parts.push(`${dashFilters.dateFrom || '…'} → ${dashFilters.dateTo || '…'}`)
+      } else {
+        parts.push(dr ? dr.label : dashFilters.dateRange)
+      }
+    }
+    if (dashFilters.status)   parts.push(`Status: ${dashFilters.status}`)
+    if (dashFilters.priority) parts.push(`Priority: ${dashFilters.priority}`)
+    if (dashFilters.type)     parts.push(`Type: ${dashFilters.type}`)
+    if (dashFilters.sla)      parts.push(dashFilters.sla === 'overdue' ? 'SLA Overdue' : `Priority: ${dashFilters.sla}`)
+    if (dashFilters.category) parts.push(`Category: ${getCategoryName(dashFilters.category)}`)
+    if (dashFilters.group)    parts.push(`Group: ${groups.find(g => g.id === dashFilters.group)?.name || dashFilters.group}`)
+    return parts.length ? parts.join(' · ') : 'All Time (no filter)'
+  }
   const handleExportExcel = async () => {
     setExporting('excel')
-    try { await exportTicketsExcel(tickets, getAgentName) }
+    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel() }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
-    try { await exportTicketsPdf(tickets, getAgentName) }
+    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel() }) }
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }
