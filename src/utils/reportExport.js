@@ -133,7 +133,8 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
  * @param meta { filterLabel } — text describing the active filter.
  */
 export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
-  const { default: jsPDF } = await import('jspdf')
+  const jspdfMod = await import('jspdf')
+  const jsPDF = jspdfMod.jsPDF || jspdfMod.default
   const autoTable = (await import('jspdf-autotable')).default
   const d = buildReportData(tickets, getAgentName, { activeAgentIds: meta.activeAgentIds })
   const filterLabel = meta.filterLabel || 'All Time'
@@ -149,19 +150,36 @@ export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
   doc.text(`Generated: ${d.generatedAt.toLocaleString()}`, 40, 64)
   doc.text(`Filter: ${filterLabel}    |    Total: ${d.total}`, 40, 77)
 
-  // Summary
-  autoTable(doc, {
-    startY: 92,
-    head: [['Metric', 'Count']],
-    body: summaryRows(d),
-    headStyles: { fillColor: ACCENT, textColor: 255 },
-    styles: { fontSize: 9, cellPadding: 5 },
-    columnStyles: { 1: { halign: 'center' } },
-    theme: 'striped',
+  // ── Summary cards (mirrors the dashboard stat cards) ──
+  const cards = [
+    { label: 'Open Tickets',  value: d.counts.open,           color: [37, 99, 235] },
+    { label: 'In Progress',   value: d.counts['in-progress'], color: [14, 165, 233] },
+    { label: 'On Hold',       value: d.counts['on-hold'],     color: [245, 158, 11] },
+    { label: 'Resolved',      value: d.counts.resolved,       color: [16, 185, 129] },
+    { label: 'Critical',      value: d.counts.critical,       color: [239, 68, 68] },
+    { label: 'SLA Overdue',   value: d.counts.overdue,        color: [244, 63, 94] },
+    { label: 'Total Tickets', value: d.total,                 color: [6, 182, 212] },
+  ]
+  const pageW = doc.internal.pageSize.getWidth()
+  const mLeft = 40, perRow = 4, gap = 10, cardH = 46, cardY = 92
+  const cardW = (pageW - mLeft * 2 - gap * (perRow - 1)) / perRow
+  cards.forEach((c, i) => {
+    const x = mLeft + (i % perRow) * (cardW + gap)
+    const yy = cardY + Math.floor(i / perRow) * (cardH + gap)
+    doc.setDrawColor(226, 232, 240)
+    doc.setFillColor(255, 255, 255)
+    doc.roundedRect(x, yy, cardW, cardH, 6, 6, 'FD')
+    doc.setFontSize(17)
+    doc.setTextColor(c.color[0], c.color[1], c.color[2])
+    doc.text(String(c.value), x + 12, yy + 25)
+    doc.setFontSize(8)
+    doc.setTextColor(100, 116, 139)
+    doc.text(c.label, x + 12, yy + 38)
   })
+  const cardRows = Math.ceil(cards.length / perRow)
 
   // Agent-wise
-  let y = doc.lastAutoTable.finalY + 26
+  let y = cardY + cardRows * cardH + (cardRows - 1) * gap + 26
   doc.setFontSize(12)
   doc.setTextColor(15, 23, 42)
   doc.text('Agent-wise Count', 40, y)
@@ -218,7 +236,8 @@ export async function exportCompanyExcel(rows, meta = {}) {
 }
 
 export async function exportCompanyPdf(rows, meta = {}) {
-  const { default: jsPDF } = await import('jspdf')
+  const jspdfMod = await import('jspdf')
+  const jsPDF = jspdfMod.jsPDF || jspdfMod.default
   const autoTable = (await import('jspdf-autotable')).default
   const filterLabel = meta.filterLabel || 'All Time'
 
