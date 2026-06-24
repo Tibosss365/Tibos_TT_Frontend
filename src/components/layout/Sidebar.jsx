@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
-  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail, Activity
+  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail, Activity, Building2
 } from 'lucide-react'
 import { useUserStore }   from '../../stores/userStore'
 import { useUiStore }     from '../../stores/uiStore'
@@ -11,6 +11,7 @@ import { useT }           from '../../utils/i18n'
 
 const NAV_KEYS = [
   { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true, color: 'text-indigo-500' },
+  { to: '/companies',    icon: Building2,       key: 'companies',  staffOnly: true, color: 'text-cyan-500' },
   { to: '/tickets',      icon: List,            key: 'allTickets', staffOnly: true, color: 'text-blue-500' },
   { to: '/tickets/mine', icon: Ticket,          key: 'myTickets',  staffOnly: true, color: 'text-sky-500' },
 ]

@@ -370,7 +370,7 @@ export default function NewTicket() {
                     <label className={labelCls}>Assign To</label>
                     <select className="glass-input w-full text-sm" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
                       <option value="">— Unassigned —</option>
-                      {agents.filter(a => a.id !== 'unassigned').map(a => (
+                      {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false).map(a => (
                         <option key={a.id} value={a.id}>{a.name}</option>
                       ))}
                     </select>

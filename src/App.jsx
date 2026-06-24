@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import CompanyDashboard from './pages/CompanyDashboard'
 import AllTickets from './pages/AllTickets'
 import MyTickets from './pages/MyTickets'
 import UserPortal from './pages/UserPortal'
@@ -58,6 +59,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<DefaultRedirect />} />
         <Route path="/dashboard"         element={<StaffOnly><Dashboard /></StaffOnly>} />
+        <Route path="/companies"         element={<StaffOnly><CompanyDashboard /></StaffOnly>} />
         <Route path="/tickets"           element={<StaffOnly><AllTickets /></StaffOnly>} />
         <Route path="/tickets/mine"      element={<StaffOnly><MyTickets /></StaffOnly>} />
         <Route path="/tickets/my-portal" element={<UserPortal />} />

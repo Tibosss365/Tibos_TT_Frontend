@@ -26,8 +26,12 @@ const dateStamp = () => new Date().toISOString().slice(0, 10)
 /**
  * Compute the report dataset from a (already filtered) ticket list.
  */
-export function buildReportData(tickets, getAgentName) {
+export function buildReportData(tickets, getAgentName, opts = {}) {
   const list = Array.isArray(tickets) ? tickets : []
+  // When provided, only these agent ids appear in the agent-wise breakdown
+  // (non-active / deleted agents are excluded — their tickets still count in
+  // the overall summary totals).
+  const activeAgentIds = opts.activeAgentIds || null
 
   const counts = {
     open: 0, 'in-progress': 0, 'on-hold': 0, resolved: 0, closed: 0,
@@ -43,6 +47,8 @@ export function buildReportData(tickets, getAgentName) {
   const agentMap = new Map()
   list.forEach(t => {
     const id = t.assignee || 'unassigned'
+    // Exclude non-active agents from the agent-wise breakdown.
+    if (activeAgentIds && id !== 'unassigned' && !activeAgentIds.has(String(id))) return
     const name = t.assignee ? getAgentName(t.assignee) : 'Unassigned'
     if (!agentMap.has(id)) {
       agentMap.set(id, { name, open: 0, 'in-progress': 0, 'on-hold': 0, resolved: 0, closed: 0, critical: 0, overdue: 0, total: 0 })
@@ -88,7 +94,7 @@ function summaryRows(d) {
  */
 export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   const XLSX = await import('xlsx')
-  const d = buildReportData(tickets, getAgentName)
+  const d = buildReportData(tickets, getAgentName, { activeAgentIds: meta.activeAgentIds })
   const filterLabel = meta.filterLabel || 'All Time'
 
   // ── Summary sheet ──
@@ -129,7 +135,7 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
 export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
   const { default: jsPDF } = await import('jspdf')
   const autoTable = (await import('jspdf-autotable')).default
-  const d = buildReportData(tickets, getAgentName)
+  const d = buildReportData(tickets, getAgentName, { activeAgentIds: meta.activeAgentIds })
   const filterLabel = meta.filterLabel || 'All Time'
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
@@ -185,4 +191,53 @@ export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
   })
 
   doc.save(`helpdesk-report-${dateStamp()}.pdf`)
+}
+
+// ── Company-wise report exports ───────────────────────────────────────────────
+// `rows` is a pre-computed array of company stat objects:
+//   { name, domain, total, open, closed, critical, slaPct, lastTicket }
+
+export async function exportCompanyExcel(rows, meta = {}) {
+  const XLSX = await import('xlsx')
+  const filterLabel = meta.filterLabel || 'All Time'
+
+  const aoa = [
+    ['Company-wise Ticket Report'],
+    ['Generated', new Date().toLocaleString()],
+    ['Filter', filterLabel],
+    [],
+    ['Company', 'Domain', 'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket'],
+  ]
+  rows.forEach(r => aoa.push([r.name, r.domain || '', r.total, r.open, r.closed, r.critical, r.slaPct, r.lastTicket || '']))
+
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 9 }, { wch: 8 }, { wch: 20 }]
+  XLSX.utils.book_append_sheet(wb, ws, 'Companies')
+  XLSX.writeFile(wb, `company-report-${dateStamp()}.xlsx`)
+}
+
+export async function exportCompanyPdf(rows, meta = {}) {
+  const { default: jsPDF } = await import('jspdf')
+  const autoTable = (await import('jspdf-autotable')).default
+  const filterLabel = meta.filterLabel || 'All Time'
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  doc.setFontSize(18); doc.setTextColor(15, 23, 42)
+  doc.text('Company-wise Ticket Report', 40, 48)
+  doc.setFontSize(9); doc.setTextColor(100, 116, 139)
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 64)
+  doc.text(`Filter: ${filterLabel}   |   Companies: ${rows.length}`, 40, 77)
+
+  autoTable(doc, {
+    startY: 92,
+    head: [['Company', 'Domain', 'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket']],
+    body: rows.map(r => [r.name, r.domain || '', r.total, r.open, r.closed, r.critical, `${r.slaPct}%`, r.lastTicket || '']),
+    headStyles: { fillColor: ACCENT, textColor: 255 },
+    styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+    columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 100 }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' } },
+    theme: 'striped',
+  })
+
+  doc.save(`company-report-${dateStamp()}.pdf`)
 }

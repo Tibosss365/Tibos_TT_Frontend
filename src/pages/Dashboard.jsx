@@ -192,15 +192,20 @@ export default function Dashboard() {
     if (dashFilters.group)    parts.push(`Group: ${groups.find(g => g.id === dashFilters.group)?.name || dashFilters.group}`)
     return parts.length ? parts.join(' · ') : 'All Time (no filter)'
   }
+  // Only active agents should appear in the report's agent-wise breakdown.
+  const activeAgentIds = useMemo(
+    () => new Set(agents.filter(a => a.is_active !== false).map(a => String(a.id))),
+    [agents],
+  )
   const handleExportExcel = async () => {
     setExporting('excel')
-    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel() }) }
+    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
-    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel() }) }
+    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds }) }
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }
@@ -346,6 +351,27 @@ export default function Dashboard() {
     }))
   }, [displayTickets])
 
+  // ── Company-wise distribution, labelled "Company (@domain)" (top 10) ────────
+  const companyData = useMemo(() => {
+    const map = {}  // company -> { count, domains: { domain: n } }
+    displayTickets.forEach(t => {
+      const c = (t.company || '').trim() || 'Unknown'
+      const email = (t.email || '').trim().toLowerCase()
+      const domain = email.includes('@') ? email.split('@')[1] : ''
+      if (!map[c]) map[c] = { count: 0, domains: {} }
+      map[c].count++
+      if (domain) map[c].domains[domain] = (map[c].domains[domain] || 0) + 1
+    })
+    return Object.entries(map)
+      .map(([company, v]) => {
+        const topDomain = Object.entries(v.domains).sort((a, b) => b[1] - a[1])[0]?.[0]
+        return { name: topDomain ? `${company} (@${topDomain})` : company, count: v.count }
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10)
+      .map((d, i) => ({ ...d, fill: DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length] }))
+  }, [displayTickets])
+
   const recent = useMemo(() =>
     [...displayTickets].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, 6),
     [displayTickets]
@@ -364,7 +390,7 @@ export default function Dashboard() {
   // ── Agent wise ticket counts ────────────────────────────────────────────────
   const agentData = useMemo(() => {
     return agents
-      .filter(a => a.id !== 'unassigned')
+      .filter(a => a.id !== 'unassigned' && a.is_active !== false)
       .map(agent => {
         const agentTickets = displayTickets.filter(t => t.assignee === String(agent.id))
         return {
@@ -758,6 +784,31 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* ── Tickets by Company (@domain) ───────────────────────────────────── */}
+      <Card>
+        <CardHeader title="Tickets by Company" subtitle="Top companies by ticket volume — shown as Company (@domain)" />
+        {companyData.length === 0 ? (
+          <div className="py-10 text-center text-sm t-muted">No data for selected filters</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={companyData} margin={{ top: 10, right: 10, left: -12, bottom: 70 }}>
+              <XAxis
+                dataKey="name"
+                tick={{ fill: 'var(--c-chart-text)', fontSize: 10 }}
+                axisLine={false} tickLine={false}
+                interval={0} angle={-35} textAnchor="end" height={80}
+                tickFormatter={(v) => (v.length > 18 ? v.slice(0, 17) + '…' : v)}
+              />
+              <YAxis tick={{ fill: 'var(--c-chart-text)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--c-chart-grid)' }} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                {companyData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
 
       {/* ── Agent Wise Ticket Count ────────────────────────────────────────── */}
       <Card>

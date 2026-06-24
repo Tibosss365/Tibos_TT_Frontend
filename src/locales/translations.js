@@ -88,6 +88,7 @@ export const translations = {
 
     // Navigation
     dashboard:    'Dashboard',
+    companies:    'Companies',
     allTickets:   'All Tickets',
     myTickets:    'My Tickets',
     submitTicket: 'Submit Ticket',

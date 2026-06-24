@@ -473,7 +473,7 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Auto-Assign To</label>
                 <select className={inputCls} value={inboundEdits.defaultAssignee || 'unassigned'} onChange={e => set('defaultAssignee', e.target.value)}>
                   <option value="unassigned">— Unassigned —</option>
-                  {agents.filter(a => a.id !== 'unassigned').map(a => (
+                  {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false).map(a => (
                     <option key={a.id} value={a.id}>{a.name} ({a.group})</option>
                   ))}
                 </select>
@@ -3596,9 +3596,9 @@ export default function Admin() {
           </Card>
 
           <Card>
-            <CardHeader title="Current Agents" subtitle={`${agents.length} agents`} />
+            <CardHeader title="Current Agents" subtitle={`${agents.filter(a => a.is_active !== false).length} agents`} />
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {agents.map(agent => (
+              {agents.filter(a => a.is_active !== false).map(agent => (
                 <div key={String(agent.id)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 group transition-all">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 dark:from-indigo-500/40 dark:to-violet-500/40 border border-indigo-500/20 flex items-center justify-center text-xs font-bold t-main flex-shrink-0">
                     {agent.initials}
