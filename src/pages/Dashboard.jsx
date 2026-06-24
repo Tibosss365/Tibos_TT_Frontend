@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
   AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users, EyeOff,
+  FileSpreadsheet, FileText,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { StatsCard } from '../components/ui/StatsCard'
 import { Card, CardHeader } from '../components/ui/Card'
+import { Button } from '../components/ui/Button'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
+import { exportTicketsExcel, exportTicketsPdf } from '../utils/reportExport'
 
 const DEFAULT_CHART_COLORS = ['#0ea5e9','#2563eb','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
 
@@ -166,6 +169,21 @@ export default function Dashboard() {
   const { tickets, loading } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
+
+  // ── Report exports (status summary + today's counts + agent-wise + tickets) ──
+  const [exporting, setExporting] = useState(null) // 'excel' | 'pdf' | null
+  const handleExportExcel = async () => {
+    setExporting('excel')
+    try { await exportTicketsExcel(tickets, getAgentName) }
+    catch (e) { console.error('Excel export failed', e) }
+    finally { setExporting(null) }
+  }
+  const handleExportPdf = async () => {
+    setExporting('pdf')
+    try { await exportTicketsPdf(tickets, getAgentName) }
+    catch (e) { console.error('PDF export failed', e) }
+    finally { setExporting(null) }
+  }
 
   // ── SLA ignore state (persisted in localStorage) ──────────────────────────
   const [ignoredSlaIds, setIgnoredSlaIds] = useState(() => {
@@ -359,17 +377,25 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold t-main">Dashboard</h1>
           <p className="text-sm t-muted mt-0.5">IT support overview &amp; activity</p>
         </div>
-        {activeFilterCount > 0 && (
-          <span className="flex items-center gap-1.5 text-xs text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full font-semibold">
-            <Filter size={11} />
-            {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {activeFilterCount > 0 && (
+            <span className="flex items-center gap-1.5 text-xs text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-full font-semibold">
+              <Filter size={11} />
+              {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} active
+            </span>
+          )}
+          <Button variant="ghost" size="sm" onClick={handleExportExcel} disabled={exporting === 'excel'}>
+            <FileSpreadsheet size={14} className="text-emerald-500" /> <span className="hidden sm:inline">{exporting === 'excel' ? 'Exporting…' : 'Excel'}</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleExportPdf} disabled={exporting === 'pdf'}>
+            <FileText size={14} className="text-rose-500" /> <span className="hidden sm:inline">{exporting === 'pdf' ? 'Exporting…' : 'PDF'}</span>
+          </Button>
+        </div>
       </div>
 
       {/* ── Filter Panel ───────────────────────────────────────────────────── */}

@@ -181,6 +181,7 @@ export default function AllTickets() {
     a.download = 'tickets.csv'; a.click()
   }
 
+
   const hasSearch    = !!filters.search
   const hasAnyFilter = !!(filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || hasSearch)
 
