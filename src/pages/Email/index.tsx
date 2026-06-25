@@ -8,6 +8,7 @@ import { ThreadList } from '../../components/email/ThreadList'
 import { ThreadView } from '../../components/email/ThreadView'
 import { EmailComposer } from '../../components/email/EmailComposer'
 import { AIPanel } from '../../components/email/AIPanel'
+import { AccountSetupModal } from '../../components/email/AccountSetupModal'
 import type { EmailMessage, EmailThread, ThreadFilters } from '../../types/email'
 
 type Mailbox = 'inbox' | 'starred' | 'archived' | 'spam'
@@ -44,6 +45,7 @@ export default function EmailPage() {
   const [showAI, setShowAI] = useState(false)
   const [aiTargetMsg, setAiTargetMsg] = useState<EmailMessage | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [showAccountSetup, setShowAccountSetup] = useState(false)
 
   useEffect(() => {
     fetchAccounts()
@@ -122,25 +124,33 @@ export default function EmailPage() {
         style={{ borderRight: '1px solid var(--c-border)' }}
       >
         {/* Account selector */}
-        {accounts.length > 0 && (
-          <div>
-            <p className="text-[10px] font-semibold t-sub uppercase tracking-widest mb-2">Inbox</p>
-            {accounts.map((acct) => (
-              <button
-                key={acct.id}
-                onClick={() => setSelectedAccountId(acct.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs transition-all ${
-                  selectedAccountId === acct.id
-                    ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
-                    : 't-muted hover:t-main hover:bg-white/5'
-                }`}
-              >
-                <Mail size={13} />
-                <span className="truncate">{acct.name}</span>
-              </button>
-            ))}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold t-sub uppercase tracking-widest">Accounts</p>
+            <button onClick={() => setShowAccountSetup(true)} title="Add email account" className="text-indigo-500 hover:text-indigo-400 transition-colors">
+              <Plus size={14} />
+            </button>
           </div>
-        )}
+          {accounts.map((acct) => (
+            <button
+              key={acct.id}
+              onClick={() => setSelectedAccountId(acct.id)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs transition-all ${
+                selectedAccountId === acct.id
+                  ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
+                  : 't-muted hover:t-main hover:bg-white/5'
+              }`}
+            >
+              <Mail size={13} />
+              <span className="truncate">{acct.name}</span>
+            </button>
+          ))}
+          {accounts.length === 0 && !accountsLoading && (
+            <button onClick={() => setShowAccountSetup(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs border border-dashed border-indigo-500/40 text-indigo-500 hover:bg-indigo-500/5 transition-all">
+              <Plus size={13} /> Connect inbox
+            </button>
+          )}
+        </div>
 
         {/* Mailbox nav */}
         <div className="space-y-0.5">
@@ -241,9 +251,9 @@ export default function EmailPage() {
             <p className="text-sm font-semibold t-main">Select a conversation</p>
             <p className="text-xs t-muted mt-1">Choose an email thread to view messages.</p>
             {accounts.length === 0 && !accountsLoading && (
-              <p className="text-xs text-indigo-400 mt-3">
-                No email accounts configured. Ask an admin to add an inbox.
-              </p>
+              <button onClick={() => setShowAccountSetup(true)} className="mt-3 px-4 py-2 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all flex items-center gap-1.5">
+                <Plus size={13} /> Connect an inbox
+              </button>
             )}
           </div>
         )}
@@ -272,6 +282,14 @@ export default function EmailPage() {
             />
           </div>
         </aside>
+      )}
+
+      {/* ── Add Email Account ── */}
+      {showAccountSetup && (
+        <AccountSetupModal
+          onClose={() => setShowAccountSetup(false)}
+          onSaved={() => { fetchAccounts() }}
+        />
       )}
 
       {/* ── Email Composer (floating) ── */}
