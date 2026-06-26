@@ -505,6 +505,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const [activeTab, setActiveTab] = useState(isEndUser ? 'conversations' : 'details')
   const [resolverId, setResolverId]     = useState(currentUser?.id || '')
   const [resolutionCode, setResolutionCode] = useState('')
+  const [editingResolution, setEditingResolution] = useState(false)
 
   // On-hold reason modal
   const [onHoldModalOpen, setOnHoldModalOpen]   = useState(false)
@@ -905,6 +906,11 @@ export function TicketDetailModal({ ticket, onClose }) {
   }
 
   const totalHours = (liveTicket.workLog||[]).reduce((s, w) => s + Number(w.hours||0), 0)
+
+  // Resolution note shows in read-only "view mode" once it's been saved to the
+  // backend (matches liveTicket) and the user isn't actively editing it.
+  const resolutionSaved = !!(edits.resolution || '').trim() && (edits.resolution || '') === (liveTicket.resolution || '')
+  const showResolutionView = resolutionSaved && !editingResolution
 
   return (
     <>
@@ -1551,14 +1557,27 @@ export function TicketDetailModal({ ticket, onClose }) {
                     </div>
                   )}
                   <div>
-                    <div className={labelCls}>Resolution Notes <span className="text-rose-500">*</span></div>
-                    <textarea
-                      className={inputCls + ' resize-none leading-relaxed'}
-                      rows={5}
-                      value={edits.resolution}
-                      onChange={e => set('resolution', e.target.value)}
-                      placeholder="Describe how the issue was resolved… (required to resolve)"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <div className={labelCls + ' mb-0'}>Resolution Notes <span className="text-rose-500">*</span></div>
+                      {showResolutionView && (
+                        <button type="button" onClick={() => setEditingResolution(true)} className="text-[11px] text-indigo-500 hover:text-indigo-400 font-medium flex items-center gap-1">
+                          <Pencil size={11} /> Edit
+                        </button>
+                      )}
+                    </div>
+                    {showResolutionView ? (
+                      <div className="glass-input w-full text-sm leading-relaxed whitespace-pre-wrap t-main" style={{ minHeight: 'auto' }}>
+                        {edits.resolution}
+                      </div>
+                    ) : (
+                      <textarea
+                        className={inputCls + ' resize-none leading-relaxed'}
+                        rows={5}
+                        value={edits.resolution}
+                        onChange={e => set('resolution', e.target.value)}
+                        placeholder="Describe how the issue was resolved… (required to resolve)"
+                      />
+                    )}
                   </div>
                   {/* Resolver — shown when ticket is NOT yet resolved */}
                   {edits.status !== 'resolved' && edits.status !== 'closed' && (
@@ -1611,9 +1630,16 @@ export function TicketDetailModal({ ticket, onClose }) {
                         <CheckCircle2 size={13}/> {t('markResolved')}
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => { updateTicket(ticket._uuid, { resolution: edits.resolution }); addToast('Resolution notes saved', 'success') }}>
-                      <Save size={13}/> Save Notes
-                    </Button>
+                    {!showResolutionView && (
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        if (!(edits.resolution || '').trim()) { addToast('Enter resolution notes first', 'error'); return }
+                        await updateTicket(ticket._uuid, { resolution: edits.resolution })
+                        setEditingResolution(false)
+                        addToast('Resolution notes saved', 'success')
+                      }}>
+                        <Save size={13}/> Save Notes
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
