@@ -23,15 +23,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeigh
   if (fullScreen) {
     return (
       <div className="fixed inset-0 z-50 animate-fade-in flex flex-col" style={{ background: 'var(--c-body-bg)' }}>
-        {/* Slim top bar — back/close + optional title */}
+        {/* Slim top bar — optional title (left) + close (right) */}
         <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-glass flex-shrink-0">
+          {title && <h2 className="text-base font-bold t-main">{title}</h2>}
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium t-sub hover:t-main hover:bg-black/5 dark:hover:bg-white/10 transition-all"
+            className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium t-sub hover:t-main hover:bg-black/5 dark:hover:bg-white/10 transition-all"
           >
             <X size={16} /> Close
           </button>
-          {title && <h2 className="text-base font-bold t-main">{title}</h2>}
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {children}
