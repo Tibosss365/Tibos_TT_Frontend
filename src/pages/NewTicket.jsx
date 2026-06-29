@@ -12,6 +12,7 @@ import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
 import TagsInput from '../components/tickets/TagsInput'
 import DuplicateWarning from '../components/tickets/DuplicateWarning'
+import { RichDescription } from '../components/tickets/RichDescription'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '' }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -447,14 +448,13 @@ export default function NewTicket() {
 
               <div>
                 <label className={labelCls}>
-                  Description * <span className="t-sub font-normal">({form.description.length}/2000)</span>
+                  Description * <span className="t-sub font-normal normal-case tracking-normal">(paste an email trail to keep its formatting, or drop a .eml file)</span>
                 </label>
-                <textarea
-                  className={`${inputCls('description')} resize-none leading-relaxed`}
-                  rows={4}
+                <RichDescription
                   value={form.description}
-                  onChange={e => set('description', e.target.value.slice(0, 2000))}
-                  placeholder="Please describe the issue in detail. Include error messages, steps to reproduce, and any troubleshooting already attempted."
+                  onChange={val => set('description', val)}
+                  invalid={!!errors.description}
+                  placeholder="Describe the issue — or paste an email conversation here to keep its formatting."
                 />
                 {errors.description && <p className="text-xs text-rose-500 mt-1">{errors.description}</p>}
               </div>
