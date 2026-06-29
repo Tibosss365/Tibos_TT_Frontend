@@ -16,6 +16,7 @@ import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 import { useT } from '../../utils/i18n'
+import { looksLikeHtml, cleanEmailHtml } from '../../utils/htmlContent'
 import SourceBadge from './SourceBadge'
 
 const TIMELINE_STYLES = {
@@ -1446,8 +1447,17 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <textarea className={inputCls + ' resize-y leading-relaxed'} rows={10}
                         style={{ minHeight: '160px' }}
                         value={edits.description} onChange={e => set('description', e.target.value)} />
+                    ) : edits.description ? (
+                      looksLikeHtml(edits.description) ? (
+                        <div
+                          className="text-sm t-main leading-relaxed py-1 min-h-[120px] email-body"
+                          dangerouslySetInnerHTML={{ __html: cleanEmailHtml(edits.description) }}
+                        />
+                      ) : (
+                        <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap min-h-[120px]">{edits.description}</div>
+                      )
                     ) : (
-                      <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap min-h-[120px]">{edits.description || <span className="opacity-40">No description</span>}</div>
+                      <div className="text-xs t-main leading-relaxed py-1 min-h-[120px]"><span className="opacity-40">No description</span></div>
                     )}
                   </div>
                   {isEditing ? (
