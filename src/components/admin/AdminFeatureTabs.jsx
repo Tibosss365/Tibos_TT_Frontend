@@ -432,11 +432,14 @@ const EMPTY_ASSET_FORM = {
 }
 
 function AssetsTab() {
-  const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory } = useFeatureStore()
+  const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory, fetchAllAssetHistory } = useFeatureStore()
   const { agents, fetchAgents } = useAdminStore()
   // All users (admin / technician / end users / SSO-provisioned) come from /agents.
   const userOptions = (agents || []).filter(u => u.is_active !== false && String(u.id) !== 'unassigned')
   const [showForm, setShowForm] = useState(false)
+  const [showAllHistory, setShowAllHistory] = useState(false)
+  const [allHistory, setAllHistory] = useState([])
+  const [allHistLoading, setAllHistLoading] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_ASSET_FORM })
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -500,8 +503,23 @@ function AssetsTab() {
     }
   }
 
+  const openAllHistory = async () => {
+    setShowAllHistory(true)
+    setAllHistLoading(true)
+    try { setAllHistory(await fetchAllAssetHistory() || []) }
+    catch { setAllHistory([]) }
+    finally { setAllHistLoading(false) }
+  }
+
+  const handleDelete = async (a) => {
+    const reason = window.prompt(`Delete "${a.name}" — reason? (e.g. employee left, damaged, scrapped)`)
+    if (reason === null) return            // cancelled
+    if (!reason.trim()) { alert('A reason is required to delete an asset.'); return }
+    await deleteAsset(a.id, reason.trim())
+  }
+
   const STATUS_COLOR = { active: 'bg-green-100 text-green-700', retired: 'bg-gray-100 text-gray-500', in_repair: 'bg-yellow-100 text-yellow-700', lost: 'bg-red-100 text-red-600' }
-  const ACTION_COLOR = { assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 text-gray-500' }
+  const ACTION_COLOR = { created: 'bg-blue-100 text-blue-700', assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 text-gray-500', deleted: 'bg-red-100 text-red-600' }
   const inputCls = "rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
 
   return (
@@ -511,7 +529,13 @@ function AssetsTab() {
           <h3 className="text-base font-semibold text-gray-900">Assets</h3>
           <p className="text-sm text-gray-500">Track laptops, phones, servers, and other hardware — and who they're assigned to.</p>
         </div>
-        <AddButton label="Add Asset" onClick={() => setShowForm(true)} />
+        <div className="flex items-center gap-2">
+          <button onClick={openAllHistory}
+            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50">
+            Asset History
+          </button>
+          <AddButton label="Add Asset" onClick={() => setShowForm(true)} />
+        </div>
       </div>
 
       {showForm && (
@@ -580,8 +604,7 @@ function AssetsTab() {
                   <button onClick={() => startAssign(a)} className="text-indigo-500 hover:text-indigo-700 text-sm">
                     {a.assigned_to_name || a.assigned_to_email ? 'Reassign' : 'Assign'}
                   </button>
-                  <button onClick={() => showHistory(a)} className="text-gray-500 hover:text-gray-700 text-sm">History</button>
-                  <button onClick={() => deleteAsset(a.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
+                  <button onClick={() => handleDelete(a)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
                 </div>
               </div>
 
@@ -611,38 +634,51 @@ function AssetsTab() {
                 </div>
               )}
 
-              {historyFor === a.id && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-600 mb-2">Assignment history</p>
-                  {historyLoading ? (
-                    <p className="text-xs text-gray-400">Loading…</p>
-                  ) : history.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">No assignment changes recorded yet.</p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {history.map(h => (
-                        <div key={h.id} className="flex items-start gap-2 text-xs">
-                          <span className={`px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>{h.action}</span>
-                          <div className="text-gray-600">
-                            {(h.assigned_to_name || h.assigned_to_email) && (
-                              <span>
-                                <span className="font-medium text-gray-800">{h.assigned_to_name || h.assigned_to_email}</span>
-                                {h.assigned_to_email && h.assigned_to_name && <span className="text-gray-400"> · {h.assigned_to_email}</span>}
-                                {h.employee_code && <span className="ml-1 font-mono text-[10px] text-gray-400">{h.employee_code}</span>}
-                              </span>
-                            )}
-                            {h.note && <span className="text-gray-400"> — {h.note}</span>}
-                            <span className="text-gray-400"> · {new Date(h.created_at).toLocaleString()}</span>
-                            {h.changed_by_name && <span className="text-gray-400"> · by {h.changed_by_name}</span>}
-                          </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Global Asset History modal ── */}
+      {showAllHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowAllHistory(false) }}>
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl border border-glass w-full max-w-3xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Asset History</h4>
+                <p className="text-xs text-gray-500">Every asset action — created, assigned, reassigned, unassigned and deleted.</p>
+              </div>
+              <button onClick={() => setShowAllHistory(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white text-lg">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {allHistLoading ? (
+                <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+              ) : allHistory.length === 0 ? (
+                <p className="text-sm text-gray-400 italic text-center py-8">No asset history yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {allHistory.map(h => (
+                    <div key={h.id} className="flex items-start gap-2.5 text-xs border-b border-gray-50 dark:border-white/5 pb-2">
+                      <span className={`px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>{h.action}</span>
+                      <div className="text-gray-600 dark:text-gray-300 flex-1 min-w-0">
+                        <span className="font-semibold text-gray-800 dark:text-white">{h.asset_name || 'Asset'}</span>
+                        {h.asset_tag && <span className="ml-1 font-mono text-[10px] text-gray-400">{h.asset_tag}</span>}
+                        {(h.assigned_to_name || h.assigned_to_email) && (
+                          <span> — <span className="font-medium">{h.assigned_to_name || h.assigned_to_email}</span>
+                            {h.assigned_to_email && h.assigned_to_name && <span className="text-gray-400"> · {h.assigned_to_email}</span>}
+                          </span>
+                        )}
+                        {h.note && <span className="text-gray-400"> — {h.note}</span>}
+                        <div className="text-[10px] text-gray-400 mt-0.5">
+                          {new Date(h.created_at).toLocaleString()}{h.changed_by_name && <span> · by {h.changed_by_name}</span>}
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>

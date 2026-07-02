@@ -214,13 +214,19 @@ export const useFeatureStore = create((set, get) => ({
     return data
   },
 
-  deleteAsset: async (id) => {
-    await api.delete(`/admin/assets/${id}`)
+  deleteAsset: async (id, reason) => {
+    const q = reason ? `?reason=${encodeURIComponent(reason)}` : ''
+    await api.delete(`/admin/assets/${id}${q}`)
     set(s => ({ assets: s.assets.filter(a => a.id !== id) }))
   },
 
   fetchAssetHistory: async (id) => {
     return await api.get(`/admin/assets/${id}/history`)
+  },
+
+  // Global history across all assets (created/assigned/reassigned/unassigned/deleted).
+  fetchAllAssetHistory: async () => {
+    return await api.get('/admin/assets/history')
   },
 
   // ── Escalation Rules ───────────────────────────────────────────────────────
