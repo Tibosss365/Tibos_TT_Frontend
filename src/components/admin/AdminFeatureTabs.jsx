@@ -7,9 +7,10 @@
  *   customFields | ticketTemplates | automation | webhooks | notificationChannels
  *   assets | escalation | recurring | branding
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useFeatureStore } from '../../stores/featureStore'
 import { useAdminStore } from '../../stores/adminStore'
+import { useUiStore } from '../../stores/uiStore'
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -429,21 +430,25 @@ function NotificationChannelsTab() {
 const EMPTY_ASSET_FORM = {
   name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active',
   assigned_to_name: '', assigned_to_email: '', employee_code: '',
+  brand: '', model: '', specification: '', os_version: '', asset_number: '',
 }
 
 function AssetsTab() {
   const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory, fetchAllAssetHistory } = useFeatureStore()
   const { agents, fetchAgents } = useAdminStore()
+  const { addToast } = useUiStore()
   // All users (admin / technician / end users / SSO-provisioned) come from /agents.
   const userOptions = (agents || []).filter(u => u.is_active !== false && String(u.id) !== 'unassigned')
   const [showForm, setShowForm] = useState(false)
   const [showAllHistory, setShowAllHistory] = useState(false)
   const [allHistory, setAllHistory] = useState([])
   const [allHistLoading, setAllHistLoading] = useState(false)
+  const [histSearch, setHistSearch] = useState('')
   const [form, setForm] = useState({ ...EMPTY_ASSET_FORM })
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({})
+  const [editingAsset, setEditingAsset] = useState(null)
   const [historyFor, setHistoryFor] = useState(null)
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
@@ -455,6 +460,14 @@ function AssetsTab() {
     const u = userOptions.find(x => String(x.id) === String(userId))
     if (u) setter(f => ({ ...f, assigned_to_name: u.name, assigned_to_email: u.username || '' }))
   }
+  const applyUserForEdit = (userId) => {
+    const u = userOptions.find(x => String(x.id) === String(userId))
+    if (u) {
+      setEditingAsset(f => ({ ...f, assigned_to_name: u.name, assigned_to_email: u.username || '' }))
+    } else {
+      setEditingAsset(f => ({ ...f, assigned_to_name: '', assigned_to_email: '', employee_code: '' }))
+    }
+  }
   const selectedUserId = (email) => userOptions.find(u => (u.username || '') === email)?.id ?? ''
 
   const handleSave = async () => {
@@ -463,6 +476,29 @@ function AssetsTab() {
       await createAsset(form)
       setShowForm(false)
       setForm({ ...EMPTY_ASSET_FORM })
+      addToast('Asset created successfully', 'success')
+    } catch (e) {
+      addToast(e.message || 'Failed to create asset', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleEditSave = async () => {
+    setSaving(true)
+    try {
+      // Map empty string inputs to null for standard fields to keep database clean
+      const cleanedAsset = { ...editingAsset }
+      for (const key in cleanedAsset) {
+        if (cleanedAsset[key] === '') {
+          cleanedAsset[key] = null
+        }
+      }
+      await updateAsset(editingAsset.id, cleanedAsset)
+      setEditingAsset(null)
+      addToast('Asset updated successfully', 'success')
+    } catch (e) {
+      addToast(e.message || 'Failed to update asset', 'error')
     } finally {
       setSaving(false)
     }
@@ -484,6 +520,9 @@ function AssetsTab() {
     try {
       await updateAsset(editingId, editForm)
       setEditingId(null)
+      addToast('Asset assignment updated successfully', 'success')
+    } catch (e) {
+      addToast(e.message || 'Failed to update assignment', 'error')
     } finally {
       setSaving(false)
     }
@@ -506,6 +545,7 @@ function AssetsTab() {
   const openAllHistory = async () => {
     setShowAllHistory(true)
     setAllHistLoading(true)
+    setHistSearch('')
     try { setAllHistory(await fetchAllAssetHistory() || []) }
     catch { setAllHistory([]) }
     finally { setAllHistLoading(false) }
@@ -515,12 +555,32 @@ function AssetsTab() {
     const reason = window.prompt(`Delete "${a.name}" — reason? (e.g. employee left, damaged, scrapped)`)
     if (reason === null) return            // cancelled
     if (!reason.trim()) { alert('A reason is required to delete an asset.'); return }
-    await deleteAsset(a.id, reason.trim())
+    try {
+      await deleteAsset(a.id, reason.trim())
+      addToast('Asset deleted successfully', 'success')
+    } catch (e) {
+      addToast(e.message || 'Failed to delete asset', 'error')
+    }
   }
 
   const STATUS_COLOR = { active: 'bg-green-100 text-green-700', retired: 'bg-gray-100 text-gray-500', in_repair: 'bg-yellow-100 text-yellow-700', lost: 'bg-red-100 text-red-600' }
   const ACTION_COLOR = { created: 'bg-blue-100 text-blue-700', assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 text-gray-500', deleted: 'bg-red-100 text-red-600' }
   const inputCls = "rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+
+  // Filter history rows by search
+  const filteredHistory = allHistory.filter(h => {
+    if (!histSearch.trim()) return true
+    const q = histSearch.toLowerCase()
+    return (
+      (h.assigned_to_name || '').toLowerCase().includes(q) ||
+      (h.assigned_to_email || '').toLowerCase().includes(q) ||
+      (h.asset_name || '').toLowerCase().includes(q) ||
+      (h.asset_tag || '').toLowerCase().includes(q) ||
+      (h.asset_number || '').toLowerCase().includes(q) ||
+      (h.model || '').toLowerCase().includes(q) ||
+      (h.brand || '').toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div className="space-y-6">
@@ -550,9 +610,20 @@ function AssetsTab() {
             </select>
             <input value={form.asset_tag} onChange={e => setForm(f => ({ ...f, asset_tag: e.target.value }))}
               placeholder="Asset tag (e.g. TIB-001)" className={inputCls} />
+            <input value={form.asset_number} onChange={e => setForm(f => ({ ...f, asset_number: e.target.value }))}
+              placeholder="Asset number (e.g. AST-2024-001)" className={inputCls} />
             <input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
               placeholder="Serial number" className={inputCls} />
+            <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
+              placeholder="Brand (e.g. Dell, HP, Apple)" className={inputCls} />
+            <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
+              placeholder="Model (e.g. Latitude 5420)" className={inputCls} />
+            <input value={form.os_version} onChange={e => setForm(f => ({ ...f, os_version: e.target.value }))}
+              placeholder="OS Version (e.g. Windows 11 Pro)" className={inputCls} />
           </div>
+          <textarea value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
+            placeholder="Specification (e.g. Intel i7, 16GB RAM, 512GB SSD)" rows={2}
+            className={inputCls + ' w-full resize-none'} />
           <p className="text-xs font-medium text-gray-500 pt-1">Assigned to (optional)</p>
           <select value={selectedUserId(form.assigned_to_email)} onChange={e => applyUser(setForm, e.target.value)} className={inputCls + ' w-full'}>
             <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
@@ -581,102 +652,468 @@ function AssetsTab() {
       ) : assets.length === 0 ? (
         <EmptyState icon="💻" title="No assets yet" desc="Start tracking your hardware inventory." />
       ) : (
-        <div className="space-y-2">
-          {assets.map(a => (
-            <div key={a.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm font-medium text-gray-800">{a.name}</span>
-                  {a.asset_tag && <span className="ml-2 text-xs font-mono text-gray-400">{a.asset_tag}</span>}
-                  <span className="ml-2 text-xs text-gray-400">{a.type}</span>
-                  {a.assigned_to_name || a.assigned_to_email ? (
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      Assigned to <span className="font-medium text-gray-700">{a.assigned_to_name || a.assigned_to_email}</span>
-                      {a.assigned_to_email && a.assigned_to_name && <span className="text-gray-400"> · {a.assigned_to_email}</span>}
-                      {a.employee_code && <span className="ml-1 font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{a.employee_code}</span>}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-400 mt-0.5 italic">Unassigned</div>
+        <div className="rounded-xl border border-gray-200 overflow-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Username</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Email ID</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Number</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Tag</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Name</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Brand</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Model</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Specification</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">OS Version</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {assets.map((a, idx) => (
+                <Fragment key={a.id}>
+                  <tr
+                    className={`${editingId === a.id ? 'bg-indigo-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-indigo-50/40`}
+                    style={{ transition: 'background 0.15s' }}
+                  >
+                    {/* Username */}
+                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                      {a.assigned_to_name || <span className="text-gray-400 italic text-xs">Unassigned</span>}
+                      {a.employee_code && (
+                        <span className="ml-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{a.employee_code}</span>
+                      )}
+                    </td>
+                    {/* Email */}
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {a.assigned_to_email || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Asset Number */}
+                    <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                      {a.asset_number || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Asset Tag */}
+                    <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                      {a.asset_tag || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Asset Name */}
+                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                      <div>{a.name}</div>
+                      <div className="text-[10px] text-gray-400 font-normal">{a.type}</div>
+                    </td>
+                    {/* Brand */}
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {a.brand || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Model */}
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {a.model || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Specification */}
+                    <td className="px-4 py-3 text-gray-600 max-w-[180px]">
+                      <span className="line-clamp-2 text-xs" title={a.specification || ''}>
+                        {a.specification || <span className="text-gray-400 italic">—</span>}
+                      </span>
+                    </td>
+                    {/* OS Version */}
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {a.os_version || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Status */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLOR[a.status] || 'bg-gray-100 text-gray-500'}`}>
+                        {a.status}
+                      </span>
+                    </td>
+                    {/* Actions */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setEditingAsset({ ...a })}
+                          className="text-indigo-500 hover:text-indigo-700 text-xs font-semibold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => startAssign(a)}
+                          className="text-gray-500 hover:text-gray-700 text-xs font-semibold"
+                        >
+                          {a.assigned_to_name || a.assigned_to_email ? 'Reassign' : 'Assign'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(a)}
+                          className="text-red-400 hover:text-red-600 text-xs font-semibold"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Inline expand row for Reassign/Assign form */}
+                  {editingId === a.id && (
+                    <tr className="bg-indigo-50/70 border-t border-indigo-100">
+                      <td colSpan={11} className="px-5 py-4">
+                        <div className="space-y-3">
+                          <p className="text-xs font-semibold text-indigo-700 mb-2">
+                            {a.assigned_to_name || a.assigned_to_email ? `Reassign "${a.name}"` : `Assign "${a.name}"`}
+                          </p>
+                          <select
+                            value={selectedUserId(editForm.assigned_to_email)}
+                            onChange={e => applyUser(setEditForm, e.target.value)}
+                            className={inputCls + ' w-full max-w-lg'}
+                          >
+                            <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
+                            {userOptions.map(u => (
+                              <option key={u.id} value={u.id}>{u.name} · {u.username}{u.role ? ` (${u.role})` : ''}</option>
+                            ))}
+                          </select>
+                          <div className="grid grid-cols-3 gap-3 max-w-2xl">
+                            <input
+                              value={editForm.assigned_to_name}
+                              onChange={e => setEditForm(f => ({ ...f, assigned_to_name: e.target.value }))}
+                              placeholder="User name"
+                              className={inputCls}
+                            />
+                            <input
+                              value={editForm.assigned_to_email}
+                              onChange={e => setEditForm(f => ({ ...f, assigned_to_email: e.target.value }))}
+                              placeholder="User email"
+                              className={inputCls}
+                            />
+                            <input
+                              value={editForm.employee_code}
+                              onChange={e => setEditForm(f => ({ ...f, employee_code: e.target.value }))}
+                              placeholder="Employee code"
+                              className={inputCls}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleAssignSave}
+                              disabled={saving}
+                              className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              {saving ? 'Saving…' : 'Save assignment'}
+                            </button>
+                            <button
+                              onClick={() => setEditForm(f => ({ ...f, assigned_to_name: '', assigned_to_email: '', employee_code: '' }))}
+                              className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-600 text-xs font-semibold hover:bg-gray-50"
+                            >
+                              Clear (unassign)
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="px-3 py-1.5 rounded-lg text-gray-500 text-xs hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
                   )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[a.status] || 'bg-gray-100 text-gray-500'}`}>{a.status}</span>
-                  <button onClick={() => startAssign(a)} className="text-indigo-500 hover:text-indigo-700 text-sm">
-                    {a.assigned_to_name || a.assigned_to_email ? 'Reassign' : 'Assign'}
-                  </button>
-                  <button onClick={() => handleDelete(a)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
-                </div>
-              </div>
-
-              {editingId === a.id && (
-                <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
-                  <select value={selectedUserId(editForm.assigned_to_email)} onChange={e => applyUser(setEditForm, e.target.value)} className={inputCls + ' w-full'}>
-                    <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
-                    {userOptions.map(u => <option key={u.id} value={u.id}>{u.name} · {u.username}{u.role ? ` (${u.role})` : ''}</option>)}
-                  </select>
-                  <div className="grid grid-cols-3 gap-3">
-                    <input value={editForm.assigned_to_name} onChange={e => setEditForm(f => ({ ...f, assigned_to_name: e.target.value }))}
-                      placeholder="User name" className={inputCls} />
-                    <input value={editForm.assigned_to_email} onChange={e => setEditForm(f => ({ ...f, assigned_to_email: e.target.value }))}
-                      placeholder="User email" className={inputCls} />
-                    <input value={editForm.employee_code} onChange={e => setEditForm(f => ({ ...f, employee_code: e.target.value }))}
-                      placeholder="Employee code" className={inputCls} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={handleAssignSave} disabled={saving}
-                      className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50">
-                      {saving ? 'Saving…' : 'Save assignment'}
-                    </button>
-                    <button onClick={() => setEditForm(f => ({ ...f, assigned_to_name: '', assigned_to_email: '', employee_code: '' }))}
-                      className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Clear (unassign)</button>
-                    <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-gray-500 text-xs">Cancel</button>
-                  </div>
-                </div>
-              )}
-
-            </div>
-          ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* ── Global Asset History modal ── */}
+      {/* ── Global Asset History — Full-width Table Modal ── */}
       {showAllHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowAllHistory(false) }}>
-          <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl border border-glass w-full max-w-3xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-white/10">
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setShowAllHistory(false) }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col"
+            style={{ width: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 3rem)' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white">Asset History</h4>
-                <p className="text-xs text-gray-500">Every asset action — created, assigned, reassigned, unassigned and deleted.</p>
+                <h4 className="text-base font-bold text-gray-900">Asset History</h4>
+                <p className="text-xs text-gray-500 mt-0.5">Complete audit trail — every created, assigned, reassigned, unassigned and deleted event.</p>
               </div>
-              <button onClick={() => setShowAllHistory(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-white text-lg">✕</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              {allHistLoading ? (
-                <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
-              ) : allHistory.length === 0 ? (
-                <p className="text-sm text-gray-400 italic text-center py-8">No asset history yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {allHistory.map(h => (
-                    <div key={h.id} className="flex items-start gap-2.5 text-xs border-b border-gray-50 dark:border-white/5 pb-2">
-                      <span className={`px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>{h.action}</span>
-                      <div className="text-gray-600 dark:text-gray-300 flex-1 min-w-0">
-                        <span className="font-semibold text-gray-800 dark:text-white">{h.asset_name || 'Asset'}</span>
-                        {h.asset_tag && <span className="ml-1 font-mono text-[10px] text-gray-400">{h.asset_tag}</span>}
-                        {(h.assigned_to_name || h.assigned_to_email) && (
-                          <span> — <span className="font-medium">{h.assigned_to_name || h.assigned_to_email}</span>
-                            {h.assigned_to_email && h.assigned_to_name && <span className="text-gray-400"> · {h.assigned_to_email}</span>}
-                          </span>
-                        )}
-                        {h.note && <span className="text-gray-400"> — {h.note}</span>}
-                        <div className="text-[10px] text-gray-400 mt-0.5">
-                          {new Date(h.created_at).toLocaleString()}{h.changed_by_name && <span> · by {h.changed_by_name}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <input
+                    value={histSearch}
+                    onChange={e => setHistSearch(e.target.value)}
+                    placeholder="Search by user, asset, model…"
+                    className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 w-64"
+                  />
+                  <svg className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </div>
+                <button onClick={() => setShowAllHistory(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              {allHistLoading ? (
+                <div className="flex items-center justify-center py-20 text-sm text-gray-400">Loading history…</div>
+              ) : filteredHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <div className="text-4xl mb-3">📋</div>
+                  <p className="text-sm text-gray-500 font-medium">{histSearch ? 'No matching records found.' : 'No asset history yet.'}</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm border-collapse">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Action</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Username</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Email ID</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Number</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Tag</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Name</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Model</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Brand</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Specification</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">OS Version</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Date &amp; Time</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Changed By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredHistory.map((h, idx) => (
+                      <tr key={h.id} className={idx % 2 === 0 ? 'bg-white hover:bg-indigo-50/40' : 'bg-gray-50/50 hover:bg-indigo-50/40'} style={{ transition: 'background 0.15s' }}>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>
+                            {h.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                          {h.assigned_to_name || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {h.assigned_to_email || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                          {h.asset_number || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                          {h.asset_tag || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                          {h.asset_name || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {h.model || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {h.brand || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 max-w-xs">
+                          <span className="line-clamp-2" title={h.specification || ''}>
+                            {h.specification || <span className="text-gray-400 italic">—</span>}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {h.os_version || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                          {new Date(h.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {h.changed_by_name || <span className="text-gray-400 italic">—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between shrink-0 bg-gray-50 rounded-b-2xl">
+              <p className="text-xs text-gray-400">
+                {allHistLoading ? 'Loading…' : `${filteredHistory.length} record${filteredHistory.length !== 1 ? 's' : ''}${histSearch ? ' (filtered)' : ''}`}
+              </p>
+              <button onClick={() => setShowAllHistory(false)}
+                className="px-4 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Edit Asset Modal ── */}
+      {editingAsset && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6 px-4 bg-black/50 backdrop-blur-sm"
+          onClick={e => { if (e.target === e.currentTarget) setEditingAsset(null) }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col w-full max-w-3xl max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+              <div>
+                <h4 className="text-base font-bold text-gray-900">Edit Asset: {editingAsset.name}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">Modify hardware properties and assignment info.</p>
+              </div>
+              <button onClick={() => setEditingAsset(null)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Asset Name *</label>
+                  <input
+                    value={editingAsset.name || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Asset name *"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Type</label>
+                  <select
+                    value={editingAsset.type || 'laptop'}
+                    onChange={e => setEditingAsset(f => ({ ...f, type: e.target.value }))}
+                    className={inputCls + ' w-full'}
+                  >
+                    {['laptop','desktop','monitor','printer','phone','server','network','other'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Asset Tag</label>
+                  <input
+                    value={editingAsset.asset_tag || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, asset_tag: e.target.value }))}
+                    placeholder="Asset tag"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Asset Number</label>
+                  <input
+                    value={editingAsset.asset_number || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, asset_number: e.target.value }))}
+                    placeholder="Asset number"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Serial Number</label>
+                  <input
+                    value={editingAsset.serial_number || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, serial_number: e.target.value }))}
+                    placeholder="Serial number"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Brand</label>
+                  <input
+                    value={editingAsset.brand || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, brand: e.target.value }))}
+                    placeholder="Brand"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Model</label>
+                  <input
+                    value={editingAsset.model || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, model: e.target.value }))}
+                    placeholder="Model"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">OS Version</label>
+                  <input
+                    value={editingAsset.os_version || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, os_version: e.target.value }))}
+                    placeholder="OS Version"
+                    className={inputCls + ' w-full'}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
+                  <select
+                    value={editingAsset.status || 'active'}
+                    onChange={e => setEditingAsset(f => ({ ...f, status: e.target.value }))}
+                    className={inputCls + ' w-full'}
+                  >
+                    {['active', 'retired', 'in_repair', 'lost'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Specification</label>
+                <textarea
+                  value={editingAsset.specification || ''}
+                  onChange={e => setEditingAsset(f => ({ ...f, specification: e.target.value }))}
+                  placeholder="Specification"
+                  rows={2}
+                  className={inputCls + ' w-full resize-none'}
+                />
+              </div>
+
+              {/* Assignment Details */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-bold text-gray-700 mb-2">Assignment Details</p>
+                <div className="space-y-3">
+                  <select
+                    value={selectedUserId(editingAsset.assigned_to_email)}
+                    onChange={e => applyUserForEdit(e.target.value)}
+                    className={inputCls + ' w-full'}
+                  >
+                    <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
+                    {userOptions.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} · {u.username}{u.role ? ` (${u.role})` : ''}</option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-3 gap-3">
+                    <input
+                      value={editingAsset.assigned_to_name || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, assigned_to_name: e.target.value }))}
+                      placeholder="User name"
+                      className={inputCls}
+                    />
+                    <input
+                      value={editingAsset.assigned_to_email || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, assigned_to_email: e.target.value }))}
+                      placeholder="User email"
+                      className={inputCls}
+                    />
+                    <input
+                      value={editingAsset.employee_code || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, employee_code: e.target.value }))}
+                      placeholder="Employee code"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 bg-gray-50 rounded-b-2xl">
+              <button
+                onClick={() => setEditingAsset(null)}
+                className="px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSave}
+                disabled={saving || !editingAsset.name}
+                className="px-5 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
             </div>
           </div>
         </div>
