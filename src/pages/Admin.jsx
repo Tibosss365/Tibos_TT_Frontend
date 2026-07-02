@@ -11,7 +11,7 @@ import { Button } from '../components/ui/Button'
 import { PriorityBadge } from '../components/ui/Badge'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { PRIORITIES } from '../utils/ticketUtils'
-import { api } from '../api/client'
+import { api, BASE } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
 const TABS = [
@@ -4068,10 +4068,17 @@ export default function Admin() {
 
                   <div>
                     <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Redirect URI</label>
-                    <input className={inputCls + ' font-mono text-xs'} placeholder="https://your-api.example.com/auth/sso/callback"
+                    <input className={inputCls + ' font-mono text-xs'} placeholder={`${BASE}/auth/sso/callback`}
                       value={ssoEdits.redirect_uri}
                       onChange={e => setSsoEdits(s => ({ ...s, redirect_uri: e.target.value }))} />
-                    <p className="text-[10px] t-sub mt-1">Must match exactly what you registered in Azure AD → Authentication → Redirect URIs</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <code className="text-[10px] font-mono t-main bg-black/5 dark:bg-white/5 px-2 py-1 rounded flex-1 truncate">{BASE}/auth/sso/callback</code>
+                      <button type="button" onClick={() => { navigator.clipboard.writeText(`${BASE}/auth/sso/callback`); addToast('Redirect URI copied', 'success') }}
+                        className="text-[10px] font-medium text-indigo-500 hover:text-indigo-400 px-2 py-1 rounded border border-glass">Copy</button>
+                      <button type="button" onClick={() => setSsoEdits(s => ({ ...s, redirect_uri: `${BASE}/auth/sso/callback` }))}
+                        className="text-[10px] font-medium text-indigo-500 hover:text-indigo-400 px-2 py-1 rounded border border-glass">Use this</button>
+                    </div>
+                    <p className="text-[10px] t-sub mt-1">Register this <strong>exact</strong> URL in Azure AD → Authentication → Redirect URIs (type: Web).</p>
                   </div>
                 </div>
               </Card>
