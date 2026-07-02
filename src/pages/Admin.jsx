@@ -2572,10 +2572,12 @@ export default function Admin() {
   const bulkFileRef = useRef(null)
 
   const downloadUserTemplate = () => {
+    // role must be one of: user (end user) | technician | admin
     const csv =
       'name,username,password,role,group\n' +
       'John Doe,john.doe@company.com,ChangeMe@123,user,End Users\n' +
-      'Jane Smith,jane.smith@company.com,ChangeMe@123,user,End Users\n'
+      'Jane Smith,jane.smith@company.com,ChangeMe@123,technician,L1 Support\n' +
+      'Alan Admin,alan.admin@company.com,ChangeMe@123,admin,IT Admin\n'
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = 'users-template.csv'
