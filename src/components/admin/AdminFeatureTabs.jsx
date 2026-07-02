@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useFeatureStore } from '../../stores/featureStore'
+import { useAdminStore } from '../../stores/adminStore'
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
@@ -432,6 +433,9 @@ const EMPTY_ASSET_FORM = {
 
 function AssetsTab() {
   const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory } = useFeatureStore()
+  const { agents, fetchAgents } = useAdminStore()
+  // All users (admin / technician / end users / SSO-provisioned) come from /agents.
+  const userOptions = (agents || []).filter(u => u.is_active !== false && String(u.id) !== 'unassigned')
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_ASSET_FORM })
   const [saving, setSaving] = useState(false)
@@ -441,7 +445,14 @@ function AssetsTab() {
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  useEffect(() => { fetchAssets() }, [])
+  useEffect(() => { fetchAssets(); if (!agents || agents.length === 0) fetchAgents() }, [])
+
+  // Fill name + email from a picked user (kept editable afterwards).
+  const applyUser = (setter, userId) => {
+    const u = userOptions.find(x => String(x.id) === String(userId))
+    if (u) setter(f => ({ ...f, assigned_to_name: u.name, assigned_to_email: u.username || '' }))
+  }
+  const selectedUserId = (email) => userOptions.find(u => (u.username || '') === email)?.id ?? ''
 
   const handleSave = async () => {
     setSaving(true)
@@ -519,6 +530,10 @@ function AssetsTab() {
               placeholder="Serial number" className={inputCls} />
           </div>
           <p className="text-xs font-medium text-gray-500 pt-1">Assigned to (optional)</p>
+          <select value={selectedUserId(form.assigned_to_email)} onChange={e => applyUser(setForm, e.target.value)} className={inputCls + ' w-full'}>
+            <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
+            {userOptions.map(u => <option key={u.id} value={u.id}>{u.name} · {u.username}{u.role ? ` (${u.role})` : ''}</option>)}
+          </select>
           <div className="grid grid-cols-3 gap-4">
             <input value={form.assigned_to_name} onChange={e => setForm(f => ({ ...f, assigned_to_name: e.target.value }))}
               placeholder="User name (e.g. Ravi Kumar)" className={inputCls} />
@@ -572,6 +587,10 @@ function AssetsTab() {
 
               {editingId === a.id && (
                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                  <select value={selectedUserId(editForm.assigned_to_email)} onChange={e => applyUser(setEditForm, e.target.value)} className={inputCls + ' w-full'}>
+                    <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
+                    {userOptions.map(u => <option key={u.id} value={u.id}>{u.name} · {u.username}{u.role ? ` (${u.role})` : ''}</option>)}
+                  </select>
                   <div className="grid grid-cols-3 gap-3">
                     <input value={editForm.assigned_to_name} onChange={e => setEditForm(f => ({ ...f, assigned_to_name: e.target.value }))}
                       placeholder="User name" className={inputCls} />
