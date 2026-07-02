@@ -431,6 +431,7 @@ const EMPTY_ASSET_FORM = {
   name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active',
   assigned_to_name: '', assigned_to_email: '', employee_code: '',
   brand: '', model: '', specification: '', os_version: '', asset_number: '',
+  processor: '', ram: '', rom: '',
 }
 
 function AssetsTab() {
@@ -621,9 +622,33 @@ function AssetsTab() {
             <input value={form.os_version} onChange={e => setForm(f => ({ ...f, os_version: e.target.value }))}
               placeholder="OS Version (e.g. Windows 11 Pro)" className={inputCls} />
           </div>
-          <textarea value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
-            placeholder="Specification (e.g. Intel i7, 16GB RAM, 512GB SSD)" rows={2}
-            className={inputCls + ' w-full resize-none'} />
+          {/* Hardware Specification Fields */}
+          <div>
+            <p className="text-xs font-semibold text-gray-600 mb-2">Specification</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="text-[11px] text-gray-500 mb-1 block">Processor</label>
+                <input value={form.processor || ''} onChange={e => setForm(f => ({ ...f, processor: e.target.value }))}
+                  placeholder="e.g. Intel Core i7-12th Gen" className={inputCls + ' w-full'} />
+              </div>
+              <div>
+                <label className="text-[11px] text-gray-500 mb-1 block">RAM</label>
+                <input value={form.ram || ''} onChange={e => setForm(f => ({ ...f, ram: e.target.value }))}
+                  placeholder="e.g. 16GB DDR5" className={inputCls + ' w-full'} />
+              </div>
+              <div>
+                <label className="text-[11px] text-gray-500 mb-1 block">ROM / Storage</label>
+                <input value={form.rom || ''} onChange={e => setForm(f => ({ ...f, rom: e.target.value }))}
+                  placeholder="e.g. 512GB SSD" className={inputCls + ' w-full'} />
+              </div>
+            </div>
+            <div className="mt-2">
+              <label className="text-[11px] text-gray-500 mb-1 block">Additional Specification Notes</label>
+              <textarea value={form.specification} onChange={e => setForm(f => ({ ...f, specification: e.target.value }))}
+                placeholder="Any other specification details…" rows={2}
+                className={inputCls + ' w-full resize-none'} />
+            </div>
+          </div>
           <p className="text-xs font-medium text-gray-500 pt-1">Assigned to (optional)</p>
           <select value={selectedUserId(form.assigned_to_email)} onChange={e => applyUser(setForm, e.target.value)} className={inputCls + ' w-full'}>
             <option value="">— Pick a user (admin / technician / end user / SSO) —</option>
@@ -1050,15 +1075,48 @@ function AssetsTab() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 mb-1 block">Specification</label>
-                <textarea
-                  value={editingAsset.specification || ''}
-                  onChange={e => setEditingAsset(f => ({ ...f, specification: e.target.value }))}
-                  placeholder="Specification"
-                  rows={2}
-                  className={inputCls + ' w-full resize-none'}
-                />
+              {/* Hardware Specification */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-bold text-gray-700 mb-3">Specification</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Processor</label>
+                    <input
+                      value={editingAsset.processor || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, processor: e.target.value }))}
+                      placeholder="e.g. Intel Core i7-12th Gen"
+                      className={inputCls + ' w-full'}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 mb-1 block">RAM</label>
+                    <input
+                      value={editingAsset.ram || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, ram: e.target.value }))}
+                      placeholder="e.g. 16GB DDR5"
+                      className={inputCls + ' w-full'}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-gray-500 mb-1 block">ROM / Storage</label>
+                    <input
+                      value={editingAsset.rom || ''}
+                      onChange={e => setEditingAsset(f => ({ ...f, rom: e.target.value }))}
+                      placeholder="e.g. 512GB SSD"
+                      className={inputCls + ' w-full'}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Additional Specification Notes</label>
+                  <textarea
+                    value={editingAsset.specification || ''}
+                    onChange={e => setEditingAsset(f => ({ ...f, specification: e.target.value }))}
+                    placeholder="Any other specification details…"
+                    rows={2}
+                    className={inputCls + ' w-full resize-none'}
+                  />
+                </div>
               </div>
 
               {/* Assignment Details */}
