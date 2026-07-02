@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download } from 'lucide-react'
 import AdminFeatureTabs from '../components/admin/AdminFeatureTabs'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
@@ -2566,6 +2566,65 @@ export default function Admin() {
     }
   }
 
+  // ── Bulk user creation via CSV ─────────────────────────────────────────────
+  const [bulkBusy, setBulkBusy]     = useState(false)
+  const [bulkResult, setBulkResult] = useState(null)  // { ok, total, errors[] }
+  const bulkFileRef = useRef(null)
+
+  const downloadUserTemplate = () => {
+    const csv =
+      'name,username,password,role,group\n' +
+      'John Doe,john.doe@company.com,ChangeMe@123,user,End Users\n' +
+      'Jane Smith,jane.smith@company.com,ChangeMe@123,user,End Users\n'
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = 'users-template.csv'
+    a.click()
+  }
+
+  const parseCsvRows = (text) => {
+    const lines = text.split(/\r?\n/).filter(l => l.trim())
+    if (!lines.length) return []
+    const splitCells = (line) =>
+      (line.match(/("(?:[^"]|"")*"|[^,]*)(?:,|$)/g) || [])
+        .filter((_, i, arr) => i < arr.length)
+        .map(c => c.replace(/,$/, '').replace(/^"|"$/g, '').replace(/""/g, '"').trim())
+    const headers = splitCells(lines[0]).map(h => h.toLowerCase())
+    return lines.slice(1).map(line => {
+      const cells = splitCells(line)
+      const row = {}
+      headers.forEach((h, i) => { row[h] = cells[i] || '' })
+      return row
+    })
+  }
+
+  const handleBulkUpload = async (file) => {
+    if (!file) return
+    setBulkBusy(true); setBulkResult(null)
+    try {
+      const rows = parseCsvRows(await file.text())
+      if (!rows.length) { addToast('CSV is empty', 'error'); setBulkBusy(false); return }
+      let ok = 0
+      const errors = []
+      for (const [i, r] of rows.entries()) {
+        const name     = r.name || r['full name'] || ''
+        const username = r.username || r.email || ''
+        const password = r.password || ''
+        const role     = (r.role || 'user').toLowerCase()
+        const group    = r.group || r['group / team'] || 'End Users'
+        if (!name || !username || !password) { errors.push(`Row ${i + 2}: name, username and password are required`); continue }
+        try { await addAgent({ name, username, password, role, group }); ok++ }
+        catch (err) { errors.push(`Row ${i + 2} (${username}): ${err.message || 'failed'}`) }
+      }
+      setBulkResult({ ok, total: rows.length, errors })
+      addToast(`${ok}/${rows.length} users created`, ok > 0 ? 'success' : 'error')
+    } catch {
+      addToast('Could not read the CSV file', 'error')
+    } finally {
+      setBulkBusy(false)
+    }
+  }
+
   const handleSaveSla = async () => {
     try {
       await updateSla(slaEdits)
@@ -3561,6 +3620,7 @@ export default function Admin() {
 
       {/* Agents */}
       {tab === 'agents' && (
+        <div className="space-y-4">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <Card>
             <CardHeader title="Add New Agent" />
@@ -3630,6 +3690,45 @@ export default function Admin() {
               ))}
             </div>
           </Card>
+        </div>
+
+        {/* Bulk create users via CSV */}
+        <Card>
+          <CardHeader title="Bulk Create Users (CSV)" subtitle="Upload a CSV to create many users / end users at once" />
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={downloadUserTemplate}>
+                <Download size={13} /> Download Template
+              </Button>
+              <input
+                ref={bulkFileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={e => { handleBulkUpload(e.target.files[0]); e.target.value = '' }}
+              />
+              <Button variant="primary" size="sm" disabled={bulkBusy} onClick={() => bulkFileRef.current?.click()}>
+                {bulkBusy ? <><Loader2 size={13} className="animate-spin" /> Creating…</> : <><Upload size={13} /> Upload CSV</>}
+              </Button>
+            </div>
+            <p className="text-[11px] t-muted leading-relaxed">
+              Columns: <code className="t-main font-mono">name, username, password, role, group</code>.
+              Use <strong>role = user</strong> for end users (also <em>technician</em> / <em>admin</em>). Username can be an email.
+            </p>
+            {bulkResult && (
+              <div className="rounded-xl border border-glass p-3 text-xs space-y-1.5 bg-black/3 dark:bg-white/3">
+                <div className="font-semibold t-main">
+                  {bulkResult.ok} of {bulkResult.total} users created{bulkResult.errors.length ? ` · ${bulkResult.errors.length} failed` : ''}
+                </div>
+                {bulkResult.errors.length > 0 && (
+                  <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                    {bulkResult.errors.map((er, i) => <div key={i} className="text-rose-500">• {er}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
         </div>
       )}
 
