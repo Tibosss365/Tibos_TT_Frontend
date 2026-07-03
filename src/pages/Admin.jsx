@@ -485,12 +485,18 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
             <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Poll Interval</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" min={1} max={1440} className="glass-input w-24 text-sm text-center"
-                    value={inboundEdits.pollIntervalMinutes || 5}
-                    onChange={e => set('pollIntervalMinutes', Number(e.target.value))} />
-                  <span className="text-xs t-muted">minutes</span>
-                </div>
+                <select className="glass-input w-full text-sm"
+                  value={inboundEdits.pollIntervalMinutes ?? 5}
+                  onChange={e => set('pollIntervalMinutes', Number(e.target.value))}>
+                  <option value={0}>Near real-time (~30 seconds)</option>
+                  <option value={1}>Every 1 minute</option>
+                  <option value={2}>Every 2 minutes</option>
+                  <option value={5}>Every 5 minutes</option>
+                  <option value={10}>Every 10 minutes</option>
+                  <option value={15}>Every 15 minutes</option>
+                  <option value={30}>Every 30 minutes</option>
+                </select>
+                <p className="text-[10px] t-sub mt-1">Lower = faster ticket creation. “Near real-time” checks the mailbox every ~30 seconds.</p>
               </div>
 
               {/* Stats */}
