@@ -756,11 +756,19 @@ function AssetsTab() {
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {a.model || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
-                    {/* Specification */}
-                    <td className="px-4 py-3 text-gray-600 max-w-[180px]">
-                      <span className="line-clamp-2 text-xs" title={a.specification || ''}>
-                        {a.specification || <span className="text-gray-400 italic">—</span>}
-                      </span>
+                    {/* Specification — Processor / RAM / ROM (+ notes) */}
+                    <td className="px-4 py-3 text-gray-600 max-w-[200px]">
+                      {(a.processor || a.ram || a.rom) && (
+                        <div className="text-xs font-medium text-gray-700">
+                          {[a.processor, a.ram, a.rom].filter(Boolean).join(' / ')}
+                        </div>
+                      )}
+                      {a.specification && (
+                        <div className="text-[10px] text-gray-400 line-clamp-2" title={a.specification}>{a.specification}</div>
+                      )}
+                      {!(a.processor || a.ram || a.rom) && !a.specification && (
+                        <span className="text-gray-400 italic text-xs">—</span>
+                      )}
                     </td>
                     {/* OS Version */}
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
