@@ -624,7 +624,16 @@ export function TicketDetailModal({ ticket, onClose }) {
   }, [liveTicket, isEditing]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
-  const handleEdit   = () => setIsEditing(true)
+  const handleEdit = () => {
+    // Email-sourced descriptions carry Word/Outlook junk (<head>, @font-face
+    // <style>, MsoNormal, doc wrappers). Clean it when entering edit mode so the
+    // agent edits — and saves — the tidy version, not the raw scaffold.
+    if (looksLikeHtml(edits.description)) {
+      const cleaned = cleanEmailHtml(edits.description)
+      if (cleaned && cleaned !== edits.description) set('description', cleaned)
+    }
+    setIsEditing(true)
+  }
   const handleCancel = () => {
     setEdits({
       subject:     liveTicket.subject     || '',
