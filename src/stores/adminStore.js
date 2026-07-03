@@ -390,7 +390,7 @@ export const useAdminStore = create(
               defaultAssignee:     data.default_assignee_id
                                      ? String(data.default_assignee_id)
                                      : 'unassigned',
-              pollIntervalMinutes: data.poll_interval_minutes || 5,
+              pollIntervalMinutes: data.poll_interval_minutes ?? 5,
               markSeen:            data.mark_seen          ?? true,
               moveToFolder:        data.move_to_folder     || '',
               filterRules:         data.filter_rules       || [],
@@ -418,7 +418,9 @@ export const useAdminStore = create(
           default_assignee_id:  inboundState.defaultAssignee !== 'unassigned'
                                   ? inboundState.defaultAssignee
                                   : null,
-          poll_interval_minutes: Number(inboundState.pollIntervalMinutes) || 5,
+          poll_interval_minutes: inboundState.pollIntervalMinutes == null
+                                   ? 5
+                                   : Number(inboundState.pollIntervalMinutes),
           mark_seen:            inboundState.markSeen            ?? true,
           move_to_folder:       inboundState.moveToFolder        || null,
           filter_rules:         inboundState.filterRules         || [],
