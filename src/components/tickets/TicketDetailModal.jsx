@@ -716,6 +716,16 @@ export function TicketDetailModal({ ticket, onClose }) {
       return
     }
 
+    // An agent must be assigned before a ticket can be resolved or closed
+    if (['resolved','closed'].includes(merged.status) && !['resolved','closed'].includes(liveTicket.status)) {
+      const effectiveAssignee = merged.assignee || liveTicket.assignee
+      if (!effectiveAssignee) {
+        addToast('Assign an agent before resolving or closing the ticket', 'error')
+        setActiveTab('details')
+        return
+      }
+    }
+
     const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution','source','dueDate']
     const changes = {}
     // Compare against liveTicket so we catch changes the backend already applied
@@ -1622,8 +1632,9 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <Button
                         variant="primary"
                         size="sm"
-                        disabled={!resolverId || !edits.resolution.trim()}
+                        disabled={!resolverId || !edits.resolution.trim() || !(edits.assignee || liveTicket.assignee)}
                         onClick={async () => {
+                          if (!(edits.assignee || liveTicket.assignee)) { addToast('Assign an agent before resolving or closing the ticket', 'error'); setActiveTab('details'); return }
                           if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
                           if (!edits.resolution.trim()) { addToast('Please enter resolution notes before resolving', 'error'); return }
                           const resolverAgentName = getAgentName(resolverId)
