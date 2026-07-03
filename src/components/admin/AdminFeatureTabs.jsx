@@ -430,9 +430,17 @@ function NotificationChannelsTab() {
 const EMPTY_ASSET_FORM = {
   name: '', type: 'laptop', asset_tag: '', serial_number: '', status: 'active',
   assigned_to_name: '', assigned_to_email: '', employee_code: '',
-  brand: '', model: '', specification: '', os_version: '', asset_number: '',
-  processor: '', ram: '', rom: '',
+  brand: '', model: '', specification: '', os_version: '',
+  processor: '', ram: '', rom: '', adaptor_status: 'not_provided',
 }
+
+// Laptop adaptor status options
+const ADAPTOR_OPTIONS = [
+  { value: 'not_provided', label: 'Not provided' },
+  { value: 'provided',     label: 'Provided' },
+  { value: 'replaced',     label: 'Replaced' },
+]
+const ADAPTOR_COLOR = { provided: 'bg-green-100 text-green-700', replaced: 'bg-amber-100 text-amber-700', not_provided: 'bg-gray-100 text-gray-500' }
 
 function AssetsTab() {
   const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory, fetchAllAssetHistory } = useFeatureStore()
@@ -453,6 +461,7 @@ function AssetsTab() {
   const [historyFor, setHistoryFor] = useState(null)
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [assetSearch, setAssetSearch] = useState('')
 
   useEffect(() => { fetchAssets(); if (!agents || agents.length === 0) fetchAgents() }, [])
 
@@ -583,6 +592,15 @@ function AssetsTab() {
     )
   })
 
+  // Filter the assets table by search (name / tag / serial / brand / model / OS / assignee).
+  const filteredAssets = assets.filter(a => {
+    const q = assetSearch.trim().toLowerCase()
+    if (!q) return true
+    return [a.name, a.asset_tag, a.serial_number, a.brand, a.model, a.os_version,
+            a.assigned_to_name, a.assigned_to_email, a.type, a.status]
+      .some(v => (v || '').toString().toLowerCase().includes(q))
+  })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -611,8 +629,6 @@ function AssetsTab() {
             </select>
             <input value={form.asset_tag} onChange={e => setForm(f => ({ ...f, asset_tag: e.target.value }))}
               placeholder="Asset tag (e.g. TIB-001)" className={inputCls} />
-            <input value={form.asset_number} onChange={e => setForm(f => ({ ...f, asset_number: e.target.value }))}
-              placeholder="Asset number (e.g. AST-2024-001)" className={inputCls} />
             <input value={form.serial_number} onChange={e => setForm(f => ({ ...f, serial_number: e.target.value }))}
               placeholder="Serial number" className={inputCls} />
             <input value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
@@ -621,6 +637,9 @@ function AssetsTab() {
               placeholder="Model (e.g. Latitude 5420)" className={inputCls} />
             <input value={form.os_version} onChange={e => setForm(f => ({ ...f, os_version: e.target.value }))}
               placeholder="OS Version (e.g. Windows 11 Pro)" className={inputCls} />
+            <select value={form.adaptor_status || 'not_provided'} onChange={e => setForm(f => ({ ...f, adaptor_status: e.target.value }))} className={inputCls} title="Laptop adaptor">
+              {ADAPTOR_OPTIONS.map(o => <option key={o.value} value={o.value}>Adaptor: {o.label}</option>)}
+            </select>
           </div>
           {/* Hardware Specification Fields */}
           <div>
@@ -672,10 +691,18 @@ function AssetsTab() {
         </div>
       )}
 
+      {assets.length > 0 && (
+        <input value={assetSearch} onChange={e => setAssetSearch(e.target.value)}
+          placeholder="🔍  Search assets — name, tag, serial, brand, model, user, email…"
+          className={inputCls + ' w-full max-w-md'} />
+      )}
+
       {assetsLoading ? (
         <div className="text-sm text-gray-400 py-8 text-center">Loading…</div>
       ) : assets.length === 0 ? (
         <EmptyState icon="💻" title="No assets yet" desc="Start tracking your hardware inventory." />
+      ) : filteredAssets.length === 0 ? (
+        <div className="text-sm text-gray-400 py-8 text-center">No assets match “{assetSearch}”.</div>
       ) : (
         <div className="rounded-xl border border-gray-200 overflow-auto">
           <table className="w-full text-sm border-collapse">
@@ -683,19 +710,19 @@ function AssetsTab() {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Username</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Email ID</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Number</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Tag</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Name</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Brand</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Model</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Specification</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">OS Version</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Adaptor</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {assets.map((a, idx) => (
+              {filteredAssets.map((a, idx) => (
                 <Fragment key={a.id}>
                   <tr
                     className={`${editingId === a.id ? 'bg-indigo-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-indigo-50/40`}
@@ -711,10 +738,6 @@ function AssetsTab() {
                     {/* Email */}
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {a.assigned_to_email || <span className="text-gray-400 italic text-xs">—</span>}
-                    </td>
-                    {/* Asset Number */}
-                    <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
-                      {a.asset_number || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Asset Tag */}
                     <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
@@ -742,6 +765,12 @@ function AssetsTab() {
                     {/* OS Version */}
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                       {a.os_version || <span className="text-gray-400 italic text-xs">—</span>}
+                    </td>
+                    {/* Adaptor */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${ADAPTOR_COLOR[a.adaptor_status] || ADAPTOR_COLOR.not_provided}`}>
+                        {(ADAPTOR_OPTIONS.find(o => o.value === a.adaptor_status) || ADAPTOR_OPTIONS[0]).label}
+                      </span>
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -1017,15 +1046,6 @@ function AssetsTab() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Asset Number</label>
-                  <input
-                    value={editingAsset.asset_number || ''}
-                    onChange={e => setEditingAsset(f => ({ ...f, asset_number: e.target.value }))}
-                    placeholder="Asset number"
-                    className={inputCls + ' w-full'}
-                  />
-                </div>
-                <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Serial Number</label>
                   <input
                     value={editingAsset.serial_number || ''}
@@ -1071,6 +1091,16 @@ function AssetsTab() {
                     {['active', 'retired', 'in_repair', 'lost'].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Laptop Adaptor</label>
+                  <select
+                    value={editingAsset.adaptor_status || 'not_provided'}
+                    onChange={e => setEditingAsset(f => ({ ...f, adaptor_status: e.target.value }))}
+                    className={inputCls + ' w-full'}
+                  >
+                    {ADAPTOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
               </div>
