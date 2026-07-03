@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
   AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users, EyeOff,
-  FileSpreadsheet, FileText,
+  FileSpreadsheet, FileText, Inbox,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
@@ -311,7 +311,11 @@ export default function Dashboard() {
       (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
       !ignoredSlaIds[t.id]
     ).length
-    return { open, inProgress, onHold, resolved, critical, slaOverdue, total: displayTickets.length }
+    // Unpicked / unassigned open pool — tickets waiting for an agent to pick up
+    const unassigned = displayTickets.filter(t =>
+      !t.assignee && t.status !== 'resolved' && t.status !== 'closed'
+    ).length
+    return { open, inProgress, onHold, resolved, critical, slaOverdue, unassigned, total: displayTickets.length }
   }, [displayTickets, ignoredSlaIds])
 
   // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
@@ -606,8 +610,9 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
         <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  />
+        <StatsCard label="Unassigned"    value={loading ? '…' : stats.unassigned}  icon={Inbox}         color="orange"  />
         <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  />
         <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   />
         <StatsCard label="Resolved"      value={loading ? '…' : stats.resolved}    icon={CheckCircle}   color="emerald" />

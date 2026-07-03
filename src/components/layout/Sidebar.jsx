@@ -30,6 +30,9 @@ export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUiStore()
   const { companyProfile } = useAdminStore()
   const deletedCount = useTicketStore(s => s.deletedTickets.length)
+  const unassignedCount = useTicketStore(s =>
+    s.tickets.filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed').length
+  )
   const navigate = useNavigate()
   const t = useT()
 
@@ -89,18 +92,29 @@ export function Sidebar() {
             {t('navigation')}
           </div>
         )}
-        {NAV_KEYS.filter(n => !n.staffOnly || isStaff).map(({ to, icon: Icon, key, color }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end
-            className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
-            title={!sidebarOpen ? t(key) : undefined}
-          >
-            <Icon size={16} className={`flex-shrink-0 ${color || ''}`} />
-            {sidebarOpen && <span>{t(key)}</span>}
-          </NavLink>
-        ))}
+        {NAV_KEYS.filter(n => !n.staffOnly || isStaff).map(({ to, icon: Icon, key, color }) => {
+          const showBadge = key === 'myTickets' && unassignedCount > 0
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end
+              className={({ isActive }) => isActive ? 'nav-item-active' : 'nav-item'}
+              title={!sidebarOpen ? t(key) : undefined}
+            >
+              <Icon size={16} className={`flex-shrink-0 ${color || ''}`} />
+              {sidebarOpen && <span className="flex-1">{t(key)}</span>}
+              {showBadge && (
+                <span
+                  title={`${unassignedCount} unassigned ticket${unassignedCount === 1 ? '' : 's'}`}
+                  className={`${sidebarOpen ? '' : 'absolute top-0.5 right-0.5'} inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-orange-500 text-white`}
+                >
+                  {unassignedCount}
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
 
         {sidebarOpen && (
           <div className="px-2 pt-4 mb-2 text-[10px] font-semibold uppercase tracking-widest t-sub opacity-70">

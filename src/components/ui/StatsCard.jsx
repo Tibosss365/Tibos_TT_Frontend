@@ -5,6 +5,7 @@ export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend })
     rose:    { bg: 'bg-rose-500/10 dark:bg-rose-500/15',    text: 'text-rose-600 dark:text-rose-400',    glow: 'shadow-glow-rose',    val: 'text-rose-700 dark:text-rose-300' },
     emerald: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-glow-emerald', val: 'text-emerald-700 dark:text-emerald-300' },
     amber:   { bg: 'bg-amber-500/10 dark:bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-400',   glow: '',                    val: 'text-amber-700 dark:text-amber-300' },
+    orange:  { bg: 'bg-orange-500/10 dark:bg-orange-500/15', text: 'text-orange-600 dark:text-orange-400', glow: '',                    val: 'text-orange-700 dark:text-orange-300' },
     cyan:    { bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',    text: 'text-cyan-600 dark:text-cyan-400',    glow: 'shadow-glow-cyan',    val: 'text-cyan-700 dark:text-cyan-300' },
   }
   const c = colorMap[color] || colorMap.indigo
