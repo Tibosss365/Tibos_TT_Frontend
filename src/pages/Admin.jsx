@@ -6,6 +6,7 @@ import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUiStore } from '../stores/uiStore'
 import { useUserStore } from '../stores/userStore'
+import { useT } from '../utils/i18n'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PriorityBadge } from '../components/ui/Badge'
@@ -15,25 +16,25 @@ import { api, BASE } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
 const TABS = [
-  { id: 'overview',             icon: LayoutGrid,        label: 'Overview' },
-  { id: 'company',              icon: Building2,         label: 'Company' },
-  { id: 'tickets',              icon: Ticket,            label: 'Tickets' },
-  { id: 'groups',               icon: Users2,            label: 'Groups' },
-  { id: 'agents',               icon: Users,             label: 'Agents' },
-  { id: 'sla',                  icon: SlidersHorizontal, label: 'SLA' },
-  { id: 'email',                icon: Mail,              label: 'Email' },
-  { id: 'alerts',               icon: Bell,              label: 'Alerts' },
-  { id: 'sso',                  icon: Shield,            label: 'SSO / OIDC' },
-  { id: 'domains',              icon: Globe2,            label: 'Domain Companies' },
+  { id: 'overview',             icon: LayoutGrid,        labelKey: 'overview' },
+  { id: 'company',              icon: Building2,         labelKey: 'company' },
+  { id: 'tickets',              icon: Ticket,            labelKey: 'tickets' },
+  { id: 'groups',               icon: Users2,            labelKey: 'groups' },
+  { id: 'agents',               icon: Users,             labelKey: 'agents' },
+  { id: 'sla',                  icon: SlidersHorizontal, labelKey: 'sla' },
+  { id: 'email',                icon: Mail,              labelKey: 'email' },
+  { id: 'alerts',               icon: Bell,              labelKey: 'alerts' },
+  { id: 'sso',                  icon: Shield,            labelKey: 'sso' },
+  { id: 'domains',              icon: Globe2,            labelKey: 'domainCompanies' },
   // ── Feature tabs ──────────────────────────────────────────────────────────
-  { id: 'customFields',         icon: Tag,               label: 'Custom Fields',   group: 'features' },
-  { id: 'automation',           icon: Zap,               label: 'Automation',      group: 'features' },
-  { id: 'webhooks',             icon: Globe,             label: 'Webhooks',        group: 'features' },
-  { id: 'notificationChannels', icon: Bell,              label: 'Notifications',   group: 'features' },
-  { id: 'assets',               icon: Monitor,           label: 'Assets',          group: 'features' },
-  { id: 'escalation',           icon: AlertTriangle,     label: 'Escalation',      group: 'features' },
-  { id: 'recurring',            icon: RotateCcw,         label: 'Recurring',       group: 'features' },
-  { id: 'branding',             icon: Paintbrush,        label: 'Branding',        group: 'features' },
+  { id: 'customFields',         icon: Tag,               labelKey: 'customFields',  group: 'features' },
+  { id: 'automation',           icon: Zap,               labelKey: 'automation',    group: 'features' },
+  { id: 'webhooks',             icon: Globe,             labelKey: 'webhooks',      group: 'features' },
+  { id: 'notificationChannels', icon: Bell,              labelKey: 'notifications', group: 'features' },
+  { id: 'assets',               icon: Monitor,           labelKey: 'assets',        group: 'features' },
+  { id: 'escalation',           icon: AlertTriangle,     labelKey: 'escalation',    group: 'features' },
+  { id: 'recurring',            icon: RotateCcw,         labelKey: 'recurring',     group: 'features' },
+  { id: 'branding',             icon: Paintbrush,        labelKey: 'branding',      group: 'features' },
 ]
 
 const FEATURE_TABS = new Set(['customFields','automation','webhooks','notificationChannels','assets','escalation','recurring','branding'])
@@ -2352,6 +2353,7 @@ function CustomFieldsPanel({ categories, customFields, onAdd, onUpdate, onDelete
 }
 
 export default function Admin() {
+  const t = useT()
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const urlTab = params.get('tab')
@@ -2921,21 +2923,21 @@ export default function Admin() {
     <div className="space-y-4 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold t-main">Admin Panel</h1>
-          <p className="text-sm t-muted mt-0.5">System configuration and management</p>
+          <h1 className="text-xl font-bold t-main">{t('pageAdmin')}</h1>
+          <p className="text-sm t-muted mt-0.5">{t('adminPanelSub')}</p>
         </div>
         <Button variant="ghost" size="sm" onClick={handleRefresh} className="self-start sm:self-auto flex-shrink-0">
-          <RefreshCw size={13} /> Refresh
+          <RefreshCw size={13} /> {t('refresh')}
         </Button>
       </div>
 
       {/* Tabs */}
       <div className="overflow-x-auto pb-0.5">
         <div className="flex gap-1 p-1 glass-card w-fit min-w-full sm:min-w-0 border border-glass">
-          {TABS.map(({ id, icon: Icon, label }) => (
+          {TABS.map(({ id, icon: Icon, labelKey }) => (
             <button key={id} onClick={() => changeTab(id)}
               className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${tab === id ? 'bg-indigo-600/30 dark:bg-indigo-600/30 t-main border border-indigo-500/30' : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
-              <Icon size={13} />{label}
+              <Icon size={13} />{t(labelKey)}
             </button>
           ))}
         </div>
@@ -2995,11 +2997,11 @@ export default function Admin() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {/* Basic Information */}
           <Card>
-            <CardHeader title="Basic Information" subtitle="Details available in email templates" />
+            <CardHeader title={t('basicInformation')} subtitle={t('basicInformationSub')} />
             <div className="space-y-4">
               <div>
                 <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Building2 size={11} /> Company Name <span className="text-rose-500">*</span>
+                  <Building2 size={11} /> {t('companyName')} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   className={inputCls}
@@ -3010,7 +3012,7 @@ export default function Admin() {
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Globe size={11} /> Website
+                  <Globe size={11} /> {t('website')}
                 </label>
                 <input
                   className={inputCls}
@@ -3021,7 +3023,7 @@ export default function Admin() {
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Phone size={11} /> Phone Number
+                  <Phone size={11} /> {t('phoneNumber')}
                 </label>
                 <input
                   className={inputCls}
@@ -3032,7 +3034,7 @@ export default function Admin() {
               </div>
               <div>
                 <label className="flex items-center gap-1.5 text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <MapPin size={11} /> Address
+                  <MapPin size={11} /> {t('address')}
                 </label>
                 <textarea
                   rows={3}
@@ -3044,10 +3046,10 @@ export default function Admin() {
               </div>
               <div className="flex gap-2 pt-1">
                 <Button variant="primary" size="sm" onClick={handleSaveCompany}>
-                  <Save size={13} /> Save Changes
+                  <Save size={13} /> {t('saveChanges')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setCompanyEdits({ ...companyProfile })}>
-                  Reset Changes
+                  {t('resetChanges')}
                 </Button>
               </div>
             </div>
@@ -3055,7 +3057,7 @@ export default function Admin() {
 
           {/* Logo */}
           <Card>
-            <CardHeader title="Company Logo" subtitle="Displayed in the sidebar and emails" />
+            <CardHeader title={t('companyLogo')} subtitle={t('companyLogoSub')} />
             <div className="space-y-4">
               {/* Logo preview */}
               <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-glass bg-black/3 dark:bg-white/3 h-40 relative overflow-hidden">
@@ -3076,7 +3078,7 @@ export default function Admin() {
                 ) : (
                   <div className="flex flex-col items-center gap-2 t-muted">
                     <ImagePlus size={32} className="opacity-40" />
-                    <span className="text-xs opacity-60">No logo uploaded</span>
+                    <span className="text-xs opacity-60">{t('noLogoUploaded')}</span>
                   </div>
                 )}
               </div>
@@ -3090,16 +3092,16 @@ export default function Admin() {
                 onChange={handleLogoUpload}
               />
               <Button variant="secondary" size="sm" className="w-full" onClick={() => logoInputRef.current?.click()}>
-                <ImagePlus size={13} /> {companyEdits.logo ? 'Change Logo' : 'Upload Logo'}
+                <ImagePlus size={13} /> {companyEdits.logo ? t('changeLogo') : t('uploadLogo')}
               </Button>
-              <p className="text-[10px] t-sub text-center">PNG, JPG, SVG or WebP · Max 2 MB</p>
+              <p className="text-[10px] t-sub text-center">{t('logoFormats')}</p>
 
               <div className="flex gap-2 pt-1">
                 <Button variant="primary" size="sm" onClick={handleSaveCompany} className="flex-1">
-                  <Save size={13} /> Save Changes
+                  <Save size={13} /> {t('saveChanges')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setCompanyEdits(p => ({ ...p, logo: companyProfile.logo }))}>
-                  Reset
+                  {t('reset')}
                 </Button>
               </div>
             </div>
@@ -3108,15 +3110,15 @@ export default function Admin() {
           {/* Language & Region */}
           <Card>
             <CardHeader
-              title="Language & Region"
-              subtitle="Set the interface language and display timezone for the ticketing tool"
+              title={t('languageRegion')}
+              subtitle={t('languageRegionSub')}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               {/* Language picker */}
               <div>
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Globe size={11} className="inline mr-1" />Interface Language
+                  <Globe size={11} className="inline mr-1" />{t('interfaceLanguage')}
                 </label>
                 <select
                   className={inputCls}
@@ -3130,14 +3132,14 @@ export default function Admin() {
                   ))}
                 </select>
                 <p className="text-[10px] t-sub mt-1">
-                  Status labels, navigation, and form fields will display in the selected language.
+                  {t('interfaceLanguageHint')}
                 </p>
               </div>
 
               {/* Timezone picker */}
               <div>
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Clock size={11} className="inline mr-1" />Timezone
+                  <Clock size={11} className="inline mr-1" />{t('timezone')}
                 </label>
                 <select
                   className={inputCls}
@@ -3156,7 +3158,7 @@ export default function Admin() {
                   })()}
                 </select>
                 <p className="text-[10px] t-sub mt-1">
-                  All timestamps (SLA, created, updated) will be displayed in this timezone.
+                  {t('timezoneHint')}
                 </p>
               </div>
             </div>
@@ -3165,7 +3167,7 @@ export default function Admin() {
             <div className="mt-4 p-3 rounded-lg bg-indigo-500/5 border border-indigo-500/20 flex items-center gap-3">
               <Globe size={14} className="text-indigo-400 flex-shrink-0" />
               <div className="text-xs t-sub">
-                <span className="font-semibold t-main">Preview: </span>
+                <span className="font-semibold t-main">{t('previewLabel')} </span>
                 {(() => {
                   try {
                     return new Date().toLocaleString('en-US', {
@@ -3185,13 +3187,13 @@ export default function Admin() {
           {/* Session Management */}
           <Card>
             <CardHeader
-              title="Session Management"
-              subtitle="Automatically log out inactive users to keep the system secure"
+              title={t('sessionManagement')}
+              subtitle={t('sessionManagementSub')}
             />
             <div className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
-                  <Timer size={11} className="inline mr-1" />Session Timeout
+                  <Timer size={11} className="inline mr-1" />{t('sessionTimeout')}
                 </label>
                 <select
                   className={`${inputCls} max-w-xs`}
@@ -3203,10 +3205,9 @@ export default function Admin() {
                   ))}
                 </select>
                 <p className="text-[10px] t-sub mt-1.5">
-                  Users will be automatically logged out after the specified period of inactivity
-                  (no mouse movement, keystrokes, or clicks).
+                  {t('sessionTimeoutHint')}
                   {sysEdits.sessionTimeoutMinutes === 0 && (
-                    <span className="text-amber-500 font-medium"> Sessions will never expire — not recommended for shared devices.</span>
+                    <span className="text-amber-500 font-medium"> {t('sessionNeverWarn')}</span>
                   )}
                 </p>
               </div>
@@ -3216,8 +3217,8 @@ export default function Admin() {
                 <ShieldCheck size={15} className="text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div className="text-[11px] t-sub leading-relaxed">
                   {sysEdits.sessionTimeoutMinutes === 0
-                    ? 'Sessions will persist indefinitely until the user manually logs out.'
-                    : `After ${SESSION_TIMEOUTS.find(o => o.value === sysEdits.sessionTimeoutMinutes)?.label || sysEdits.sessionTimeoutMinutes + ' min'} of inactivity, the user is logged out and all local data is cleared.`
+                    ? t('sessionPersistInfo')
+                    : t('sessionAfterTmpl').replace('{time}', SESSION_TIMEOUTS.find(o => o.value === sysEdits.sessionTimeoutMinutes)?.label || sysEdits.sessionTimeoutMinutes + ' min')
                   }
                 </div>
               </div>
@@ -3225,10 +3226,10 @@ export default function Admin() {
 
             <div className="mt-4 pt-4 border-t border-glass flex items-center justify-between">
               <p className="text-[10px] t-muted">
-                Language and timezone changes apply immediately without a page reload.
+                {t('changesTakeEffect')}
               </p>
               <Button variant="primary" size="sm" onClick={handleSaveSystem}>
-                <Save size={13} /> Save General Settings
+                <Save size={13} /> {t('saveGeneralSettings')}
               </Button>
             </div>
           </Card>

@@ -1,13 +1,15 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Ticket, PlusCircle, Settings, BarChart3,
-  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail, Activity, Building2
+  ChevronLeft, ChevronRight, LogOut, Zap, List, Trash2, BookOpen, Mail, Activity, Building2, LifeBuoy
 } from 'lucide-react'
 import { useUserStore }   from '../../stores/userStore'
 import { useUiStore }     from '../../stores/uiStore'
 import { useAdminStore }  from '../../stores/adminStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useT }           from '../../utils/i18n'
+import { HelpModal }      from './HelpModal'
 
 const NAV_KEYS = [
   { to: '/dashboard',    icon: LayoutDashboard, key: 'dashboard',  staffOnly: true, color: 'text-indigo-500' },
@@ -35,6 +37,7 @@ export function Sidebar() {
   )
   const navigate = useNavigate()
   const t = useT()
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -46,6 +49,7 @@ export function Sidebar() {
   const isStaff   = !isEndUser
 
   return (
+    <>
     <aside
       // On mobile: always w-60 (overlay panel).
       // On desktop (lg+): w-60 when open, w-16 when collapsed.
@@ -155,6 +159,16 @@ export function Sidebar() {
             {sidebarOpen && <span>{t(key)}</span>}
           </NavLink>
         ))}
+
+        {/* Help — tool support (bug fix / modification / question) */}
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="nav-item w-full"
+          title={!sidebarOpen ? t('help') : undefined}
+        >
+          <LifeBuoy size={16} className="flex-shrink-0 text-fuchsia-500" />
+          {sidebarOpen && <span className="flex-1 text-left">{t('help')}</span>}
+        </button>
       </nav>
 
       {/* User card */}
@@ -206,5 +220,8 @@ export function Sidebar() {
         {sidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
       </button>
     </aside>
+
+    <HelpModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} />
+    </>
   )
 }
