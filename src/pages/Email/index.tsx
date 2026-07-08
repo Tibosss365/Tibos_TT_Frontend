@@ -33,7 +33,7 @@ export default function EmailPage() {
     threads, threadsLoading,
     activeThread, activeMessages, messagesLoading,
     composerOpen, replyToMessage,
-    fetchAccounts, fetchThreads,
+    fetchAccounts, fetchThreads, deleteAccount,
     selectThread, updateThread,
     openComposer, closeComposer,
     triggerFetch, error, clearError,
@@ -57,6 +57,20 @@ export default function EmailPage() {
       setSelectedAccountId(def.id)
     }
   }, [accounts])
+
+  const handleDeleteAccount = async (acct: (typeof accounts)[number]) => {
+    const ok = window.confirm(
+      `Remove the email account "${acct.name}" from the helpdesk?\n\n` +
+      `It will stop syncing here. Tickets already created from its emails are kept.`
+    )
+    if (!ok) return
+    try {
+      await deleteAccount(acct.id)
+      if (selectedAccountId === acct.id) setSelectedAccountId(undefined)
+    } catch {
+      alert('Could not remove the account. Please try again.')
+    }
+  }
 
   useEffect(() => {
     loadThreads()
@@ -132,18 +146,25 @@ export default function EmailPage() {
             </button>
           </div>
           {accounts.map((acct) => (
-            <button
+            <div
               key={acct.id}
               onClick={() => setSelectedAccountId(acct.id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs transition-all ${
+              className={`group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs cursor-pointer transition-all ${
                 selectedAccountId === acct.id
                   ? 'bg-indigo-500/15 text-indigo-400 font-semibold'
                   : 't-muted hover:t-main hover:bg-white/5'
               }`}
             >
-              <Mail size={13} />
-              <span className="truncate">{acct.name}</span>
-            </button>
+              <Mail size={13} className="flex-shrink-0" />
+              <span className="truncate flex-1">{acct.name}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteAccount(acct) }}
+                title="Remove this account"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-rose-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex-shrink-0"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
           ))}
           {accounts.length === 0 && !accountsLoading && (
             <button onClick={() => setShowAccountSetup(true)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left text-xs border border-dashed border-indigo-500/40 text-indigo-500 hover:bg-indigo-500/5 transition-all">
