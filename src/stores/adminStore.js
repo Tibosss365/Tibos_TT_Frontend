@@ -600,15 +600,29 @@ export const useAdminStore = create(
         return c ? c.name : id
       },
 
-      // ── Canned Responses ─────────────────────────────────────────────────
-      cannedResponses: [
-        { id: 'cr-1', title: 'Password Reset Instructions', body: 'Hi {contact_name},\n\nTo reset your password:\n1. Go to the login page\n2. Click "Forgot Password"\n3. Enter your email address\n4. Check your email for the reset link\n\nBest regards,\n{agent_name}' },
-        { id: 'cr-2', title: 'Ticket Acknowledged', body: 'Hi {contact_name},\n\nThank you for contacting us. We have received your request (#{ticket_id}) and our team is reviewing it. We will keep you updated on progress.\n\nBest regards,\n{agent_name}' },
-        { id: 'cr-3', title: 'Request for More Information', body: 'Hi {contact_name},\n\nThank you for reaching out. To assist you better, could you please provide the following additional information:\n\n- \n- \n\nBest regards,\n{agent_name}' },
-      ],
-      addCannedResponse: (data) => set(s => ({ cannedResponses: [...s.cannedResponses, { ...data, id: 'cr-' + Date.now() }] })),
-      updateCannedResponse: (id, changes) => set(s => ({ cannedResponses: s.cannedResponses.map(r => r.id === id ? { ...r, ...changes } : r) })),
-      deleteCannedResponse: (id) => set(s => ({ cannedResponses: s.cannedResponses.filter(r => r.id !== id) })),
+      // ── Canned Responses (backend-backed, shared across all agents) ───────
+      cannedResponses: [],
+      fetchCannedResponses: async () => {
+        try {
+          const data = await api.get('/admin/canned-responses')
+          set({ cannedResponses: (data || []).map(r => ({ id: r.id, title: r.label, body: r.body || '' })) })
+        } catch (e) { console.error('fetchCannedResponses error', e) }
+      },
+      addCannedResponse: async (data) => {
+        const r = await api.post('/admin/canned-responses', { label: data.title, body: data.body })
+        set(s => ({ cannedResponses: [...s.cannedResponses, { id: r.id, title: r.label, body: r.body || '' }] }))
+      },
+      updateCannedResponse: async (id, changes) => {
+        const body = {}
+        if (changes.title !== undefined) body.label = changes.title
+        if (changes.body !== undefined) body.body = changes.body
+        const r = await api.put(`/admin/canned-responses/${id}`, body)
+        set(s => ({ cannedResponses: s.cannedResponses.map(x => x.id === id ? { id: r.id, title: r.label, body: r.body || '' } : x) }))
+      },
+      deleteCannedResponse: async (id) => {
+        await api.delete(`/admin/canned-responses/${id}`)
+        set(s => ({ cannedResponses: s.cannedResponses.filter(r => r.id !== id) }))
+      },
 
       // ── Ticket Templates ──────────────────────────────────────────────────
       ticketTemplates: [
@@ -632,34 +646,47 @@ export const useAdminStore = create(
         customFields: { ...s.customFields, [categoryId]: (s.customFields[categoryId] || []).filter(f => f.id !== fieldId) }
       })),
 
-      // ── Resolution Codes ──────────────────────────────────────────────────
-      resolutionCodes: [
-        { id: 'rc-1', label: 'Fixed — Software Issue' },
-        { id: 'rc-2', label: 'Fixed — Hardware Issue' },
-        { id: 'rc-3', label: 'Fixed — Configuration Change' },
-        { id: 'rc-4', label: 'Fixed — Network / Connectivity' },
-        { id: 'rc-5', label: 'Workaround Provided' },
-        { id: 'rc-6', label: 'User Training / Guidance' },
-        { id: 'rc-7', label: 'Third Party / Vendor Action' },
-        { id: 'rc-8', label: 'No Issue Found' },
-        { id: 'rc-9', label: 'Duplicate Ticket' },
-      ],
-      addResolutionCode: (label) => set(s => ({ resolutionCodes: [...s.resolutionCodes, { id: 'rc-' + Date.now(), label }] })),
-      updateResolutionCode: (id, label) => set(s => ({ resolutionCodes: s.resolutionCodes.map(r => r.id === id ? { ...r, label } : r) })),
-      deleteResolutionCode: (id) => set(s => ({ resolutionCodes: s.resolutionCodes.filter(r => r.id !== id) })),
+      // ── Resolution Codes (backend-backed, shared across all agents) ───────
+      resolutionCodes: [],
+      fetchResolutionCodes: async () => {
+        try {
+          const data = await api.get('/admin/resolution-codes')
+          set({ resolutionCodes: (data || []).map(r => ({ id: r.id, label: r.label })) })
+        } catch (e) { console.error('fetchResolutionCodes error', e) }
+      },
+      addResolutionCode: async (label) => {
+        const r = await api.post('/admin/resolution-codes', { label })
+        set(s => ({ resolutionCodes: [...s.resolutionCodes, { id: r.id, label: r.label }] }))
+      },
+      updateResolutionCode: async (id, label) => {
+        const r = await api.put(`/admin/resolution-codes/${id}`, { label })
+        set(s => ({ resolutionCodes: s.resolutionCodes.map(x => x.id === id ? { id: r.id, label: r.label } : x) }))
+      },
+      deleteResolutionCode: async (id) => {
+        await api.delete(`/admin/resolution-codes/${id}`)
+        set(s => ({ resolutionCodes: s.resolutionCodes.filter(r => r.id !== id) }))
+      },
 
-      // ── On-Hold Reasons ───────────────────────────────────────────────────
-      onHoldReasons: [
-        { id: 'oh-1', label: 'Waiting for Customer Response' },
-        { id: 'oh-2', label: 'Waiting for Third Party / Vendor' },
-        { id: 'oh-3', label: 'Waiting for Parts / Hardware' },
-        { id: 'oh-4', label: 'Scheduled Maintenance Window' },
-        { id: 'oh-5', label: 'Pending Internal Approval' },
-        { id: 'oh-6', label: 'Customer Requested Delay' },
-      ],
-      addOnHoldReason: (label) => set(s => ({ onHoldReasons: [...s.onHoldReasons, { id: 'oh-' + Date.now(), label }] })),
-      updateOnHoldReason: (id, label) => set(s => ({ onHoldReasons: s.onHoldReasons.map(r => r.id === id ? { ...r, label } : r) })),
-      deleteOnHoldReason: (id) => set(s => ({ onHoldReasons: s.onHoldReasons.filter(r => r.id !== id) })),
+      // ── On-Hold Reasons (backend-backed, shared across all agents) ────────
+      onHoldReasons: [],
+      fetchOnHoldReasons: async () => {
+        try {
+          const data = await api.get('/admin/hold-reasons')
+          set({ onHoldReasons: (data || []).map(r => ({ id: r.id, label: r.label })) })
+        } catch (e) { console.error('fetchOnHoldReasons error', e) }
+      },
+      addOnHoldReason: async (label) => {
+        const r = await api.post('/admin/hold-reasons', { label })
+        set(s => ({ onHoldReasons: [...s.onHoldReasons, { id: r.id, label: r.label }] }))
+      },
+      updateOnHoldReason: async (id, label) => {
+        const r = await api.put(`/admin/hold-reasons/${id}`, { label })
+        set(s => ({ onHoldReasons: s.onHoldReasons.map(x => x.id === id ? { id: r.id, label: r.label } : x) }))
+      },
+      deleteOnHoldReason: async (id) => {
+        await api.delete(`/admin/hold-reasons/${id}`)
+        set(s => ({ onHoldReasons: s.onHoldReasons.filter(r => r.id !== id) }))
+      },
 
       // ── Domain Companies ──────────────────────────────────────────────────
       domainCompanies: [],
@@ -708,7 +735,12 @@ export const useAdminStore = create(
       // categories and groups come from the backend / DEFAULT_GROUPS on every
       // login — never persist them so stale data can't block fresh data.
       partialize: (state) => {
-        const { categories, groups, alertSettings, domainCompanies, ...rest } = state
+        // Never persist server-backed lists — always load fresh from the API so
+        // stale localStorage can't hide or override shared data.
+        const {
+          categories, groups, alertSettings, domainCompanies,
+          onHoldReasons, resolutionCodes, cannedResponses, ...rest
+        } = state
         return rest
       },
     }

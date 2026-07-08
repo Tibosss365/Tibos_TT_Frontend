@@ -17,6 +17,7 @@ export function Layout() {
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
+    fetchOnHoldReasons, fetchResolutionCodes, fetchCannedResponses,
   } = useAdminStore()
   const { fetchNotifications, addNotification, fetchPendingApprovals } = useNotificationStore()
   const { activeModal, closeModal, sidebarOpen, toggleSidebar } = useUiStore()
@@ -44,6 +45,9 @@ export function Layout() {
     fetchCategories()
     fetchGroups()
     fetchTicketSettings()
+    fetchOnHoldReasons()
+    fetchResolutionCodes()
+    fetchCannedResponses()
     fetchNotifications()
     fetchPendingApprovals()
 
