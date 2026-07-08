@@ -81,6 +81,7 @@ export interface EmailThread {
   is_starred: boolean
   is_archived: boolean
   is_spam: boolean
+  is_trashed?: boolean
   message_count: number
   unread_count: number
   has_attachments: boolean
@@ -94,6 +95,7 @@ export interface EmailThreadUpdate {
   is_starred?: boolean
   is_archived?: boolean
   is_spam?: boolean
+  is_trashed?: boolean
   ticket_id?: string | null
 }
 
@@ -298,6 +300,8 @@ export interface ThreadFilters {
   is_starred?: boolean
   is_archived?: boolean
   is_spam?: boolean
+  is_trashed?: boolean
+  has_outbound?: boolean
   ticket_id?: string
   search?: string
 }

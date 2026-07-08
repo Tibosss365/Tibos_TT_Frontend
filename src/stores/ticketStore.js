@@ -89,6 +89,7 @@ export const useTicketStore = create(
         if (changes.asset        !== undefined) body.asset        = changes.asset
         if (changes.description  !== undefined) body.description  = changes.description
         if (changes.resolution   !== undefined) body.resolution   = changes.resolution
+        if (changes.holdReason   !== undefined) body.hold_reason  = changes.holdReason
         if (changes.group        !== undefined) body.group_id          = changes.group || null
         if (changes.source       !== undefined) body.source            = changes.source
         if (changes.tags         !== undefined) body.tags              = changes.tags

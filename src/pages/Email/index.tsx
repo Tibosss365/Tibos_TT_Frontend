@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
-  Archive, Inbox, Loader2, Mail, Plus, RefreshCw,
-  Search, Sparkles, Star, Trash2,
+  Archive, Ban, Inbox, Loader2, Mail, Plus, RefreshCw,
+  Search, Send, Sparkles, Star, Trash2,
 } from 'lucide-react'
 import { useEmailStore } from '../../stores/emailStore'
 import { ThreadList } from '../../components/email/ThreadList'
@@ -11,20 +11,24 @@ import { AIPanel } from '../../components/email/AIPanel'
 import { AccountSetupModal } from '../../components/email/AccountSetupModal'
 import type { EmailMessage, EmailThread, ThreadFilters } from '../../types/email'
 
-type Mailbox = 'inbox' | 'starred' | 'archived' | 'spam'
+type Mailbox = 'inbox' | 'sent' | 'starred' | 'archived' | 'spam' | 'trash'
 
 const MAILBOX_FILTERS: Record<Mailbox, Partial<ThreadFilters>> = {
-  inbox:    { is_archived: false, is_spam: false },
-  starred:  { is_starred: true },
-  archived: { is_archived: true },
-  spam:     { is_spam: true },
+  inbox:    { is_archived: false, is_spam: false, is_trashed: false },
+  sent:     { has_outbound: true, is_trashed: false },
+  starred:  { is_starred: true,   is_trashed: false },
+  archived: { is_archived: true,  is_trashed: false },
+  spam:     { is_spam: true,      is_trashed: false },
+  trash:    { is_trashed: true },
 }
 
 const MAILBOX_META: Record<Mailbox, { label: string; icon: React.ReactNode }> = {
   inbox:    { label: 'Inbox',    icon: <Inbox size={15} /> },
+  sent:     { label: 'Sent',     icon: <Send size={15} /> },
   starred:  { label: 'Starred',  icon: <Star size={15} /> },
   archived: { label: 'Archived', icon: <Archive size={15} /> },
-  spam:     { label: 'Spam',     icon: <Trash2 size={15} /> },
+  spam:     { label: 'Spam',     icon: <Ban size={15} /> },
+  trash:    { label: 'Deleted',  icon: <Trash2 size={15} /> },
 }
 
 export default function EmailPage() {
@@ -117,6 +121,12 @@ export default function EmailPage() {
   const handleStar = () => {
     if (!activeThread) return
     updateThread(activeThread.id, { is_starred: !activeThread.is_starred })
+  }
+
+  const handleTrash = async () => {
+    if (!activeThread) return
+    await updateThread(activeThread.id, { is_trashed: !activeThread.is_trashed })
+    loadThreads() // it just left (or re-entered) the current folder — refresh the list
   }
 
   const handleOpenAI = (msg: EmailMessage) => {
@@ -264,6 +274,7 @@ export default function EmailPage() {
             onForward={handleForward}
             onArchive={handleArchive}
             onStar={handleStar}
+            onTrash={handleTrash}
             onOpenAIPanel={handleOpenAI}
           />
         ) : (

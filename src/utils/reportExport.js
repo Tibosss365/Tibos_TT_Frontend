@@ -82,7 +82,7 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     status: STATUS_LABEL[t.status] || t.status || '',
     priority: t.priority || '',
     agent: t.assignee ? getAgentName(t.assignee) : 'Unassigned',
-    holdReason: extractHoldReason(t),
+    holdReason: t.holdReason || extractHoldReason(t),
     resolution: t.resolution || '',
     created: t.created ? new Date(t.created).toLocaleString() : '',
   }))

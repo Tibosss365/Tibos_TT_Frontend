@@ -14,6 +14,7 @@ interface Props {
   onForward: (msg: EmailMessage) => void
   onArchive: () => void
   onStar: () => void
+  onTrash: () => void
   onOpenAIPanel: (msg: EmailMessage) => void
 }
 
@@ -166,7 +167,7 @@ function MessageBubble({ msg, onReply, onForward, onOpenAI }: {
 
 export function ThreadView({
   thread, messages, loading,
-  onReply, onForward, onArchive, onStar, onOpenAIPanel,
+  onReply, onForward, onArchive, onStar, onTrash, onOpenAIPanel,
 }: Props) {
   if (loading) {
     return (
@@ -197,8 +198,16 @@ export function ThreadView({
           <button
             onClick={onArchive}
             className="p-2 rounded-lg t-muted hover:t-main transition-all"
+            title="Archive"
           >
             <Archive size={15} />
+          </button>
+          <button
+            onClick={onTrash}
+            className={`p-2 rounded-lg transition-all ${thread.is_trashed ? 'text-emerald-500 hover:text-emerald-600' : 't-muted hover:text-rose-500'}`}
+            title={thread.is_trashed ? 'Restore from Deleted' : 'Move to Deleted'}
+          >
+            <Trash2 size={15} />
           </button>
         </div>
       </div>

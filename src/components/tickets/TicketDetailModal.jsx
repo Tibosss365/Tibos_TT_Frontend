@@ -661,7 +661,7 @@ export function TicketDetailModal({ ticket, onClose }) {
       type: 'status',
       text: `Status changed to <strong>On Hold</strong>: ${pendingOnHoldReason}${noteText}`,
     })
-    await updateTicket(ticket._uuid, { status: 'on-hold' })
+    await updateTicket(ticket._uuid, { status: 'on-hold', holdReason: pendingOnHoldReason })
     await fetchTicket(ticket._uuid)
     set('status', 'on-hold')
     addToast('Ticket placed on hold', 'success')
