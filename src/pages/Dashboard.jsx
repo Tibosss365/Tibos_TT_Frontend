@@ -199,13 +199,13 @@ export default function Dashboard() {
   )
   const handleExportExcel = async () => {
     setExporting('excel')
-    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds }) }
+    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
-    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds }) }
+    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }

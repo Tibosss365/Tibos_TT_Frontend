@@ -23,6 +23,18 @@ const isOverdue = (t) =>
 
 const dateStamp = () => new Date().toISOString().slice(0, 10)
 
+// The on-hold reason is stored as a ticket timeline note ("Status changed to
+// On Hold: <reason>"), not a dedicated field — pull the most recent one out.
+function extractHoldReason(t) {
+  const evts = t.timeline || []
+  for (let i = evts.length - 1; i >= 0; i--) {
+    const raw = (evts[i].text || '').replace(/<[^>]+>/g, '').trim() // strip HTML
+    const m = raw.match(/On Hold\s*:?\s*(.+)/i)
+    if (m && m[1].trim()) return m[1].trim()
+  }
+  return ''
+}
+
 /**
  * Compute the report dataset from a (already filtered) ticket list.
  */
@@ -62,12 +74,16 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
   const agentRows = [...agentMap.values()].sort((a, b) => b.total - a.total)
 
   // ── Ticket list ──
+  const getCategoryName = opts.getCategoryName || ((c) => c || '')
   const ticketRows = list.map(t => ({
     id: t.id,
     subject: t.subject || '',
+    category: t.category ? getCategoryName(t.category) : '',
     status: STATUS_LABEL[t.status] || t.status || '',
     priority: t.priority || '',
     agent: t.assignee ? getAgentName(t.assignee) : 'Unassigned',
+    holdReason: extractHoldReason(t),
+    resolution: t.resolution || '',
     created: t.created ? new Date(t.created).toLocaleString() : '',
   }))
 
@@ -119,10 +135,10 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
 
   // ── Tickets sheet ──
-  const tRows = [['Ticket #', 'Subject', 'Status', 'Priority', 'Agent', 'Created']]
-  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.status, t.priority, t.agent, t.created]))
+  const tRows = [['Ticket #', 'Subject', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
+  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
-  ws2['!cols'] = [{ wch: 14 }, { wch: 50 }, { wch: 14 }, { wch: 10 }, { wch: 22 }, { wch: 20 }]
+  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
 
   XLSX.writeFile(wb, `helpdesk-report-${dateStamp()}.xlsx`)
@@ -200,11 +216,20 @@ export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
   doc.text('Ticket Details', 40, y)
   autoTable(doc, {
     startY: y + 8,
-    head: [['Ticket #', 'Subject', 'Status', 'Priority', 'Agent']],
-    body: d.ticketRows.map(t => [t.id, t.subject, t.status, t.priority, t.agent]),
+    head: [['Ticket #', 'Subject', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution']],
+    body: d.ticketRows.map(t => [t.id, t.subject, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution]),
     headStyles: { fillColor: ACCENT, textColor: 255 },
-    styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-    columnStyles: { 0: { cellWidth: 64 }, 1: { cellWidth: 210 }, 4: { cellWidth: 96 } },
+    styles: { fontSize: 6.5, cellPadding: 2.5, overflow: 'linebreak' },
+    columnStyles: {
+      0: { cellWidth: 46 },   // Ticket #
+      1: { cellWidth: 96 },   // Subject
+      2: { cellWidth: 66 },   // Category
+      3: { cellWidth: 42 },   // Status
+      4: { cellWidth: 40 },   // Priority
+      5: { cellWidth: 70 },   // Agent
+      6: { cellWidth: 70 },   // Hold Reason
+      7: { cellWidth: 85 },   // Resolution
+    },
     theme: 'striped',
   })
 
