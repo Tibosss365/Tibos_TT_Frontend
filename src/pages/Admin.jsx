@@ -34,10 +34,10 @@ const TABS = [
   { id: 'assets',               icon: Monitor,           labelKey: 'assets',        group: 'features' },
   { id: 'escalation',           icon: AlertTriangle,     labelKey: 'escalation',    group: 'features' },
   { id: 'recurring',            icon: RotateCcw,         labelKey: 'recurring',     group: 'features' },
-  { id: 'branding',             icon: Paintbrush,        labelKey: 'branding',      group: 'features' },
 ]
 
-const FEATURE_TABS = new Set(['customFields','automation','webhooks','notificationChannels','assets','escalation','recurring','branding'])
+const FEATURE_TABS = new Set(['customFields','automation','webhooks','notificationChannels','assets','escalation','recurring'])
+const VALID_TAB_IDS = new Set(TABS.map(t => t.id))
 
 const GROUP_COLORS = [
   '#EF4444','#F97316','#F59E0B','#84CC16','#10B981',
@@ -2357,9 +2357,9 @@ export default function Admin() {
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const urlTab = params.get('tab')
-    if (urlTab) return urlTab
+    if (urlTab && VALID_TAB_IDS.has(urlTab)) return urlTab
     const storedTab = localStorage.getItem('adminActiveTab')
-    return storedTab || 'overview'
+    return storedTab && VALID_TAB_IDS.has(storedTab) ? storedTab : 'overview'
   })
 
   const changeTab = (id) => {
