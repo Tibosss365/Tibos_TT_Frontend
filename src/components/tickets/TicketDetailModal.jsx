@@ -623,6 +623,12 @@ export function TicketDetailModal({ ticket, onClose }) {
     }))
   }, [liveTicket, isEditing]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load the saved resolution code once it exists on the ticket (never wipe a
+  // selection the user is making before resolving).
+  useEffect(() => {
+    if (liveTicket.resolutionCode) setResolutionCode(liveTicket.resolutionCode)
+  }, [liveTicket.resolutionCode])
+
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
   const handleEdit = () => {
     // Email-sourced descriptions carry Word/Outlook junk (<head>, @font-face
@@ -725,6 +731,14 @@ export function TicketDetailModal({ ticket, onClose }) {
       return
     }
 
+    // A resolution code is mandatory when resolving (if codes are configured)
+    if (merged.status === 'resolved' && liveTicket.status !== 'resolved'
+        && resolutionCodes.length > 0 && !(merged.resolutionCode || '').trim()) {
+      addToast('Please select a resolution code before resolving', 'error')
+      setActiveTab('resolution')
+      return
+    }
+
     // An agent must be assigned before a ticket can be resolved or closed
     if (['resolved','closed'].includes(merged.status) && !['resolved','closed'].includes(liveTicket.status)) {
       const effectiveAssignee = merged.assignee || liveTicket.assignee
@@ -735,7 +749,7 @@ export function TicketDetailModal({ ticket, onClose }) {
       }
     }
 
-    const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution','source','dueDate']
+    const fields = ['subject','status','priority','type','assignee','group','description','submitter','company','email','category','asset','resolution','resolutionCode','source','dueDate']
     const changes = {}
     // Compare against liveTicket so we catch changes the backend already applied
     fields.forEach(k => { if ((merged[k]||'') !== (liveTicket[k]||'')) changes[k] = merged[k] })
@@ -930,7 +944,10 @@ export function TicketDetailModal({ ticket, onClose }) {
   // Resolution note shows in read-only "view mode" once it's been saved to the
   // backend (matches liveTicket) and the user isn't actively editing it.
   const resolutionSaved = !!(edits.resolution || '').trim() && (edits.resolution || '') === (liveTicket.resolution || '')
-  const showResolutionView = resolutionSaved && !editingResolution
+  // Once the ticket is resolved/closed, the resolution code + notes are locked
+  // (read-only). Reopen the ticket to change them.
+  const isResolvedLocked = edits.status === 'resolved' || edits.status === 'closed'
+  const showResolutionView = isResolvedLocked || (resolutionSaved && !editingResolution)
 
   return (
     <>
@@ -1572,26 +1589,35 @@ export function TicketDetailModal({ ticket, onClose }) {
                   )}
                   {resolutionCodes.length > 0 && (
                     <div>
-                      <div className={labelCls}>Resolution Code</div>
-                      <select
-                        className={inputCls}
-                        value={resolutionCode}
-                        onChange={e => setResolutionCode(e.target.value)}
-                      >
-                        <option value="">— Select a resolution code —</option>
-                        {resolutionCodes.map(rc => (
-                          <option key={rc.id} value={rc.id}>{rc.label}</option>
-                        ))}
-                      </select>
+                      <div className={labelCls}>Resolution Code {!isResolvedLocked && <span className="text-rose-500">*</span>}</div>
+                      {isResolvedLocked ? (
+                        <div className="glass-input w-full text-sm t-main">
+                          {resolutionCodes.find(rc => rc.id === resolutionCode)?.label || '—'}
+                        </div>
+                      ) : (
+                        <select
+                          className={inputCls}
+                          value={resolutionCode}
+                          onChange={e => setResolutionCode(e.target.value)}
+                        >
+                          <option value="">— Select a resolution code —</option>
+                          {resolutionCodes.map(rc => (
+                            <option key={rc.id} value={rc.id}>{rc.label}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <div className={labelCls + ' mb-0'}>Resolution Notes <span className="text-rose-500">*</span></div>
-                      {showResolutionView && (
+                      <div className={labelCls + ' mb-0'}>Resolution Notes {!isResolvedLocked && <span className="text-rose-500">*</span>}</div>
+                      {showResolutionView && !isResolvedLocked && (
                         <button type="button" onClick={() => setEditingResolution(true)} className="text-[11px] text-indigo-500 hover:text-indigo-400 font-medium flex items-center gap-1">
                           <Pencil size={11} /> Edit
                         </button>
+                      )}
+                      {isResolvedLocked && (
+                        <span className="text-[10px] t-sub flex items-center gap-1"><Lock size={10}/> Locked — reopen to edit</span>
                       )}
                     </div>
                     {showResolutionView ? (
@@ -1641,14 +1667,15 @@ export function TicketDetailModal({ ticket, onClose }) {
                       <Button
                         variant="primary"
                         size="sm"
-                        disabled={!resolverId || !edits.resolution.trim() || !(edits.assignee || liveTicket.assignee)}
+                        disabled={!resolverId || !edits.resolution.trim() || !(edits.assignee || liveTicket.assignee) || (resolutionCodes.length > 0 && !resolutionCode)}
                         onClick={async () => {
                           if (!(edits.assignee || liveTicket.assignee)) { addToast('Assign an agent before resolving or closing the ticket', 'error'); setActiveTab('details'); return }
                           if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
                           if (!edits.resolution.trim()) { addToast('Please enter resolution notes before resolving', 'error'); return }
+                          if (resolutionCodes.length > 0 && !resolutionCode) { addToast('Please select a resolution code', 'error'); return }
                           const resolverAgentName = getAgentName(resolverId)
                           set('status', 'resolved')
-                          await handleSave({ status: 'resolved', resolution: edits.resolution })
+                          await handleSave({ status: 'resolved', resolution: edits.resolution, resolutionCode })
                           // If resolver is different from current user, record it as a note
                           if (resolverId !== currentUser?.id) {
                             addTimelineEvent(ticket._uuid, { type: 'comment', text: `Resolved by: <strong>${resolverAgentName}</strong>` })

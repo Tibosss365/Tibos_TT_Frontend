@@ -155,6 +155,7 @@ export function normalizeTicket(t) {
     group:       t.group_id ? String(t.group_id) : (t.group?.id ? String(t.group.id) : ''),
     resolution:  t.resolution || '',
     holdReason:  t.hold_reason || '',
+    resolutionCode: t.resolution_code || '',
     tasks:     t.tasks     || [],
     workLog:   t.work_log  || [],
     reminders: t.reminders || [],
