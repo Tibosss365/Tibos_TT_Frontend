@@ -2811,6 +2811,47 @@ export default function Admin() {
   const [ssoTestResult, setSsoTestResult] = useState(null)  // { ok, message }
   const [ssoShowSecret, setSsoShowSecret] = useState(false)
 
+  // ── SAML SP Metadata helpers ────────────────────────────────────────────────
+  // The SP (Service Provider) values Azure AD needs for SAML configuration
+  const samlEntityId  = `${BASE}/auth/saml/metadata`
+  const samlAcsUrl    = `${BASE}/auth/saml/acs`         // ACS = Assertion Consumer Service (Reply URL)
+  const samlSignOnUrl = `${BASE}/auth/saml/login`       // SP-initiated login URL
+  const samlLogoutUrl = `${BASE}/auth/saml/logout`
+
+  /** Build and trigger download of a SAML SP metadata XML file. */
+  const handleDownloadSamlMetadata = () => {
+    const xml = [
+      `<?xml version="1.0" encoding="UTF-8"?>`,
+      `<EntityDescriptor`,
+      `  xmlns="urn:oasis:names:tc:SAML:2.0:metadata"`,
+      `  xmlns:ds="http://www.w3.org/2000/09/xmldsig#"`,
+      `  xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"`,
+      `  entityID="${samlEntityId}">`,
+      `  <SPSSODescriptor`,
+      `    AuthnRequestsSigned="false"`,
+      `    WantAssertionsSigned="true"`,
+      `    protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">`,
+      `    <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>`,
+      `    <AssertionConsumerService`,
+      `      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"`,
+      `      Location="${samlAcsUrl}"`,
+      `      index="1" isDefault="true" />`,
+      `    <SingleLogoutService`,
+      `      Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"`,
+      `      Location="${samlLogoutUrl}" />`,
+      `  </SPSSODescriptor>`,
+      `</EntityDescriptor>`,
+    ].join('\n')
+    const blob = new Blob([xml], { type: 'application/xml' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = 'tibos-saml-sp-metadata.xml'
+    a.click()
+    URL.revokeObjectURL(url)
+    addToast('SAML metadata XML downloaded', 'success')
+  }
+
   useEffect(() => {
     if (tab === 'sso') fetchSSOConfig()
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -3995,6 +4036,121 @@ export default function Admin() {
 
           {ssoEdits && (
             <>
+              {/* ── SAML SP Metadata ── */}
+              <Card>
+                <CardHeader
+                  title="Service Provider (SP) Metadata"
+                  subtitle="Copy these values into Azure AD → SAML-based Sign-On → Basic SAML Configuration"
+                />
+
+                {/* Upload-metadata shortcut banner */}
+                <div className="mb-4 flex items-start gap-3 p-3.5 rounded-xl bg-indigo-500/8 border border-indigo-500/20">
+                  <Upload size={14} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs t-main leading-relaxed">
+                    <span className="font-semibold">Fastest setup:</span> click{' '}
+                    <button
+                      type="button"
+                      onClick={handleDownloadSamlMetadata}
+                      className="inline-flex items-center gap-1 font-semibold text-indigo-500 hover:text-indigo-400 underline underline-offset-2"
+                    >
+                      <Download size={11} /> Download Metadata XML
+                    </button>
+                    , then in Azure AD → SAML-based Sign-On click <strong>↑ Upload metadata file</strong> and select the downloaded file.{' '}
+                    Azure AD will auto-fill all required fields instantly.
+                  </div>
+                </div>
+
+                {/* SP metadata fields */}
+                <div className="space-y-3">
+                  {[
+                    {
+                      label: 'Entity ID',
+                      hint:  'Paste into: Identifier (Entity ID)',
+                      value: samlEntityId,
+                      required: true,
+                    },
+                    {
+                      label: 'Reply URL (Assertion Consumer Service URL)',
+                      hint:  'Paste into: Reply URL (Assertion Consumer Service URL)',
+                      value: samlAcsUrl,
+                      required: true,
+                    },
+                    {
+                      label: 'Sign-on URL',
+                      hint:  'Paste into: Sign on URL (optional)',
+                      value: samlSignOnUrl,
+                      required: false,
+                    },
+                    {
+                      label: 'Logout URL',
+                      hint:  'Paste into: Logout Url (optional)',
+                      value: samlLogoutUrl,
+                      required: false,
+                    },
+                  ].map(({ label, hint, value, required }) => (
+                    <div key={label}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <label className="text-[10px] font-bold t-sub uppercase tracking-wider">
+                          {label}
+                        </label>
+                        {required && (
+                          <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">Required</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-[11px] font-mono t-main bg-black/5 dark:bg-white/5 px-3 py-2 rounded-lg border border-glass truncate">
+                          {value}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => { navigator.clipboard.writeText(value); addToast(`${label} copied`, 'success') }}
+                          className="flex-shrink-0 flex items-center gap-1 text-[10px] font-semibold text-indigo-500 hover:text-indigo-400 px-2.5 py-2 rounded-lg border border-glass hover:bg-indigo-500/8 transition-colors"
+                        >
+                          <Download size={11} />
+                          Copy
+                        </button>
+                      </div>
+                      <p className="text-[10px] t-sub mt-0.5">{hint}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Download XML button */}
+                <div className="mt-5 pt-4 border-t border-glass flex items-center justify-between">
+                  <div className="text-xs t-muted">
+                    Or download the full XML metadata file for a one-click upload.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSamlMetadata}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-500 font-semibold text-xs border border-indigo-500/30 transition-all"
+                  >
+                    <Download size={13} />
+                    Download Metadata XML
+                  </button>
+                </div>
+
+                {/* Attributes & Claims reference */}
+                <div className="mt-4 p-3.5 rounded-xl bg-black/3 dark:bg-white/[0.03] border border-glass">
+                  <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-2">Attributes &amp; Claims (Azure AD sends these automatically)</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono">
+                    {[
+                      ['givenname',           'user.givenname'],
+                      ['surname',             'user.surname'],
+                      ['emailaddress',        'user.mail'],
+                      ['name',                'user.userprincipalname'],
+                      ['Unique User ID',      'user.userprincipalname'],
+                    ].map(([claim, src]) => (
+                      <>
+                        <span key={claim + '-k'} className="t-sub">{claim}</span>
+                        <span key={claim + '-v'} className="t-main">{src}</span>
+                      </>
+                    ))}
+                  </div>
+                  <p className="text-[10px] t-sub mt-2">These match the default Azure AD token claims — no changes needed.</p>
+                </div>
+              </Card>
+
               {/* ── Azure AD App Registration Guide ── */}
               <Card>
                 <CardHeader
