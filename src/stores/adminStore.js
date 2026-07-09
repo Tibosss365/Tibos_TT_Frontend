@@ -535,6 +535,14 @@ export const useAdminStore = create(
         return await api.post('/admin/sso/test', {})
       },
 
+      // Upload the IdP (Azure AD) federation metadata XML — backend extracts the
+      // signing cert + SSO URL and saves them, then we refresh the config.
+      uploadSamlMetadata: async (xml) => {
+        const result = await api.post('/admin/sso/upload-saml-metadata', { xml })
+        try { const data = await api.get('/admin/sso'); set({ ssoConfig: data }) } catch {}
+        return result
+      },
+
       // ── Category actions ──────────────────────────────────────────────
       addCategory: async (cat) => {
         const maxOrder = get().categories.reduce((m, c) => Math.max(m, c.sortOrder), 0)

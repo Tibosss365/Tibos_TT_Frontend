@@ -2798,7 +2798,30 @@ export default function Admin() {
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SSO state ──────────────────────────────────────────────────────────────
-  const { ssoConfig, fetchSSOConfig, saveSSOConfig, testSSOConfig } = useAdminStore()
+  const { ssoConfig, fetchSSOConfig, saveSSOConfig, testSSOConfig, uploadSamlMetadata } = useAdminStore()
+  const [idpMetaXml, setIdpMetaXml] = useState('')
+  const [idpMetaResult, setIdpMetaResult] = useState(null)
+  const [idpMetaUploading, setIdpMetaUploading] = useState(false)
+
+  const handleUploadIdpMetadata = async (xmlArg) => {
+    const text = String(xmlArg ?? idpMetaXml).trim()
+    if (!text) { addToast('Paste or choose the IdP metadata XML first', 'error'); return }
+    setIdpMetaUploading(true)
+    try {
+      const res = await uploadSamlMetadata(text)
+      setIdpMetaResult(res)
+      addToast(res?.message || 'IdP metadata imported', 'success')
+    } catch (e) {
+      addToast(e?.message || 'Could not read that metadata XML', 'error')
+    } finally { setIdpMetaUploading(false) }
+  }
+  const handleIdpMetaFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => { const txt = String(reader.result || ''); setIdpMetaXml(txt); handleUploadIdpMetadata(txt) }
+    reader.readAsText(file)
+  }
   const [ssoEdits, setSsoEdits] = useState({
     enabled: false, provider: 'microsoft', tenant_id: '', client_id: '',
     client_secret: '', redirect_uri: '', authorization_endpoint: '',
@@ -4148,6 +4171,44 @@ export default function Admin() {
                     ))}
                   </div>
                   <p className="text-[10px] t-sub mt-2">These match the default Azure AD token claims — no changes needed.</p>
+                </div>
+              </Card>
+
+              {/* ── IdP Metadata Upload (Azure AD federation metadata) ── */}
+              <Card>
+                <CardHeader
+                  title="Identity Provider (IdP) Metadata"
+                  subtitle="Upload Azure AD's 'Federation Metadata XML' — we auto-extract the sign-on URL + signing certificate for you"
+                />
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition-all cursor-pointer">
+                      <Upload size={13} /> Choose Federation Metadata XML
+                      <input type="file" accept=".xml,text/xml,application/xml" className="hidden" onChange={handleIdpMetaFile} />
+                    </label>
+                    <span className="text-[11px] t-sub">or paste the XML below</span>
+                  </div>
+                  <textarea
+                    className={inputCls + ' resize-none font-mono text-[11px]'}
+                    rows={4}
+                    value={idpMetaXml}
+                    onChange={e => setIdpMetaXml(e.target.value)}
+                    placeholder="<EntityDescriptor ...>  paste Azure AD Federation Metadata XML here"
+                  />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button variant="primary" size="sm" onClick={() => handleUploadIdpMetadata()} disabled={idpMetaUploading || !idpMetaXml.trim()}>
+                      <Upload size={13} /> {idpMetaUploading ? 'Importing…' : 'Import metadata'}
+                    </Button>
+                    <p className="text-[10px] t-sub">Azure AD → your app → <strong>SAML Certificates → Federation Metadata XML → Download</strong>, then upload it here.</p>
+                  </div>
+                  {idpMetaResult && (
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs t-main space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-emerald-600 dark:text-emerald-400"><CheckCircle2 size={13}/> {idpMetaResult.message}</div>
+                      {idpMetaResult.sso_url && <div className="t-sub break-all">Sign-on URL: <span className="font-mono t-main">{idpMetaResult.sso_url}</span></div>}
+                      <div className="t-sub">Signing certificate: {idpMetaResult.cert_found ? '✓ imported' : '— not found in this file'}</div>
+                      {idpMetaResult.entity_id && <div className="t-sub break-all">IdP Entity ID: <span className="font-mono t-main">{idpMetaResult.entity_id}</span></div>}
+                    </div>
+                  )}
                 </div>
               </Card>
 
