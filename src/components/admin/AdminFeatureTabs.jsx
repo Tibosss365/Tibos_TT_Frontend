@@ -149,11 +149,168 @@ function CustomFieldsTab() {
 }
 
 // ── Automation Rules Tab ───────────────────────────────────────────────────────
+const COND_FIELDS = [
+  { value: 'priority',    label: 'Priority' },
+  { value: 'status',      label: 'Status' },
+  { value: 'category',    label: 'Category' },
+  { value: 'group_id',    label: 'Group' },
+  { value: 'source',      label: 'Source' },
+  { value: 'assignee_id', label: 'Assignee' },
+]
+const COND_OPS = [
+  { value: 'equals',     label: 'equals' },
+  { value: 'not_equals', label: 'not equals' },
+  { value: 'in',         label: 'is one of' },
+  { value: 'not_in',     label: 'is not one of' },
+  { value: 'contains',   label: 'contains' },
+]
+const ACTION_TYPES = [
+  { value: 'assign',       label: 'Assign to agent' },
+  { value: 'set_priority', label: 'Set priority' },
+  { value: 'set_status',   label: 'Set status' },
+  { value: 'add_tag',      label: 'Add tag' },
+  { value: 'set_group',    label: 'Set group' },
+]
+const A_PRIORITIES = ['critical', 'high', 'medium', 'low']
+const A_STATUSES = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
+const A_SOURCES = ['portal', 'email', 'phone', 'chat']
+const isMulti = (op) => op === 'in' || op === 'not_in'
+
+const inputCls = 'rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white'
+
+// Options for a condition value dropdown (null = use a free-text input)
+function condValueOptions(field, { categories, groups, agents }) {
+  if (field === 'priority') return A_PRIORITIES
+  if (field === 'status')   return A_STATUSES
+  if (field === 'source')   return A_SOURCES
+  if (field === 'category') return categories.map(c => ({ value: c.id, label: c.name }))
+  if (field === 'group_id') return groups.map(g => ({ value: g.id, label: g.name }))
+  if (field === 'assignee_id') return agents.filter(a => a.id !== 'unassigned').map(a => ({ value: String(a.id), label: a.name }))
+  return null
+}
+function actionValueOptions(type, { categories, groups, agents }) {
+  if (type === 'set_priority') return A_PRIORITIES
+  if (type === 'set_status')   return A_STATUSES
+  if (type === 'assign')       return agents.filter(a => a.id !== 'unassigned').map(a => ({ value: String(a.id), label: a.name }))
+  if (type === 'set_group')    return groups.map(g => ({ value: g.id, label: g.name }))
+  return null // add_tag → free text
+}
+function asOpt(o) { return typeof o === 'string' ? { value: o, label: o } : o }
+
+// Value editor: dropdown when options are known (and single-select), else text
+function ValueField({ options, multi, value, onChange, placeholder }) {
+  if (options && !multi) {
+    return (
+      <select className={`${inputCls} flex-1 min-w-0`} value={value} onChange={e => onChange(e.target.value)}>
+        <option value="">— select —</option>
+        {options.map(asOpt).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    )
+  }
+  return (
+    <input className={`${inputCls} flex-1 min-w-0`} value={value} onChange={e => onChange(e.target.value)}
+      placeholder={placeholder || (multi ? 'comma-separated, e.g. high, critical' : 'value')} />
+  )
+}
+
+function RuleEditor({ rule, data, onSave, onClose }) {
+  const [conds, setConds] = useState(() =>
+    (rule.conditions || []).map(c => ({ field: c.field || 'priority', operator: c.operator || 'equals', value: Array.isArray(c.value) ? c.value.join(', ') : (c.value ?? '') })))
+  const [acts, setActs] = useState(() =>
+    (rule.actions || []).map(a => ({ type: a.type || 'set_priority', value: a.value ?? '' })))
+  const [saving, setSaving] = useState(false)
+
+  const setCond = (i, patch) => setConds(cs => cs.map((c, idx) => idx === i ? { ...c, ...patch } : c))
+  const setAct  = (i, patch) => setActs(as => as.map((a, idx) => idx === i ? { ...a, ...patch } : a))
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      const conditions = conds
+        .filter(c => c.field && String(c.value).trim() !== '')
+        .map(c => ({ field: c.field, operator: c.operator,
+          value: isMulti(c.operator) ? String(c.value).split(',').map(v => v.trim()).filter(Boolean) : c.value }))
+      const actions = acts
+        .filter(a => a.type && String(a.value).trim() !== '')
+        .map(a => ({ type: a.type, value: a.value }))
+      await onSave({ conditions, actions })
+      onClose()
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-4">
+      {/* Conditions */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Conditions</span>
+          <span className="text-[11px] text-gray-400">all must match · empty = every ticket</span>
+        </div>
+        <div className="space-y-2">
+          {conds.length === 0 && <p className="text-xs text-gray-400 italic">No conditions — this rule runs on every {rule.trigger.replace(/_/g, ' ')} event.</p>}
+          {conds.map((c, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <select className={`${inputCls} w-32`} value={c.field} onChange={e => setCond(i, { field: e.target.value, value: '' })}>
+                {COND_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+              </select>
+              <select className={`${inputCls} w-32`} value={c.operator} onChange={e => setCond(i, { operator: e.target.value })}>
+                {COND_OPS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <ValueField options={condValueOptions(c.field, data)} multi={isMulti(c.operator)}
+                value={c.value} onChange={v => setCond(i, { value: v })} />
+              <button onClick={() => setConds(cs => cs.filter((_, idx) => idx !== i))}
+                className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setConds(cs => [...cs, { field: 'priority', operator: 'equals', value: '' }])}
+          className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700">+ Add condition</button>
+      </div>
+
+      {/* Actions */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Actions</span>
+          <span className="text-[11px] text-gray-400">what happens when it matches</span>
+        </div>
+        <div className="space-y-2">
+          {acts.length === 0 && <p className="text-xs text-amber-600 italic">No actions yet — add at least one, or the rule does nothing.</p>}
+          {acts.map((a, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <select className={`${inputCls} w-40`} value={a.type} onChange={e => setAct(i, { type: e.target.value, value: '' })}>
+                {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <ValueField options={actionValueOptions(a.type, data)} multi={false}
+                value={a.value} onChange={v => setAct(i, { value: v })}
+                placeholder={a.type === 'add_tag' ? 'tag name' : 'value'} />
+              <button onClick={() => setActs(as => as.filter((_, idx) => idx !== i))}
+                className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+            </div>
+          ))}
+        </div>
+        <button onClick={() => setActs(as => [...as, { type: 'set_priority', value: '' }])}
+          className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700">+ Add action</button>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={save} disabled={saving}
+          className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+          {saving ? 'Saving…' : 'Save rule'}
+        </button>
+        <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200">Close</button>
+      </div>
+    </div>
+  )
+}
+
 function AutomationTab() {
-  const { automationRules, automationLoading, fetchAutomationRules, createAutomationRule, deleteAutomationRule, toggleAutomationRule } = useFeatureStore()
+  const { automationRules, automationLoading, fetchAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, toggleAutomationRule } = useFeatureStore()
+  const { categories, groups, agents } = useAdminStore()
+  const data = { categories, groups, agents }
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', trigger: 'ticket_created', is_active: true })
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
 
   useEffect(() => { fetchAutomationRules() }, [])
 
@@ -215,19 +372,37 @@ function AutomationTab() {
         <EmptyState icon="⚡" title="No automation rules" desc="Create rules to automate repetitive actions." />
       ) : (
         <div className="space-y-2">
-          {automationRules.map(r => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Toggle value={r.is_active} onChange={() => toggleAutomationRule(r.id)} />
-                <div>
-                  <span className="text-sm font-medium text-gray-800">{r.name}</span>
-                  <span className="ml-2 text-xs text-gray-400">on {r.trigger.replace(/_/g,' ')}</span>
+          {automationRules.map(r => {
+            const nCond = (r.conditions || []).length
+            const nAct = (r.actions || []).length
+            return (
+            <div key={r.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Toggle value={r.is_active} onChange={() => toggleAutomationRule(r.id)} />
+                  <div>
+                    <span className="text-sm font-medium text-gray-800">{r.name}</span>
+                    <span className="ml-2 text-xs text-gray-400">on {r.trigger.replace(/_/g,' ')}</span>
+                    <span className="ml-2 text-[11px] text-gray-400">· {nCond} condition{nCond === 1 ? '' : 's'}, {nAct} action{nAct === 1 ? '' : 's'}</span>
+                    {nAct === 0 && <span className="ml-2 text-[11px] text-amber-600 font-medium">⚠ no actions — does nothing</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setEditingId(editingId === r.id ? null : r.id)}
+                    className="text-indigo-600 hover:text-indigo-700 text-sm font-medium">
+                    {editingId === r.id ? 'Close' : 'Edit'}
+                  </button>
+                  <button onClick={() => deleteAutomationRule(r.id)}
+                    className="text-red-400 hover:text-red-600 text-sm">Delete</button>
                 </div>
               </div>
-              <button onClick={() => deleteAutomationRule(r.id)}
-                className="text-red-400 hover:text-red-600 text-sm">Delete</button>
+              {editingId === r.id && (
+                <RuleEditor rule={r} data={data}
+                  onSave={(changes) => updateAutomationRule(r.id, changes)}
+                  onClose={() => setEditingId(null)} />
+              )}
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>
