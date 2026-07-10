@@ -535,6 +535,11 @@ export const useAdminStore = create(
         return await api.post('/admin/sso/test', {})
       },
 
+      // ── Graph instant-delivery webhook (Microsoft Graph change notifications) ──
+      getWebhookStatus:  async () => await api.get('/inbound-email/webhook-status'),
+      enableWebhook:     async () => await api.post('/inbound-email/enable-webhook', {}),
+      disableWebhook:    async () => await api.post('/inbound-email/disable-webhook', {}),
+
       // Upload the IdP (Azure AD) federation metadata XML — backend extracts the
       // signing cert + SSO URL and saves them, then we refresh the config.
       uploadSamlMetadata: async (xml) => {

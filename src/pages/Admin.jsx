@@ -528,6 +528,7 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
               </button>
             </div>
           </Card>
+          <WebhookControl />
         </div>
       </div>
 
@@ -2145,6 +2146,57 @@ function SimpleListPanel({ items, onAdd, onUpdate, onDelete, inputCls, placehold
 }
 function OnHoldReasonsPanel({ items, onAdd, onUpdate, onDelete, inputCls }) {
   return <SimpleListPanel items={items} onAdd={onAdd} onUpdate={onUpdate} onDelete={onDelete} inputCls={inputCls} placeholder="e.g. Waiting for Customer Response" />
+}
+
+// ── Instant Delivery (Microsoft Graph webhook) control ─────────────────────────
+function WebhookControl() {
+  const { getWebhookStatus, enableWebhook, disableWebhook } = useAdminStore()
+  const { addToast } = useUiStore()
+  const [status, setStatus] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const refresh = () => getWebhookStatus().then(setStatus).catch(() => {})
+  useEffect(() => { refresh() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  const enable = async () => {
+    setBusy(true)
+    try {
+      const r = await enableWebhook()
+      addToast(r?.status === 'renewed' ? 'Instant delivery renewed' : 'Instant delivery enabled', 'success')
+      refresh()
+    } catch (e) {
+      addToast(e?.message || 'Could not enable — check the mailbox + M365 app are configured', 'error')
+    } finally { setBusy(false) }
+  }
+  const disable = async () => {
+    setBusy(true)
+    try { await disableWebhook(); addToast('Switched back to polling', 'info'); refresh() }
+    catch (e) { addToast(e?.message || 'Failed', 'error') }
+    finally { setBusy(false) }
+  }
+  const active = status?.active
+  return (
+    <Card>
+      <CardHeader title="Instant Delivery (Webhook)" subtitle="Microsoft Graph pushes new mail to us the instant it arrives — near-instant tickets, no 30s wait. Polling stays on as a fallback." />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-semibold ${active ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-500/15 t-sub'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+            {active ? 'Active — instant' : 'Off — using polling'}
+          </span>
+          {active && status?.expires && <span className="t-sub">renews before {new Date(status.expires).toLocaleString()}</span>}
+        </div>
+        <div className="flex gap-2 flex-shrink-0">
+          {active ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={enable} disabled={busy}>Renew</Button>
+              <Button variant="ghost" size="sm" onClick={disable} disabled={busy}>Turn off</Button>
+            </>
+          ) : (
+            <Button variant="primary" size="sm" onClick={enable} disabled={busy}><Zap size={13} /> {busy ? 'Enabling…' : 'Enable instant'}</Button>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
 }
 function ResolutionCodesPanel({ items, onAdd, onUpdate, onDelete, inputCls }) {
   return <SimpleListPanel items={items} onAdd={onAdd} onUpdate={onUpdate} onDelete={onDelete} inputCls={inputCls} placeholder="e.g. Fixed — Software Issue" />
