@@ -3758,13 +3758,13 @@ export default function Admin() {
                         placeholder="Search name, email…"
                       />
                     </div>
-                    <select className={inputCls + ' w-auto flex-shrink-0'} value={agentRoleFilter} onChange={e => setAgentRoleFilter(e.target.value)} title="Filter by role">
+                    <select className="glass-input text-sm w-32 flex-shrink-0" value={agentRoleFilter} onChange={e => setAgentRoleFilter(e.target.value)} title="Filter by role">
                       <option value="all">All roles</option>
                       <option value="admin">Admin</option>
                       <option value="technician">Technician</option>
                       <option value="user">User</option>
                     </select>
-                    <select className={inputCls + ' w-auto max-w-[180px] flex-shrink-0'} value={agentGroupFilter} onChange={e => setAgentGroupFilter(e.target.value)} title="Filter by group">
+                    <select className="glass-input text-sm w-40 flex-shrink-0" value={agentGroupFilter} onChange={e => setAgentGroupFilter(e.target.value)} title="Filter by group">
                       <option value="all">All groups</option>
                       <option value="__none__">— No group —</option>
                       {groupOptions.map(g => <option key={g} value={g}>{g}</option>)}
