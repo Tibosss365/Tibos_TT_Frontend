@@ -2798,7 +2798,17 @@ export default function Admin() {
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SSO state ──────────────────────────────────────────────────────────────
-  const { ssoConfig, fetchSSOConfig, saveSSOConfig, testSSOConfig, uploadSamlMetadata } = useAdminStore()
+  const { ssoConfig, fetchSSOConfig, saveSSOConfig, testSSOConfig, uploadSamlMetadata, syncM365Users } = useAdminStore()
+  const [syncingUsers, setSyncingUsers] = useState(false)
+  const handleSyncM365Users = async () => {
+    setSyncingUsers(true)
+    try {
+      const res = await syncM365Users()
+      addToast(res?.message || 'M365 users synced', 'success')
+    } catch (e) {
+      addToast(e?.message || 'Could not sync M365 users', 'error')
+    } finally { setSyncingUsers(false) }
+  }
   const [idpMetaXml, setIdpMetaXml] = useState('')
   const [idpMetaResult, setIdpMetaResult] = useState(null)
   const [idpMetaUploading, setIdpMetaUploading] = useState(false)
@@ -4209,6 +4219,23 @@ export default function Admin() {
                       {idpMetaResult.entity_id && <div className="t-sub break-all">IdP Entity ID: <span className="font-mono t-main">{idpMetaResult.entity_id}</span></div>}
                     </div>
                   )}
+                </div>
+              </Card>
+
+              {/* ── Sync Microsoft 365 Users ── */}
+              <Card>
+                <CardHeader
+                  title="Sync Microsoft 365 Users"
+                  subtitle="Import all tenant users now (otherwise they appear only after their first sign-in)"
+                />
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <p className="text-xs t-sub max-w-xl leading-relaxed">
+                    Pulls every user from your Microsoft 365 tenant via Graph and creates them here with the SSO default role.
+                    Requires the app's <span className="font-mono t-main">User.Read.All</span> <strong>Application</strong> permission with admin consent in Azure.
+                  </p>
+                  <Button variant="primary" size="sm" onClick={handleSyncM365Users} disabled={syncingUsers}>
+                    <RefreshCw size={13} className={syncingUsers ? 'animate-spin' : ''} /> {syncingUsers ? 'Syncing…' : 'Sync M365 Users'}
+                  </Button>
                 </div>
               </Card>
 

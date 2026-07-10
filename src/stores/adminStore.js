@@ -543,6 +543,13 @@ export const useAdminStore = create(
         return result
       },
 
+      // Import all Microsoft 365 tenant users into the tool via Graph.
+      syncM365Users: async () => {
+        const result = await api.post('/admin/sso/sync-users', {})
+        try { await get().fetchAgents?.() } catch {}
+        return result
+      },
+
       // ── Category actions ──────────────────────────────────────────────
       addCategory: async (cat) => {
         const maxOrder = get().categories.reduce((m, c) => Math.max(m, c.sortOrder), 0)
