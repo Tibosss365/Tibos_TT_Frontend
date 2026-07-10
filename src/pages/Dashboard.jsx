@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
   AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users, EyeOff,
-  FileSpreadsheet, FileText, Inbox,
+  FileSpreadsheet, FileText, Inbox, RotateCcw,
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
@@ -305,6 +305,7 @@ export default function Dashboard() {
     const inProgress = displayTickets.filter(t => t.status === 'in-progress').length
     const onHold     = displayTickets.filter(t => t.status === 'on-hold').length
     const resolved   = displayTickets.filter(t => t.status === 'resolved').length
+    const reopened   = displayTickets.filter(t => (t.reopenCount || 0) > 0).length
     const critical   = displayTickets.filter(t => t.priority === 'critical').length
     const slaOverdue = displayTickets.filter(t =>
       (t.slaStatus === 'overdue' ||
@@ -315,7 +316,7 @@ export default function Dashboard() {
     const unassigned = displayTickets.filter(t =>
       !t.assignee && t.status !== 'resolved' && t.status !== 'closed'
     ).length
-    return { open, inProgress, onHold, resolved, critical, slaOverdue, unassigned, total: displayTickets.length }
+    return { open, inProgress, onHold, resolved, reopened, critical, slaOverdue, unassigned, total: displayTickets.length }
   }, [displayTickets, ignoredSlaIds])
 
   // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
@@ -394,7 +395,8 @@ export default function Dashboard() {
   // ── Agent wise ticket counts ────────────────────────────────────────────────
   const agentData = useMemo(() => {
     return agents
-      .filter(a => a.id !== 'unassigned' && a.is_active !== false)
+      .filter(a => a.id !== 'unassigned' && a.is_active !== false
+        && (a.role === 'technician' || a.role === 'admin'))
       .map(agent => {
         const agentTickets = displayTickets.filter(t => t.assignee === String(agent.id))
         return {
@@ -610,12 +612,13 @@ export default function Dashboard() {
       </Card>
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-3 sm:gap-4">
         <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  />
         <StatsCard label="Unassigned"    value={loading ? '…' : stats.unassigned}  icon={Inbox}         color="orange"  />
         <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  />
         <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   />
         <StatsCard label="Resolved"      value={loading ? '…' : stats.resolved}    icon={CheckCircle}   color="emerald" />
+        <StatsCard label="Reopened"      value={loading ? '…' : stats.reopened}    icon={RotateCcw}     color="amber"   />
         <StatsCard label="Critical"      value={loading ? '…' : stats.critical}    icon={AlertTriangle} color="rose"    />
         <StatsCard label="SLA Overdue"   value={loading ? '…' : stats.slaOverdue}  icon={AlarmClock}    color={stats.slaOverdue > 0 ? 'rose' : 'emerald'} />
         <StatsCard label="Total Tickets" value={loading ? '…' : stats.total}       icon={Activity}      color="cyan"    />

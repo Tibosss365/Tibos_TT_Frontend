@@ -157,6 +157,7 @@ export function normalizeTicket(t) {
     resolution:  t.resolution || '',
     holdReason:  t.hold_reason || '',
     resolutionCode: t.resolution_code || '',
+    reopenCount: t.reopen_count || 0,
     tasks:     t.tasks     || [],
     workLog:   t.work_log  || [],
     reminders: t.reminders || [],
