@@ -2535,6 +2535,8 @@ export default function Admin() {
 
   const [newAgent, setNewAgent] = useState({ name: '', group: '', username: '', password: '', role: 'technician' })
   const [agentSearch, setAgentSearch] = useState('')
+  const [agentRoleFilter, setAgentRoleFilter] = useState('all')
+  const [agentGroupFilter, setAgentGroupFilter] = useState('all')
   const [addAgentOpen, setAddAgentOpen] = useState(false)
   const [editAgent, setEditAgent] = useState(null)   // agent being edited
   const [editForm, setEditForm] = useState({})
@@ -3730,23 +3732,40 @@ export default function Admin() {
             {(() => {
               const q = agentSearch.trim().toLowerCase()
               const active = agents.filter(a => a.id !== 'unassigned' && a.is_active !== false)
-              const shown = q
-                ? active.filter(a => [a.name, a.username, a.group, a.role].some(v => String(v || '').toLowerCase().includes(q)))
-                : active
+              const groupOptions = [...new Set(active.map(a => a.group).filter(Boolean))].sort()
+              const shown = active.filter(a =>
+                (!q || [a.name, a.username, a.group, a.role].some(v => String(v || '').toLowerCase().includes(q)))
+                && (agentRoleFilter === 'all' || (a.role || 'user') === agentRoleFilter)
+                && (agentGroupFilter === 'all'
+                     ? true
+                     : (agentGroupFilter === '__none__' ? !a.group : a.group === agentGroupFilter))
+              )
+              const filtered = q || agentRoleFilter !== 'all' || agentGroupFilter !== 'all'
               return (
                 <>
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                    <CardHeader title="Current Agents" subtitle={`${active.length} user${active.length === 1 ? '' : 's'}${q ? ` · ${shown.length} match${shown.length === 1 ? '' : 'es'}` : ''}`} />
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <CardHeader title="Current Agents" subtitle={`${active.length} user${active.length === 1 ? '' : 's'}${filtered ? ` · ${shown.length} shown` : ''}`} />
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                       <div className="relative">
                         <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
                         <input
-                          className={inputCls + ' pl-8 w-full sm:w-64'}
+                          className={inputCls + ' pl-8 w-full sm:w-56'}
                           value={agentSearch}
                           onChange={e => setAgentSearch(e.target.value)}
-                          placeholder="Search name, email, role…"
+                          placeholder="Search name, email…"
                         />
                       </div>
+                      <select className={inputCls + ' w-auto'} value={agentRoleFilter} onChange={e => setAgentRoleFilter(e.target.value)} title="Filter by role">
+                        <option value="all">All roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="technician">Technician</option>
+                        <option value="user">User</option>
+                      </select>
+                      <select className={inputCls + ' w-auto max-w-[180px]'} value={agentGroupFilter} onChange={e => setAgentGroupFilter(e.target.value)} title="Filter by group">
+                        <option value="all">All groups</option>
+                        <option value="__none__">— No group —</option>
+                        {groupOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
                       <Button variant="primary" size="sm" onClick={() => setAddAgentOpen(true)} className="flex-shrink-0 whitespace-nowrap">
                         <Plus size={13} /> Add User
                       </Button>
@@ -3765,7 +3784,7 @@ export default function Admin() {
                       </thead>
                       <tbody>
                         {shown.length === 0 && (
-                          <tr><td colSpan={5} className="px-3 py-8 text-center text-xs t-muted">No users match “{agentSearch}”.</td></tr>
+                          <tr><td colSpan={5} className="px-3 py-8 text-center text-xs t-muted">No users match the current search / filters.</td></tr>
                         )}
                         {shown.map(agent => (
                           <tr key={String(agent.id)} className="border-b border-glass/40 hover:bg-black/5 dark:hover:bg-white/5 group transition-colors">
