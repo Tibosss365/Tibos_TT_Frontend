@@ -90,9 +90,10 @@ export async function fetchSSOPublic() {
   }
 }
 
-/** Redirect browser to backend SSO login (initiates Azure AD auth flow). */
-export function redirectToSSOLogin() {
-  window.location.href = `${BASE}/auth/sso/login`
+/** Redirect browser to backend SSO login (initiates Azure AD auth flow).
+ *  Routes to the SAML endpoint when the tenant is in SAML mode, else OIDC. */
+export function redirectToSSOLogin(samlMode = false) {
+  window.location.href = `${BASE}/auth/${samlMode ? 'saml' : 'sso'}/login`
 }
 
 /** Returns the authenticated download URL for a ticket attachment. */

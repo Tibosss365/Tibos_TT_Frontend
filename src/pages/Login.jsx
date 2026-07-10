@@ -70,7 +70,7 @@ export default function Login() {
 
   const handleSSOLogin = () => {
     setSsoLoading(true)
-    redirectToSSOLogin()  // triggers full browser redirect to Azure AD
+    redirectToSSOLogin(!!ssoInfo.saml_mode)  // SAML or OIDC endpoint per tenant config
   }
 
   return (
