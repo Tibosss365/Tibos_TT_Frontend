@@ -3743,33 +3743,35 @@ export default function Admin() {
               const filtered = q || agentRoleFilter !== 'all' || agentGroupFilter !== 'all'
               return (
                 <>
-                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                    <CardHeader title="Current Agents" subtitle={`${active.length} user${active.length === 1 ? '' : 's'}${filtered ? ` · ${shown.length} shown` : ''}`} />
-                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                      <div className="relative">
-                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
-                        <input
-                          className={inputCls + ' pl-8 w-full sm:w-56'}
-                          value={agentSearch}
-                          onChange={e => setAgentSearch(e.target.value)}
-                          placeholder="Search name, email…"
-                        />
-                      </div>
-                      <select className={inputCls + ' w-auto'} value={agentRoleFilter} onChange={e => setAgentRoleFilter(e.target.value)} title="Filter by role">
-                        <option value="all">All roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="technician">Technician</option>
-                        <option value="user">User</option>
-                      </select>
-                      <select className={inputCls + ' w-auto max-w-[180px]'} value={agentGroupFilter} onChange={e => setAgentGroupFilter(e.target.value)} title="Filter by group">
-                        <option value="all">All groups</option>
-                        <option value="__none__">— No group —</option>
-                        {groupOptions.map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
-                      <Button variant="primary" size="sm" onClick={() => setAddAgentOpen(true)} className="flex-shrink-0 whitespace-nowrap">
-                        <Plus size={13} /> Add User
-                      </Button>
+                  {/* Single horizontal toolbar — title, then search fills the gap, filters + Add User inline */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex-shrink-0 mr-1">
+                      <div className="text-base font-bold t-main leading-tight">Current Agents</div>
+                      <div className="text-xs t-sub">{`${active.length} user${active.length === 1 ? '' : 's'}${filtered ? ` · ${shown.length} shown` : ''}`}</div>
                     </div>
+                    <div className="relative flex-1 min-w-[120px]">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
+                      <input
+                        className={inputCls + ' pl-8 w-full'}
+                        value={agentSearch}
+                        onChange={e => setAgentSearch(e.target.value)}
+                        placeholder="Search name, email…"
+                      />
+                    </div>
+                    <select className={inputCls + ' w-auto flex-shrink-0'} value={agentRoleFilter} onChange={e => setAgentRoleFilter(e.target.value)} title="Filter by role">
+                      <option value="all">All roles</option>
+                      <option value="admin">Admin</option>
+                      <option value="technician">Technician</option>
+                      <option value="user">User</option>
+                    </select>
+                    <select className={inputCls + ' w-auto max-w-[180px] flex-shrink-0'} value={agentGroupFilter} onChange={e => setAgentGroupFilter(e.target.value)} title="Filter by group">
+                      <option value="all">All groups</option>
+                      <option value="__none__">— No group —</option>
+                      {groupOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                    <Button variant="primary" size="sm" onClick={() => setAddAgentOpen(true)} className="flex-shrink-0 whitespace-nowrap">
+                      <Plus size={13} /> Add User
+                    </Button>
                   </div>
                   <div className="max-h-96 overflow-auto rounded-lg border border-glass">
                     <table className="w-full text-sm">
