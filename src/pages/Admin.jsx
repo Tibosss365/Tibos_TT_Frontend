@@ -2534,6 +2534,7 @@ export default function Admin() {
   const unassigned = tickets.filter(t => !t.assignee && !['resolved', 'closed'].includes(t.status))
 
   const [newAgent, setNewAgent] = useState({ name: '', group: '', username: '', password: '', role: 'technician' })
+  const [agentSearch, setAgentSearch] = useState('')
   const [editAgent, setEditAgent] = useState(null)   // agent being edited
   const [editForm, setEditForm] = useState({})
   const [editSaving, setEditSaving] = useState(false)
@@ -3757,39 +3758,73 @@ export default function Admin() {
           </Card>
 
           <Card>
-            <CardHeader title="Current Agents" subtitle={`${agents.filter(a => a.is_active !== false).length} agents`} />
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {agents.filter(a => a.is_active !== false).map(agent => (
-                <div key={String(agent.id)} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 group transition-all">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 dark:from-indigo-500/40 dark:to-violet-500/40 border border-indigo-500/20 flex items-center justify-center text-xs font-bold t-main flex-shrink-0">
-                    {agent.initials}
+            {(() => {
+              const q = agentSearch.trim().toLowerCase()
+              const active = agents.filter(a => a.id !== 'unassigned' && a.is_active !== false)
+              const shown = q
+                ? active.filter(a => [a.name, a.username, a.group, a.role].some(v => String(v || '').toLowerCase().includes(q)))
+                : active
+              return (
+                <>
+                  <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                    <CardHeader title="Current Agents" subtitle={`${active.length} user${active.length === 1 ? '' : 's'}${q ? ` · ${shown.length} match${shown.length === 1 ? '' : 'es'}` : ''}`} />
+                    <div className="relative flex-shrink-0">
+                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
+                      <input
+                        className={inputCls + ' pl-8 w-full sm:w-64'}
+                        value={agentSearch}
+                        onChange={e => setAgentSearch(e.target.value)}
+                        placeholder="Search name, email, role…"
+                      />
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="text-sm t-main font-medium truncate">{agent.name}</div>
-                    <div className="text-[10px] t-muted truncate">{agent.group} · {agent.role || 'technician'}</div>
+                  <div className="max-h-96 overflow-auto rounded-lg border border-glass">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur">
+                        <tr className="text-left text-[10px] font-bold t-sub uppercase tracking-wider border-b border-glass">
+                          <th className="px-3 py-2 font-bold">Name</th>
+                          <th className="px-3 py-2 font-bold">Username / Email</th>
+                          <th className="px-3 py-2 font-bold">Group</th>
+                          <th className="px-3 py-2 font-bold">Role</th>
+                          <th className="px-3 py-2 font-bold text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shown.length === 0 && (
+                          <tr><td colSpan={5} className="px-3 py-8 text-center text-xs t-muted">No users match “{agentSearch}”.</td></tr>
+                        )}
+                        {shown.map(agent => (
+                          <tr key={String(agent.id)} className="border-b border-glass/40 hover:bg-black/5 dark:hover:bg-white/5 group transition-colors">
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/20 to-violet-500/20 dark:from-indigo-500/40 dark:to-violet-500/40 border border-indigo-500/20 flex items-center justify-center text-[10px] font-bold t-main flex-shrink-0">{agent.initials}</div>
+                                <span className="t-main font-medium truncate">{agent.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 t-sub truncate max-w-[240px]">{agent.username || '—'}</td>
+                            <td className="px-3 py-2 t-sub truncate">{agent.group || '—'}</td>
+                            <td className="px-3 py-2">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${agent.role === 'admin' ? 'bg-rose-500/15 text-rose-500' : agent.role === 'technician' ? 'bg-indigo-500/15 text-indigo-500' : 'bg-slate-500/15 t-sub'}`}>{agent.role || 'user'}</span>
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <button onClick={() => openEditAgent(agent)} title="Edit" className="p-1.5 rounded-lg hover:bg-indigo-500/20 t-sub hover:text-indigo-500 dark:hover:text-indigo-400 transition-all"><Pencil size={13} /></button>
+                                {String(agent.id) !== String(currentUser?.id) && (
+                                  <button title="Remove" onClick={async () => {
+                                    try { await deleteAgent(String(agent.id)); addToast('User removed', 'info') }
+                                    catch (err) { addToast(err.message || 'Failed to remove user', 'error') }
+                                  }} className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 dark:hover:text-rose-400 transition-all"><Trash2 size={13} /></button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
-                    <button onClick={() => openEditAgent(agent)}
-                      className="p-1.5 rounded-lg hover:bg-indigo-500/20 t-sub hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">
-                      <Pencil size={13} />
-                    </button>
-                    {String(agent.id) !== String(currentUser?.id) && (
-                      <button onClick={async () => {
-                        try {
-                          await deleteAgent(String(agent.id))
-                          addToast('Agent removed', 'info')
-                        } catch (err) {
-                          addToast(err.message || 'Failed to remove agent', 'error')
-                        }
-                      }}
-                        className="p-1.5 rounded-lg hover:bg-rose-500/20 t-sub hover:text-rose-500 dark:hover:text-rose-400 transition-all">
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                </>
+              )
+            })()}
           </Card>
         </div>
 
