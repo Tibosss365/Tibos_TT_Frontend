@@ -2535,6 +2535,7 @@ export default function Admin() {
 
   const [newAgent, setNewAgent] = useState({ name: '', group: '', username: '', password: '', role: 'technician' })
   const [agentSearch, setAgentSearch] = useState('')
+  const [addAgentOpen, setAddAgentOpen] = useState(false)
   const [editAgent, setEditAgent] = useState(null)   // agent being edited
   const [editForm, setEditForm] = useState({})
   const [editSaving, setEditSaving] = useState(false)
@@ -2592,6 +2593,7 @@ export default function Admin() {
     try {
       await addAgent(newAgent)
       setNewAgent({ name: '', group: '', username: '', password: '', role: 'technician' })
+      setAddAgentOpen(false)
       addToast('Agent added', 'success')
     } catch (err) {
       addToast(err.message || 'Failed to add agent', 'error')
@@ -3723,40 +3725,7 @@ export default function Admin() {
       {/* Agents */}
       {tab === 'agents' && (
         <div className="space-y-4">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader title="Add New Agent" />
-            <form onSubmit={handleAddAgent} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Full Name</label>
-                  <input className={inputCls} value={newAgent.name} onChange={e => setNewAgent(a => ({ ...a, name: e.target.value }))} placeholder="Jane Smith" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Group / Team</label>
-                  <input className={inputCls} value={newAgent.group} onChange={e => setNewAgent(a => ({ ...a, group: e.target.value }))} placeholder="L1 Support" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Username</label>
-                  <input className={inputCls} value={newAgent.username} onChange={e => setNewAgent(a => ({ ...a, username: e.target.value }))} placeholder="jsmith" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Password</label>
-                  <input type="password" className={inputCls} value={newAgent.password} onChange={e => setNewAgent(a => ({ ...a, password: e.target.value }))} placeholder="••••••••" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Role</label>
-                  <select className={inputCls} value={newAgent.role} onChange={e => setNewAgent(a => ({ ...a, role: e.target.value }))}>
-                    <option value="technician">Technician</option>
-                    <option value="admin">Admin</option>
-                    <option value="user">End User</option>
-                  </select>
-                </div>
-              </div>
-              <Button type="submit" variant="primary" size="sm" className="w-full"><Plus size={13} /> Add Agent</Button>
-            </form>
-          </Card>
-
+        <div>
           <Card>
             {(() => {
               const q = agentSearch.trim().toLowerCase()
@@ -3768,14 +3737,19 @@ export default function Admin() {
                 <>
                   <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                     <CardHeader title="Current Agents" subtitle={`${active.length} user${active.length === 1 ? '' : 's'}${q ? ` · ${shown.length} match${shown.length === 1 ? '' : 'es'}` : ''}`} />
-                    <div className="relative flex-shrink-0">
-                      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
-                      <input
-                        className={inputCls + ' pl-8 w-full sm:w-64'}
-                        value={agentSearch}
-                        onChange={e => setAgentSearch(e.target.value)}
-                        placeholder="Search name, email, role…"
-                      />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="relative">
+                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted pointer-events-none" />
+                        <input
+                          className={inputCls + ' pl-8 w-full sm:w-64'}
+                          value={agentSearch}
+                          onChange={e => setAgentSearch(e.target.value)}
+                          placeholder="Search name, email, role…"
+                        />
+                      </div>
+                      <Button variant="primary" size="sm" onClick={() => setAddAgentOpen(true)} className="flex-shrink-0 whitespace-nowrap">
+                        <Plus size={13} /> Add User
+                      </Button>
                     </div>
                   </div>
                   <div className="max-h-96 overflow-auto rounded-lg border border-glass">
@@ -3865,6 +3839,58 @@ export default function Admin() {
             )}
           </div>
         </Card>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {addAgentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-2xl border border-glass w-full max-w-md animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-glass">
+              <div>
+                <h2 className="text-sm font-bold t-main">Add User</h2>
+                <p className="text-[11px] t-muted mt-0.5">Create a new agent or end user</p>
+              </div>
+              <button onClick={() => setAddAgentOpen(false)} className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 t-sub transition-all">
+                <X size={15} />
+              </button>
+            </div>
+            <form onSubmit={handleAddAgent} className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Full Name</label>
+                  <input className={inputCls} value={newAgent.name} onChange={e => setNewAgent(a => ({ ...a, name: e.target.value }))} placeholder="Jane Smith" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Group / Team</label>
+                  <input className={inputCls} value={newAgent.group} onChange={e => setNewAgent(a => ({ ...a, group: e.target.value }))} placeholder="L1 Support" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Role</label>
+                  <select className={inputCls} value={newAgent.role} onChange={e => setNewAgent(a => ({ ...a, role: e.target.value }))}>
+                    <option value="technician">Technician</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">End User</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Username / Email</label>
+                  <input className={inputCls} value={newAgent.username} onChange={e => setNewAgent(a => ({ ...a, username: e.target.value }))} placeholder="jsmith or jane@company.com" autoComplete="off" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1">Password</label>
+                  <div className="relative">
+                    <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
+                    <input type="password" className={`${inputCls} pl-7`} value={newAgent.password} onChange={e => setNewAgent(a => ({ ...a, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => setAddAgentOpen(false)}>Cancel</Button>
+                <Button type="submit" variant="primary" size="sm" className="flex-1"><Plus size={13} /> Add User</Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
