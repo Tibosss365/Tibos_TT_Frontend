@@ -16,7 +16,7 @@ import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 import { useT } from '../../utils/i18n'
-import { looksLikeHtml, cleanEmailHtml } from '../../utils/htmlContent'
+import { looksLikeHtml, cleanEmailHtml, htmlToText } from '../../utils/htmlContent'
 import SourceBadge from './SourceBadge'
 
 const TIMELINE_STYLES = {
@@ -631,12 +631,12 @@ export function TicketDetailModal({ ticket, onClose }) {
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
   const handleEdit = () => {
-    // Email-sourced descriptions carry Word/Outlook junk (<head>, @font-face
-    // <style>, MsoNormal, doc wrappers). Clean it when entering edit mode so the
-    // agent edits — and saves — the tidy version, not the raw scaffold.
+    // Email-sourced descriptions are stored as HTML (structure/signature/images
+    // preserved for the read view). A raw-HTML textarea shows confusing markup
+    // (<div style…>, &quot;), so convert to clean readable text for editing.
     if (looksLikeHtml(edits.description)) {
-      const cleaned = cleanEmailHtml(edits.description)
-      if (cleaned && cleaned !== edits.description) set('description', cleaned)
+      const text = htmlToText(edits.description)
+      if (text && text !== edits.description) set('description', text)
     }
     setIsEditing(true)
   }

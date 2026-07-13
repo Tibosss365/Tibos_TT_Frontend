@@ -57,3 +57,31 @@ export function cleanEmailHtml(html) {
   s = s.replace(/(?:\s*<br\s*\/?>\s*){3,}/gi, '<br/><br/>')
   return s.trim()
 }
+
+/**
+ * Convert email HTML to clean, readable plain text — tags stripped, entities
+ * decoded, block elements turned into line breaks. Used for the edit textarea
+ * so agents edit readable text instead of raw markup.
+ */
+export function htmlToText(html) {
+  if (!html) return ''
+  if (!looksLikeHtml(html)) return html
+
+  if (typeof DOMParser === 'undefined') {
+    // Server/no-DOM fallback: crude tag strip + entity decode.
+    return html
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ').replace(/&quot;/gi, '"').replace(/&#39;/g, "'")
+      .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&')
+      .replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim()
+  }
+
+  const doc = new DOMParser().parseFromString(cleanEmailHtml(html), 'text/html')
+  doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'))
+  doc.querySelectorAll('p, div, tr, li, h1, h2, h3, h4, h5, h6')
+     .forEach(el => el.append('\n'))
+  const text = doc.body.textContent || ''
+  return text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ').trim()
+}
