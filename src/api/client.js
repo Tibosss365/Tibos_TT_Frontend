@@ -1,6 +1,7 @@
 // const BASE = 'https://tt.tibostech.in'
 export const BASE = 'https://tibos-tt-api.azurewebsites.net'
 // export const BASE = 'http://127.0.0.1:8000'
+
 // Alias for dynamic imports that need to pass the base URL to fetch()
 export const API_BASE = BASE
 
