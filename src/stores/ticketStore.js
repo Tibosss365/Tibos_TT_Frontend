@@ -63,6 +63,9 @@ export const useTicketStore = create(
           tags:              formData.tags || [],
           custom_field_data: formData.customFieldData || {},
           due_date:          formData.dueDate || null,
+          // Only send owners when explicitly set on the form; omit otherwise so
+          // the backend still auto-fills them from the company registry.
+          ...(formData.owners && formData.owners.length ? { owners: formData.owners } : {}),
         }
         const data = await api.post('/tickets', body)
         const ticket = normalizeTicket(data)
@@ -96,6 +99,7 @@ export const useTicketStore = create(
         if (changes.tags         !== undefined) body.tags              = changes.tags
         if (changes.customFieldData !== undefined) body.custom_field_data = changes.customFieldData
         if (changes.dueDate      !== undefined) body.due_date          = changes.dueDate || null
+        if (changes.owners       !== undefined) body.owners            = changes.owners || []
         const data = await api.patch(`/tickets/${uuid}`, body)
         const updated = normalizeTicket(data)
         // Preserve attachments already loaded in the store — PATCH response returns [] for attachments

@@ -11,10 +11,11 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PRIORITIES } from '../utils/ticketUtils'
 import TagsInput from '../components/tickets/TagsInput'
+import OwnersInput from '../components/tickets/OwnersInput'
 import DuplicateWarning from '../components/tickets/DuplicateWarning'
 import { RichDescription } from '../components/tickets/RichDescription'
 
-const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '' }
+const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '', owners: [] }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
 
 const TICKET_TYPE_CONFIG = {
@@ -115,7 +116,7 @@ export default function NewTicket() {
   const { addTicket } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
-  const { slaSettings, categories, groups, agents, ticketSettings, ticketTemplates, customFields } = useAdminStore()
+  const { slaSettings, categories, groups, agents, ticketSettings, ticketTemplates, customFields, domainCompanies, fetchDomainCompanies } = useAdminStore()
   const navigate = useNavigate()
 
   const isEndUser = currentUser?.role === 'user'
@@ -146,6 +147,29 @@ export default function NewTicket() {
   const [dupDismissed, setDupDismissed] = useState(false)
 
   const { checkDuplicate } = useFeatureStore()
+
+  // ── Auto-fill account owners from the company registry ────────────────────
+  // Load the registry once (agents only), then suggest owners as the email /
+  // company is filled in — until the agent edits the owner list themselves.
+  const ownersTouched = useRef(false)
+  useEffect(() => {
+    if (!isEndUser && (!domainCompanies || domainCompanies.length === 0)) {
+      fetchDomainCompanies?.()
+    }
+  }, [isEndUser]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isEndUser || ownersTouched.current || !domainCompanies?.length) return
+    const domain = (form.email.split('@')[1] || '').toLowerCase().trim()
+    const companyName = form.company.trim().toLowerCase()
+    const match = domainCompanies.find(d =>
+      (domain && d.domain?.toLowerCase() === domain) ||
+      (companyName && d.company_name?.toLowerCase() === companyName)
+    )
+    const owners = match?.owners || []
+    // Only overwrite while the agent hasn't touched the field
+    setForm(f => (JSON.stringify(f.owners) === JSON.stringify(owners) ? f : { ...f, owners }))
+  }, [form.email, form.company, domainCompanies, isEndUser])
 
   // Debounce duplicate check on subject change
   const dupTimer = useRef(null)
@@ -378,6 +402,24 @@ export default function NewTicket() {
                   </div>
                 )}
               </div>
+
+              {/* Account owners — the account handler / sales owner CC'd on this
+                  ticket's created, resolved and closed emails. Agents only. */}
+              {!isEndUser && (
+                <div>
+                  <label className={labelCls}>
+                    Account Owners
+                    <span className="t-sub font-normal normal-case tracking-normal ml-1.5">
+                      (CC'd on created / resolved / closed — auto-filled from company)
+                    </span>
+                  </label>
+                  <OwnersInput
+                    owners={form.owners}
+                    onChange={v => { ownersTouched.current = true; set('owners', v) }}
+                    agents={agents}
+                  />
+                </div>
+              )}
 
               {/* Custom fields for selected category */}
               {form.category && customFields && (customFields[form.category] || []).length > 0 && (

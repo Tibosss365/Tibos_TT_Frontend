@@ -18,6 +18,7 @@ import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtD
 import { useT } from '../../utils/i18n'
 import { looksLikeHtml, cleanEmailHtml, htmlToText } from '../../utils/htmlContent'
 import SourceBadge from './SourceBadge'
+import OwnersInput from './OwnersInput'
 
 const TIMELINE_STYLES = {
   created:   { dot: 'bg-blue-500',    label: 'Opened' },
@@ -230,6 +231,21 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
             <span className="truncate">{edits.company || '—'}</span>
           </div>
         </div>
+      </div>
+
+      {/* Account owners — CC'd when this ticket is created, resolved or closed */}
+      <div className="p-4 border-b border-glass">
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Account Owners</span>
+          <span className="text-[10px] t-sub opacity-60">· CC'd on close</span>
+        </div>
+        <OwnersInput
+          owners={edits.owners || []}
+          onChange={v => set('owners', v)}
+          agents={agents}
+          disabled={!isEditing}
+          compact
+        />
       </div>
 
       {/* Ticket Meta */}
@@ -591,6 +607,7 @@ export function TicketDetailModal({ ticket, onClose }) {
     tags:            ticket.tags            || [],
     customFieldData: ticket.customFieldData || {},
     dueDate:         ticket.dueDate         || '',
+    owners:          ticket.owners          || [],
   })
 
   const set = (k, v) => setEdits(x => ({ ...x, [k]: v }))
@@ -620,6 +637,7 @@ export function TicketDetailModal({ ticket, onClose }) {
       resolution:  (prev?.resolution && prev.resolution !== (liveTicket.resolution || ''))
         ? prev.resolution
         : (liveTicket.resolution || ''),
+      owners:      liveTicket.owners      || [],
     }))
   }, [liveTicket, isEditing]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -655,6 +673,7 @@ export function TicketDetailModal({ ticket, onClose }) {
       category:    liveTicket.category    || '',
       asset:       liveTicket.asset       || '',
       resolution:  liveTicket.resolution  || '',
+      owners:      liveTicket.owners      || [],
     })
     setIsEditing(false)
   }
@@ -757,6 +776,8 @@ export function TicketDetailModal({ ticket, onClose }) {
     if (JSON.stringify(merged.tags||[]) !== JSON.stringify(liveTicket.tags||[])) changes.tags = merged.tags || []
     // Custom field data
     if (JSON.stringify(merged.customFieldData||{}) !== JSON.stringify(liveTicket.customFieldData||{})) changes.customFieldData = merged.customFieldData || {}
+    // Account owners (CC list)
+    if (JSON.stringify(merged.owners||[]) !== JSON.stringify(liveTicket.owners||[])) changes.owners = merged.owners || []
     if (changes.status && changes.status !== 'resolved' && changes.status !== 'closed')
       addTimelineEvent(ticket._uuid, { type: 'status', text: `Status changed to <strong>${changes.status}</strong>` })
     if (changes.assignee) addTimelineEvent(ticket._uuid, { type: 'assign', text: `Assigned to <strong>${getAgentName(changes.assignee)}</strong>` })

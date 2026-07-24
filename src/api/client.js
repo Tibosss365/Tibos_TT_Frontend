@@ -198,5 +198,7 @@ export function normalizeTicket(t) {
     csatSentAt:      t.csat_sent_at      || null,
     customFieldData: t.custom_field_data || {},
     dueDate:         t.due_date          || null,
+    // Account owners CC'd on this ticket's created/resolved/closed emails
+    owners:          t.owners            || [],
   }
 }

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download } from 'lucide-react'
+import { useState, useRef, useEffect, Fragment } from 'react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download, UserCheck } from 'lucide-react'
 import AdminFeatureTabs from '../components/admin/AdminFeatureTabs'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
@@ -11,6 +11,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PriorityBadge } from '../components/ui/Badge'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
+import OwnersInput from '../components/tickets/OwnersInput'
 import { PRIORITIES } from '../utils/ticketUtils'
 import { api, BASE } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
@@ -4608,6 +4609,7 @@ export default function Admin() {
           onUpdate={updateDomainCompany}
           onDelete={deleteDomainCompany}
           onLookup={lookupDomain}
+          agents={agents}
           addToast={addToast}
           inputCls={inputCls}
         />
@@ -4624,9 +4626,9 @@ export default function Admin() {
 }
 
 // ── Domain Companies Tab Component ────────────────────────────────────────────
-const EMPTY_DOMAIN = { domain: '', company_name: '', contact_name: '', contact_email: '', contact_phone: '' }
+const EMPTY_DOMAIN = { domain: '', company_name: '', contact_name: '', contact_email: '', contact_phone: '', owners: [] }
 
-function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLookup, addToast, inputCls }) {
+function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLookup, agents = [], addToast, inputCls }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_DOMAIN })
   const [editingId, setEditingId] = useState(null)
@@ -4673,6 +4675,7 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
         contact_name: form.contact_name.trim() || null,
         contact_email: form.contact_email.trim() || null,
         contact_phone: form.contact_phone.trim() || null,
+        owners: form.owners || [],
       })
       addToast('Domain company added', 'success')
       setForm({ ...EMPTY_DOMAIN })
@@ -4691,6 +4694,7 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
       contact_name: d.contact_name || '',
       contact_email: d.contact_email || '',
       contact_phone: d.contact_phone || '',
+      owners: d.owners || [],
     })
   }
 
@@ -4702,6 +4706,7 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
         contact_name: editForm.contact_name || null,
         contact_email: editForm.contact_email || null,
         contact_phone: editForm.contact_phone || null,
+        owners: editForm.owners || [],
       })
       addToast('Domain company updated', 'success')
       setEditingId(null)
@@ -4799,6 +4804,19 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
               </div>
             </div>
 
+            {/* Account owners */}
+            <div>
+              <label className="block text-xs t-muted mb-1.5">
+                Account Owners
+                <span className="ml-1.5 opacity-70">— CC'd when this company's tickets are created, resolved or closed</span>
+              </label>
+              <OwnersInput
+                owners={form.owners || []}
+                onChange={owners => setForm(f => ({ ...f, owners }))}
+                agents={agents}
+              />
+            </div>
+
             <div className="flex gap-2 pt-1">
               <Button variant="primary" size="sm" onClick={handleAdd} disabled={saving}>
                 {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
@@ -4838,14 +4856,15 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
-                  {['Domain', 'Company Name', 'IT Contact', 'Email', 'Phone', ''].map(h => (
+                  {['Domain', 'Company Name', 'Account Owners', 'IT Contact', 'Email', 'Phone', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(d => (
-                  <tr key={d.id} style={{ borderBottom: '1px solid var(--c-border)' }} className="group">
+                  <Fragment key={d.id}>
+                  <tr style={{ borderBottom: editingId === d.id ? 'none' : '1px solid var(--c-border)' }} className="group">
                     {editingId === d.id ? (
                       <>
                         <td className="px-4 py-2">
@@ -4854,6 +4873,9 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
                         <td className="px-4 py-2">
                           <input className={`${inputCls} text-xs py-1.5`} value={editForm.company_name}
                             onChange={e => setEditForm(f => ({ ...f, company_name: e.target.value }))} />
+                        </td>
+                        <td className="px-4 py-2 text-[10px] t-muted whitespace-nowrap">
+                          edit below ↓
                         </td>
                         <td className="px-4 py-2">
                           <input className={`${inputCls} text-xs py-1.5`} value={editForm.contact_name}
@@ -4899,6 +4921,20 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
                             <span className="text-xs font-medium t-main">{d.company_name}</span>
                           </div>
                         </td>
+                        <td className="px-4 py-3">
+                          {(d.owners || []).length === 0 ? (
+                            <span className="text-xs t-muted opacity-30">—</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {d.owners.map(o => (
+                                <span key={o.email} title={o.email}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/10 text-indigo-500">
+                                  <UserCheck size={9} /> {o.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-xs t-muted">{d.contact_name || <span className="opacity-30">—</span>}</td>
                         <td className="px-4 py-3 text-xs t-muted">{d.contact_email || <span className="opacity-30">—</span>}</td>
                         <td className="px-4 py-3 text-xs t-muted">{d.contact_phone || <span className="opacity-30">—</span>}</td>
@@ -4917,6 +4953,21 @@ function DomainCompaniesTab({ domainCompanies, onAdd, onUpdate, onDelete, onLook
                       </>
                     )}
                   </tr>
+                  {editingId === d.id && (
+                    <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
+                      <td colSpan={7} className="px-4 pb-3">
+                        <label className="block text-[10px] t-muted mb-1.5 uppercase tracking-wider">
+                          Account Owners — CC'd on created / resolved / closed emails
+                        </label>
+                        <OwnersInput
+                          owners={editForm.owners || []}
+                          onChange={owners => setEditForm(f => ({ ...f, owners }))}
+                          agents={agents}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
