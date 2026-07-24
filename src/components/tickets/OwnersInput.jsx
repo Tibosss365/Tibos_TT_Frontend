@@ -16,7 +16,7 @@
  *   compact  (bool)                   — smaller chips, for narrow sidebars
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Mail, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, Mail, Plus, Search, X } from 'lucide-react'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
@@ -123,7 +123,7 @@ export default function OwnersInput({
   return (
     <div className="space-y-2 min-w-0">
       <div className="flex flex-wrap items-center gap-1.5">
-        {owners.length === 0 && !adding && (
+        {owners.length === 0 && disabled && (
           <span className="text-xs t-muted opacity-60">No owners — nobody is CC'd</span>
         )}
 
@@ -161,24 +161,27 @@ export default function OwnersInput({
           )
         })}
 
-        {!disabled && !adding && (
-          <button
-            type="button"
-            onClick={() => { setAdding(true); setError('') }}
-            className={`${compact ? 'w-6 h-6' : 'w-7 h-7'} rounded-full t-muted hover:text-indigo-500 hover:border-indigo-500 transition-colors flex items-center justify-center`}
-            style={{ border: '1px dashed var(--c-border)' }}
-            title="Add owner"
-            aria-label="Add owner"
-          >
-            <Plus size={compact ? 11 : 13} />
-          </button>
-        )}
       </div>
+
+      {/* Dropdown-style picker — like the "Assign To" select, but type-to-search.
+          Click to open, filter as you type, pick with click or Enter. */}
+      {!disabled && !adding && (
+        <button
+          type="button"
+          onClick={() => { setAdding(true); setError('') }}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs t-muted hover:t-main hover:border-indigo-500/60 transition-colors"
+          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
+        >
+          <Plus size={13} className="flex-shrink-0" />
+          <span className="flex-1 text-left">Add account owner…</span>
+          <ChevronDown size={13} className="flex-shrink-0 opacity-60" />
+        </button>
+      )}
 
       {!disabled && adding && (
         <div
           className="rounded-lg overflow-hidden min-w-0"
-          style={{ background: 'var(--c-hover)', border: '1px solid var(--c-border)' }}
+          style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border)' }}
         >
           {/* Single search box: filters agents, or accepts a full email */}
           <div className="relative">
