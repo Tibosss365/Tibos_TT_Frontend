@@ -61,11 +61,12 @@ export default function OwnersInput({
     [owners],
   )
 
-  // Only internal staff (agents/technicians/admins, never end-users) with an
-  // email-shaped username can be picked as an owner
+  // An owner can be ANY tenant user (they are only CC'd), so unlike the
+  // "Assign To" picker this list is not restricted to agents/technicians/admins.
+  // Only require an email-shaped username so there's an address to CC.
   const selectable = useMemo(() => (
     (agents || [])
-      .filter(a => a.id !== 'unassigned' && a.is_active !== false && a.role !== 'user')
+      .filter(a => a.id !== 'unassigned' && a.is_active !== false)
       .filter(a => EMAIL_RE.test(String(a.username || '')))
       .filter(a => !taken.has(String(a.username).toLowerCase()))
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
