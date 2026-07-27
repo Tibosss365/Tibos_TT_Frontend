@@ -208,6 +208,9 @@ export default function NewTicket() {
     if (!isEndUser && !form.email.trim())   errs.email   = 'Required'
     if (!form.subject.trim())     errs.subject     = 'Required'
     if (!form.description.trim()) errs.description = 'Required'
+    // Agents must set at least one account owner (CC'd on status emails)
+    if (!isEndUser && (!form.owners || form.owners.length === 0))
+      errs.owners = 'Add at least one account owner'
     return errs
   }
 
@@ -395,7 +398,7 @@ export default function NewTicket() {
                     <label className={labelCls}>Assign To</label>
                     <select className="glass-input w-full text-sm" value={form.assignee} onChange={e => set('assignee', e.target.value)}>
                       <option value="">— Unassigned —</option>
-                      {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false).map(a => (
+                      {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false && a.role !== 'user').map(a => (
                         <option key={a.id} value={a.id}>{a.name}</option>
                       ))}
                     </select>
@@ -408,9 +411,9 @@ export default function NewTicket() {
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>
-                    Account Owners
+                    Account Owners <span className="text-rose-500">*</span>
                     <span className="t-sub font-normal normal-case tracking-normal ml-1.5">
-                      (CC'd on created / resolved / closed — auto-filled from company)
+                      (CC'd on every status email — auto-filled from company)
                     </span>
                   </label>
                   <OwnersInput
@@ -418,6 +421,7 @@ export default function NewTicket() {
                     onChange={v => { ownersTouched.current = true; set('owners', v) }}
                     agents={agents}
                   />
+                  {errors.owners && <p className="text-xs text-rose-500 mt-1">{errors.owners}</p>}
                 </div>
               )}
 

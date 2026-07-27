@@ -61,10 +61,11 @@ export default function OwnersInput({
     [owners],
   )
 
-  // Only agents with an email-shaped username can be CC'd
+  // Only internal staff (agents/technicians/admins, never end-users) with an
+  // email-shaped username can be picked as an owner
   const selectable = useMemo(() => (
     (agents || [])
-      .filter(a => a.id !== 'unassigned' && a.is_active !== false)
+      .filter(a => a.id !== 'unassigned' && a.is_active !== false && a.role !== 'user')
       .filter(a => EMAIL_RE.test(String(a.username || '')))
       .filter(a => !taken.has(String(a.username).toLowerCase()))
       .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))

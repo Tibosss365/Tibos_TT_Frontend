@@ -1015,7 +1015,7 @@ export function TicketDetailModal({ ticket, onClose }) {
           {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-36" value={edits.assignee} onChange={e => set('assignee', e.target.value)}>
               <option value="">— Unassigned —</option>
-              {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false && a.role !== 'user').map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           ) : (
             <span className="text-xs t-muted">
@@ -1546,7 +1546,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                         <div className="text-[10px] t-sub mb-1">Assign To</div>
                         <select className={inputCls} value={newTask.assignee} onChange={e => setNewTask(t=>({...t,assignee:e.target.value}))}>
                           <option value="">— Select —</option>
-                          {agents.filter(a=>a.id!=='unassigned'&&a.is_active!==false).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
+                          {agents.filter(a=>a.id!=='unassigned'&&a.is_active!==false&&a.role!=='user').map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1665,7 +1665,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                         onChange={e => setResolverId(e.target.value)}
                       >
                         <option value="">— Select agent —</option>
-                        {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false).map(a => (
+                        {agents.filter(a => a.id !== 'unassigned' && a.is_active !== false && a.role !== 'user').map(a => (
                           <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
                       </select>
