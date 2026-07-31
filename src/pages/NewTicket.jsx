@@ -130,7 +130,9 @@ export default function NewTicket() {
   const [form, setForm] = useState({
     ...EMPTY,
     priority:    defaultPriority,
-    contactName: currentUser?.name || '',
+    // End users file their own ticket → prefill their name; an agent filing on
+    // behalf of a customer starts blank (the contact is the customer, not them).
+    contactName: isEndUser ? (currentUser?.name || '') : '',
     email:       userEmail,
     company:     '',
   })
@@ -323,12 +325,12 @@ export default function NewTicket() {
                 </div>
               )}
               <div>
-                <label className={labelCls}>Your Name *</label>
+                <label className={labelCls}>Contact Person *</label>
                 <input
                   className={inputCls('contactName')}
                   value={form.contactName}
                   onChange={e => set('contactName', e.target.value)}
-                  placeholder="Full name"
+                  placeholder="Contact person name"
                   readOnly={isEndUser}
                 />
                 {errors.contactName && <p className="text-xs text-rose-500 mt-1">{errors.contactName}</p>}
