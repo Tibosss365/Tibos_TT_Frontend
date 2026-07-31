@@ -18,7 +18,7 @@ function EmptyState({ icon, title, desc, action }) {
   return (
     <div className="text-center py-16">
       <div className="text-5xl mb-3">{icon}</div>
-      <h3 className="text-base font-semibold text-gray-700 mb-1">{title}</h3>
+      <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">{title}</h3>
       <p className="text-sm text-gray-400 mb-6">{desc}</p>
       {action}
     </div>
@@ -41,7 +41,7 @@ function Toggle({ value, onChange }) {
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-indigo-600' : 'bg-gray-200'}`}
+      className={`relative w-11 h-6 rounded-full transition-colors ${value ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-600'}`}
     >
       <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
     </button>
@@ -75,7 +75,7 @@ function CustomFieldsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Custom Fields</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Custom Fields</h3>
           <p className="text-sm text-gray-500">Add extra fields to tickets (text, dropdown, date, etc.)</p>
         </div>
         <AddButton label="Add Field" onClick={() => setShowForm(true)} />
@@ -83,34 +83,34 @@ function CustomFieldsTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Custom Field</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Custom Field</h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Field Name *</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Field Name *</label>
               <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Type</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Type</label>
               <select value={form.field_type} onChange={e => setForm(f => ({ ...f, field_type: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                 {['text','number','date','dropdown','checkbox','url'].map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
           {form.field_type === 'dropdown' && (
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Options (comma-separated)</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Options (comma-separated)</label>
               <input value={form.options} onChange={e => setForm(f => ({ ...f, options: e.target.value }))}
                 placeholder="Option A, Option B, Option C"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
             </div>
           )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="cf-required" checked={form.is_required}
               onChange={e => setForm(f => ({ ...f, is_required: e.target.checked }))}
               className="h-4 w-4 text-indigo-600 rounded" />
-            <label htmlFor="cf-required" className="text-sm text-gray-700">Required field</label>
+            <label htmlFor="cf-required" className="text-sm text-gray-700 dark:text-gray-300">Required field</label>
           </div>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name}
@@ -118,7 +118,7 @@ function CustomFieldsTab() {
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200">
+              className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600">
               Cancel
             </button>
           </div>
@@ -132,10 +132,10 @@ function CustomFieldsTab() {
       ) : (
         <div className="space-y-2">
           {customFields.map(f => (
-            <div key={f.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={f.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div className="flex items-center gap-3">
-                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{f.field_type}</span>
-                <span className="text-sm font-medium text-gray-800">{f.name}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{f.field_type}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{f.name}</span>
                 {f.is_required && <span className="text-xs text-red-500">required</span>}
               </div>
               <button onClick={() => deleteCustomField(f.id)}
@@ -176,7 +176,7 @@ const A_STATUSES = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
 const A_SOURCES = ['portal', 'email', 'phone', 'chat']
 const isMulti = (op) => op === 'in' || op === 'not_in'
 
-const inputCls = 'rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white'
+const inputCls = 'rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800'
 
 // Options for a condition value dropdown (null = use a free-text input)
 function condValueOptions(field, { categories, groups, agents }) {
@@ -243,7 +243,7 @@ function RuleEditor({ rule, data, onSave, onClose }) {
       {/* Conditions */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Conditions</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Conditions</span>
           <span className="text-[11px] text-gray-400">all must match · empty = every ticket</span>
         </div>
         <div className="space-y-2">
@@ -270,7 +270,7 @@ function RuleEditor({ rule, data, onSave, onClose }) {
       {/* Actions */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Actions</span>
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Actions</span>
           <span className="text-[11px] text-gray-400">what happens when it matches</span>
         </div>
         <div className="space-y-2">
@@ -297,7 +297,7 @@ function RuleEditor({ rule, data, onSave, onClose }) {
           className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
           {saving ? 'Saving…' : 'Save rule'}
         </button>
-        <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200">Close</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600">Close</button>
       </div>
     </div>
   )
@@ -329,7 +329,7 @@ function AutomationTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Automation Rules</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Automation Rules</h3>
           <p className="text-sm text-gray-500">Auto-assign, change priority, add tags based on conditions.</p>
         </div>
         <AddButton label="Add Rule" onClick={() => setShowForm(true)} />
@@ -337,16 +337,16 @@ function AutomationTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Automation Rule</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Automation Rule</h4>
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Rule Name *</label>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Rule Name *</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Trigger</label>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Trigger</label>
             <select value={form.trigger} onChange={e => setForm(f => ({ ...f, trigger: e.target.value }))}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
               {['ticket_created','ticket_updated','comment_added','status_changed','sla_breach'].map(t => (
                 <option key={t} value={t}>{t.replace(/_/g,' ')}</option>
               ))}
@@ -359,7 +359,7 @@ function AutomationTab() {
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200">
+              className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-200 dark:hover:bg-gray-600">
               Cancel
             </button>
           </div>
@@ -376,12 +376,12 @@ function AutomationTab() {
             const nCond = (r.conditions || []).length
             const nAct = (r.actions || []).length
             return (
-            <div key={r.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={r.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Toggle value={r.is_active} onChange={() => toggleAutomationRule(r.id)} />
                   <div>
-                    <span className="text-sm font-medium text-gray-800">{r.name}</span>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r.name}</span>
                     <span className="ml-2 text-xs text-gray-400">on {r.trigger.replace(/_/g,' ')}</span>
                     <span className="ml-2 text-[11px] text-gray-400">· {nCond} condition{nCond === 1 ? '' : 's'}, {nAct} action{nAct === 1 ? '' : 's'}</span>
                     {nAct === 0 && <span className="ml-2 text-[11px] text-amber-600 font-medium">⚠ no actions — does nothing</span>}
@@ -442,7 +442,7 @@ function WebhooksTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Webhooks</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Webhooks</h3>
           <p className="text-sm text-gray-500">Send real-time HTTP events to external services.</p>
         </div>
         <AddButton label="Add Webhook" onClick={() => setShowForm(true)} />
@@ -450,22 +450,22 @@ function WebhooksTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Webhook</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Webhook</h4>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Name"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <input value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
             placeholder="https://your-endpoint.com/hook"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <input value={form.secret} onChange={e => setForm(f => ({ ...f, secret: e.target.value }))}
             placeholder="Signing secret (optional)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <div>
-            <p className="text-xs font-medium text-gray-600 mb-2">Subscribe to events:</p>
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Subscribe to events:</p>
             <div className="flex flex-wrap gap-2">
               {EVENT_OPTIONS.map(ev => (
                 <label key={ev} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs cursor-pointer transition-colors
-                  ${form.events.includes(ev) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 text-gray-600 hover:border-indigo-400'}`}>
+                  ${form.events.includes(ev) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-indigo-400'}`}>
                   <input type="checkbox" className="hidden" checked={form.events.includes(ev)} onChange={() => toggleEvent(ev)} />
                   {ev.replace(/_/g,' ')}
                 </label>
@@ -478,7 +478,7 @@ function WebhooksTab() {
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button onClick={() => setShowForm(false)}
-              className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold">
+              className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold">
               Cancel
             </button>
           </div>
@@ -492,13 +492,13 @@ function WebhooksTab() {
       ) : (
         <div className="space-y-2">
           {webhooks.map(w => (
-            <div key={w.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={w.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div>
-                <span className="text-sm font-medium text-gray-800">{w.name}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{w.name}</span>
                 <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{w.url}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${w.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${w.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                   {w.is_active ? 'Active' : 'Paused'}
                 </span>
                 <button onClick={() => deleteWebhook(w.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
@@ -540,7 +540,7 @@ function NotificationChannelsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Notification Channels</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Notification Channels</h3>
           <p className="text-sm text-gray-500">Send alerts to Slack, Teams, Discord, or custom webhooks.</p>
         </div>
         <AddButton label="Add Channel" onClick={() => setShowForm(true)} />
@@ -548,23 +548,23 @@ function NotificationChannelsTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Notification Channel</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Notification Channel</h4>
           <div className="grid grid-cols-2 gap-4">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Channel name"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+              className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
             <select value={form.channel_type} onChange={e => setForm(f => ({ ...f, channel_type: e.target.value }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+              className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
               {['slack','teams','discord','generic'].map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
           <input value={form.webhook_url} onChange={e => setForm(f => ({ ...f, webhook_url: e.target.value }))}
             placeholder="Webhook URL"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <div className="flex flex-wrap gap-2">
             {EVENT_OPTIONS.map(ev => (
               <label key={ev} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs cursor-pointer transition-colors
-                ${form.events.includes(ev) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 text-gray-600'}`}>
+                ${form.events.includes(ev) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'}`}>
                 <input type="checkbox" className="hidden" checked={form.events.includes(ev)} onChange={() => toggleEvent(ev)} />
                 {ev.replace(/_/g,' ')}
               </label>
@@ -575,7 +575,7 @@ function NotificationChannelsTab() {
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -587,10 +587,10 @@ function NotificationChannelsTab() {
       ) : (
         <div className="space-y-2">
           {notificationChannels.map(ch => (
-            <div key={ch.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={ch.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">{ch.channel_type}</span>
-                <span className="text-sm font-medium text-gray-800">{ch.name}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{ch.name}</span>
               </div>
               <button onClick={() => deleteNotificationChannel(ch.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
             </div>
@@ -615,7 +615,7 @@ const ADAPTOR_OPTIONS = [
   { value: 'provided',     label: 'Provided' },
   { value: 'replaced',     label: 'Replaced' },
 ]
-const ADAPTOR_COLOR = { provided: 'bg-green-100 text-green-700', replaced: 'bg-amber-100 text-amber-700', not_provided: 'bg-gray-100 text-gray-500' }
+const ADAPTOR_COLOR = { provided: 'bg-green-100 text-green-700', replaced: 'bg-amber-100 text-amber-700', not_provided: 'bg-gray-100 dark:bg-gray-700 text-gray-500' }
 
 function AssetsTab() {
   const { assets, assetsLoading, fetchAssets, createAsset, updateAsset, deleteAsset, fetchAssetHistory, fetchAllAssetHistory } = useFeatureStore()
@@ -748,9 +748,9 @@ function AssetsTab() {
     }
   }
 
-  const STATUS_COLOR = { active: 'bg-green-100 text-green-700', retired: 'bg-gray-100 text-gray-500', in_repair: 'bg-yellow-100 text-yellow-700', lost: 'bg-red-100 text-red-600' }
-  const ACTION_COLOR = { created: 'bg-blue-100 text-blue-700', assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 text-gray-500', deleted: 'bg-red-100 text-red-600' }
-  const inputCls = "rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+  const STATUS_COLOR = { active: 'bg-green-100 text-green-700', retired: 'bg-gray-100 dark:bg-gray-700 text-gray-500', in_repair: 'bg-yellow-100 text-yellow-700', lost: 'bg-red-100 text-red-600' }
+  const ACTION_COLOR = { created: 'bg-blue-100 text-blue-700', assigned: 'bg-green-100 text-green-700', reassigned: 'bg-indigo-100 text-indigo-700', unassigned: 'bg-gray-100 dark:bg-gray-700 text-gray-500', deleted: 'bg-red-100 text-red-600' }
+  const inputCls = "rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
 
   // Filter history rows by search
   const filteredHistory = allHistory.filter(h => {
@@ -780,12 +780,12 @@ function AssetsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Assets</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Assets</h3>
           <p className="text-sm text-gray-500">Track laptops, phones, servers, and other hardware — and who they're assigned to.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={openAllHistory}
-            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50">
+            className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800">
             Asset History
           </button>
           <AddButton label="Add Asset" onClick={() => setShowForm(true)} />
@@ -794,7 +794,7 @@ function AssetsTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Asset</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Asset</h4>
           <div className="grid grid-cols-2 gap-4">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Asset name *" className={inputCls} />
@@ -818,7 +818,7 @@ function AssetsTab() {
           </div>
           {/* Hardware Specification Fields */}
           <div>
-            <p className="text-xs font-semibold text-gray-600 mb-2">Specification</p>
+            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Specification</p>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-[11px] text-gray-500 mb-1 block">Processor</label>
@@ -861,7 +861,7 @@ function AssetsTab() {
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -879,10 +879,10 @@ function AssetsTab() {
       ) : filteredAssets.length === 0 ? (
         <div className="text-sm text-gray-400 py-8 text-center">No assets match “{assetSearch}”.</div>
       ) : (
-        <div className="rounded-xl border border-gray-200 overflow-auto">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-auto">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
+              <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Username</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Email ID</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Asset Tag</th>
@@ -900,41 +900,41 @@ function AssetsTab() {
               {filteredAssets.map((a, idx) => (
                 <Fragment key={a.id}>
                   <tr
-                    className={`${editingId === a.id ? 'bg-indigo-50' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-indigo-50/40`}
+                    className={`${editingId === a.id ? 'bg-indigo-50' : idx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800/50'} hover:bg-indigo-50/40`}
                     style={{ transition: 'background 0.15s' }}
                   >
                     {/* Username */}
-                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                       {a.assigned_to_name || <span className="text-gray-400 italic text-xs">Unassigned</span>}
                       {a.employee_code && (
-                        <span className="ml-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{a.employee_code}</span>
+                        <span className="ml-1.5 font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{a.employee_code}</span>
                       )}
                     </td>
                     {/* Email */}
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {a.assigned_to_email || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Asset Tag */}
-                    <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {a.asset_tag || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Asset Name */}
-                    <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                    <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                       <div>{a.name}</div>
                       <div className="text-[10px] text-gray-400 font-normal">{a.type}</div>
                     </td>
                     {/* Brand */}
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {a.brand || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Model */}
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {a.model || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Specification — Processor / RAM / ROM (+ notes) */}
-                    <td className="px-4 py-3 text-gray-600 max-w-[200px]">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-[200px]">
                       {(a.processor || a.ram || a.rom) && (
-                        <div className="text-xs font-medium text-gray-700">
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {[a.processor, a.ram, a.rom].filter(Boolean).join(' / ')}
                         </div>
                       )}
@@ -946,7 +946,7 @@ function AssetsTab() {
                       )}
                     </td>
                     {/* OS Version */}
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {a.os_version || <span className="text-gray-400 italic text-xs">—</span>}
                     </td>
                     {/* Adaptor */}
@@ -957,7 +957,7 @@ function AssetsTab() {
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLOR[a.status] || 'bg-gray-100 text-gray-500'}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLOR[a.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                         {a.status}
                       </span>
                     </td>
@@ -972,7 +972,7 @@ function AssetsTab() {
                         </button>
                         <button
                           onClick={() => startAssign(a)}
-                          className="text-gray-500 hover:text-gray-700 text-xs font-semibold"
+                          className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xs font-semibold"
                         >
                           {a.assigned_to_name || a.assigned_to_email ? 'Reassign' : 'Assign'}
                         </button>
@@ -1034,13 +1034,13 @@ function AssetsTab() {
                             </button>
                             <button
                               onClick={() => setEditForm(f => ({ ...f, assigned_to_name: '', assigned_to_email: '', employee_code: '' }))}
-                              className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-600 text-xs font-semibold hover:bg-gray-50"
+                              className="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 text-xs font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"
                             >
                               Clear (unassign)
                             </button>
                             <button
                               onClick={() => setEditingId(null)}
-                              className="px-3 py-1.5 rounded-lg text-gray-500 text-xs hover:text-gray-700"
+                              className="px-3 py-1.5 rounded-lg text-gray-500 text-xs hover:text-gray-700 dark:hover:text-gray-300"
                             >
                               Cancel
                             </button>
@@ -1062,13 +1062,13 @@ function AssetsTab() {
           className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6 px-4 bg-black/50 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) setShowAllHistory(false) }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col"
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col"
             style={{ width: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 3rem)' }}>
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div>
-                <h4 className="text-base font-bold text-gray-900">Asset History</h4>
+                <h4 className="text-base font-bold text-gray-900 dark:text-gray-100">Asset History</h4>
                 <p className="text-xs text-gray-500 mt-0.5">Complete audit trail — every created, assigned, reassigned, unassigned and deleted event.</p>
               </div>
               <div className="flex items-center gap-3">
@@ -1078,13 +1078,13 @@ function AssetsTab() {
                     value={histSearch}
                     onChange={e => setHistSearch(e.target.value)}
                     placeholder="Search by user, asset, model…"
-                    className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 w-64"
+                    className="pl-8 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 w-64"
                   />
                   <svg className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
-                <button onClick={() => setShowAllHistory(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+                <button onClick={() => setShowAllHistory(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
               </div>
             </div>
 
@@ -1100,7 +1100,7 @@ function AssetsTab() {
               ) : (
                 <table className="w-full text-sm border-collapse">
                   <thead className="sticky top-0 z-10">
-                    <tr className="bg-gray-50 border-b border-gray-200">
+                    <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Action</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Username</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Email ID</th>
@@ -1117,39 +1117,39 @@ function AssetsTab() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredHistory.map((h, idx) => (
-                      <tr key={h.id} className={idx % 2 === 0 ? 'bg-white hover:bg-indigo-50/40' : 'bg-gray-50/50 hover:bg-indigo-50/40'} style={{ transition: 'background 0.15s' }}>
+                      <tr key={h.id} className={idx % 2 === 0 ? 'bg-white dark:bg-gray-800 hover:bg-indigo-50/40' : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-indigo-50/40'} style={{ transition: 'background 0.15s' }}>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_COLOR[h.action] || 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${ACTION_COLOR[h.action] || 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                             {h.action}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                        <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                           {h.assigned_to_name || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.assigned_to_email || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.asset_number || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 font-mono text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.asset_tag || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                        <td className="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
                           {h.asset_name || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.model || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.brand || <span className="text-gray-400 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 text-gray-600 max-w-xs">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs">
                           <span className="line-clamp-2" title={h.specification || ''}>
                             {h.specification || <span className="text-gray-400 italic">—</span>}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {h.os_version || <span className="text-gray-400 italic">—</span>}
                         </td>
                         <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
@@ -1166,12 +1166,12 @@ function AssetsTab() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between shrink-0 bg-gray-50 rounded-b-2xl">
+            <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between shrink-0 bg-gray-50 dark:bg-gray-800 rounded-b-2xl">
               <p className="text-xs text-gray-400">
                 {allHistLoading ? 'Loading…' : `${filteredHistory.length} record${filteredHistory.length !== 1 ? 's' : ''}${histSearch ? ' (filtered)' : ''}`}
               </p>
               <button onClick={() => setShowAllHistory(false)}
-                className="px-4 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300">
+                className="px-4 py-1.5 rounded-lg bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-xs font-semibold hover:bg-gray-300">
                 Close
               </button>
             </div>
@@ -1184,15 +1184,15 @@ function AssetsTab() {
           className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-6 px-4 bg-black/50 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) setEditingAsset(null) }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col w-full max-w-3xl max-h-[90vh]">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col w-full max-w-3xl max-h-[90vh]">
             
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <div>
-                <h4 className="text-base font-bold text-gray-900">Edit Asset: {editingAsset.name}</h4>
+                <h4 className="text-base font-bold text-gray-900 dark:text-gray-100">Edit Asset: {editingAsset.name}</h4>
                 <p className="text-xs text-gray-500 mt-0.5">Modify hardware properties and assignment info.</p>
               </div>
-              <button onClick={() => setEditingAsset(null)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+              <button onClick={() => setEditingAsset(null)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
             </div>
 
             {/* Content */}
@@ -1290,7 +1290,7 @@ function AssetsTab() {
 
               {/* Hardware Specification */}
               <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-bold text-gray-700 mb-3">Specification</p>
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3">Specification</p>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-gray-500 mb-1 block">Processor</label>
@@ -1334,7 +1334,7 @@ function AssetsTab() {
 
               {/* Assignment Details */}
               <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-bold text-gray-700 mb-2">Assignment Details</p>
+                <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Assignment Details</p>
                 <div className="space-y-3">
                   <select
                     value={selectedUserId(editingAsset.assigned_to_email)}
@@ -1371,10 +1371,10 @@ function AssetsTab() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 bg-gray-50 rounded-b-2xl">
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0 bg-gray-50 dark:bg-gray-800 rounded-b-2xl">
               <button
                 onClick={() => setEditingAsset(null)}
-                className="px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                className="px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
@@ -1417,7 +1417,7 @@ function EscalationTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Escalation Rules</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Escalation Rules</h3>
           <p className="text-sm text-gray-500">Auto-escalate tickets that breach time thresholds.</p>
         </div>
         <AddButton label="Add Rule" onClick={() => setShowForm(true)} />
@@ -1425,33 +1425,33 @@ function EscalationTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Escalation Rule</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Escalation Rule</h4>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Rule name *"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Trigger Priority</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Trigger Priority</label>
               <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                 {['critical','high','medium','low'].map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">Hours before escalation</label>
+              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Hours before escalation</label>
               <input type="number" min={1} value={form.hours_before_escalation} onChange={e => setForm(f => ({ ...f, hours_before_escalation: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
             </div>
           </div>
           <input value={form.notify_email} onChange={e => setForm(f => ({ ...f, notify_email: e.target.value }))}
             placeholder="Notification email (optional)"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name}
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -1463,9 +1463,9 @@ function EscalationTab() {
       ) : (
         <div className="space-y-2">
           {escalationRules.map(r => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={r.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div>
-                <span className="text-sm font-medium text-gray-800">{r.name}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r.name}</span>
                 <p className="text-xs text-gray-400 mt-0.5">{r.priority} tickets → escalate after {r.hours_before_escalation}h</p>
               </div>
               <button onClick={() => deleteEscalationRule(r.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
@@ -1501,7 +1501,7 @@ function RecurringTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Recurring Tickets</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Recurring Tickets</h3>
           <p className="text-sm text-gray-500">Schedule tickets to be created automatically on a cron schedule.</p>
         </div>
         <AddButton label="Add Schedule" onClick={() => setShowForm(true)} />
@@ -1509,29 +1509,29 @@ function RecurringTab() {
 
       {showForm && (
         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 space-y-4">
-          <h4 className="font-semibold text-gray-800">New Recurring Ticket</h4>
+          <h4 className="font-semibold text-gray-800 dark:text-gray-200">New Recurring Ticket</h4>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Schedule name *"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
             placeholder="Ticket subject *"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
           <div>
-            <label className="text-xs font-medium text-gray-600 mb-1 block">Cron expression</label>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Cron expression</label>
             <input value={form.cron_expr} onChange={e => setForm(f => ({ ...f, cron_expr: e.target.value }))}
               placeholder="0 9 * * 1"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500" />
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500" />
             <p className="text-xs text-gray-400 mt-1">e.g. <code>0 9 * * 1</code> = Every Monday at 09:00</p>
           </div>
           <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
             placeholder="Description (optional)" rows={2}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 resize-none" />
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 resize-none" />
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name || !form.subject}
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold">Cancel</button>
+            <button onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-semibold">Cancel</button>
           </div>
         </div>
       )}
@@ -1543,13 +1543,13 @@ function RecurringTab() {
       ) : (
         <div className="space-y-2">
           {recurringTemplates.map(t => (
-            <div key={t.id} className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <div key={t.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
               <div>
-                <span className="text-sm font-medium text-gray-800">{t.name}</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t.name}</span>
                 <p className="text-xs text-gray-400 mt-0.5">{t.subject} · <code className="font-mono">{t.cron_expr}</code></p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
                   {t.is_active ? 'Active' : 'Paused'}
                 </span>
                 <button onClick={() => deleteRecurringTemplate(t.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
@@ -1596,38 +1596,38 @@ function BrandingTab() {
   return (
     <div className="space-y-6 max-w-lg">
       <div>
-        <h3 className="text-base font-semibold text-gray-900">Portal Branding</h3>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Portal Branding</h3>
         <p className="text-sm text-gray-500">Customise the look of your support portal.</p>
       </div>
       {saved && <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-700">✅ Branding saved.</div>}
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Company Name</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Company Name</label>
         <input value={form.company_name || ''} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Support Email</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Support Email</label>
         <input type="email" value={form.support_email || ''} onChange={e => setForm(f => ({ ...f, support_email: e.target.value }))}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Primary Colour</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Primary Colour</label>
         <div className="flex items-center gap-3">
           <input type="color" value={form.primary_color || '#0ea5e9'} onChange={e => setForm(f => ({ ...f, primary_color: e.target.value }))}
-            className="h-10 w-16 rounded-lg border border-gray-300 cursor-pointer" />
-          <span className="text-sm font-mono text-gray-600">{form.primary_color || '#0ea5e9'}</span>
+            className="h-10 w-16 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer" />
+          <span className="text-sm font-mono text-gray-600 dark:text-gray-400">{form.primary_color || '#0ea5e9'}</span>
         </div>
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Logo URL</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Logo URL</label>
         <input value={form.logo_url || ''} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))}
           placeholder="https://your-cdn.com/logo.png"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
       </div>
       <div>
-        <label className="text-xs font-medium text-gray-600 mb-1 block">Welcome Message</label>
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Welcome Message</label>
         <textarea value={form.welcome_message || ''} onChange={e => setForm(f => ({ ...f, welcome_message: e.target.value }))}
-          rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 resize-none" />
+          rows={3} className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 resize-none" />
       </div>
       <button onClick={handleSave} disabled={saving}
         className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">

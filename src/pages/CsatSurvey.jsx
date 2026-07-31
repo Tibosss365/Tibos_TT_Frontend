@@ -65,7 +65,7 @@ export default function CsatSurvey() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-gray-500">Loading survey…</div>
       </div>
     )
@@ -73,10 +73,10 @@ export default function CsatSurvey() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md text-center">
           <div className="text-4xl mb-4">😕</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Survey Not Available</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Survey Not Available</h2>
           <p className="text-gray-500">{error}</p>
         </div>
       </div>
@@ -85,10 +85,10 @@ export default function CsatSurvey() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md text-center">
           <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Thank you for your feedback!</h2>
+          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Thank you for your feedback!</h2>
           <p className="text-gray-500">Your response has been recorded. We appreciate you taking the time.</p>
         </div>
       </div>
@@ -97,11 +97,11 @@ export default function CsatSurvey() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-4xl mb-3">⭐</div>
-          <h1 className="text-2xl font-bold text-gray-900">How did we do?</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">How did we do?</h1>
           <p className="text-gray-500 mt-1 text-sm">
             Ticket: <strong className="text-indigo-600">{ticket?.ticket_display_id}</strong> — {ticket?.subject}
           </p>
@@ -117,7 +117,7 @@ export default function CsatSurvey() {
               className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all
                 ${rating === r.value
                   ? `${r.color} border-transparent text-white shadow-lg scale-105`
-                  : 'border-gray-200 hover:border-gray-300 text-gray-600 hover:bg-gray-50'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
             >
               <span className="text-2xl">{r.emoji}</span>
@@ -128,7 +128,7 @@ export default function CsatSurvey() {
 
         {/* Comment */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Any comments? (optional)
           </label>
           <textarea
@@ -136,7 +136,7 @@ export default function CsatSurvey() {
             value={comment}
             onChange={e => setComment(e.target.value)}
             placeholder="Tell us more about your experience…"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
           />
         </div>
 

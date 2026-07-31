@@ -120,11 +120,11 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">My Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">My Settings</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-400 text-xl">×</button>
         </div>
 
         {/* Tabs */}
@@ -136,7 +136,7 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
               className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors -mb-px
                 ${tab === t.id
                   ? 'border-indigo-600 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
             >
               {t.label}
             </button>
@@ -155,26 +155,26 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
           {tab === 'profile' && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
                 <input value={name} onChange={e => setName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Initials</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Initials</label>
                 <input value={initials} onChange={e => setInitials(e.target.value)} maxLength={4}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
                 <select value={timezone} onChange={e => setTimezone(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                   {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t('language')}</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('language')}</label>
                 <select value={language} onChange={e => updateSystemSettings({ language: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
                   {LANGUAGES.map(l => (
                     <option key={l.code} value={l.code}>{l.flag} {l.name} — {l.nativeName}</option>
                   ))}
@@ -191,16 +191,16 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
           {tab === 'security' && (
             <>
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-800">Change Password</h3>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Change Password</h3>
                 <input type="password" value={currentPass} onChange={e => setCurrentPass(e.target.value)}
                   placeholder="Current password"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
                 <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
                   placeholder="New password"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
                 <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
                   placeholder="Confirm new password"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
                 <button onClick={handleChangePassword} disabled={saving || !currentPass || !newPass}
                   className="w-full py-2.5 rounded-xl bg-gray-700 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
                   {saving ? 'Updating…' : 'Update Password'}
@@ -210,7 +210,7 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
               <hr className="border-gray-100" />
 
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-800">Two-Factor Authentication (TOTP)</h3>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Two-Factor Authentication (TOTP)</h3>
                 {user?.totp_enabled ? (
                   <>
                     <p className="text-xs text-green-700 bg-green-50 rounded-lg p-2 border border-green-200">
@@ -218,7 +218,7 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
                     </p>
                     <input value={disableCode} onChange={e => setDisableCode(e.target.value)}
                       maxLength={6} placeholder="Enter TOTP code to disable"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-red-500" />
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-red-500" />
                     <button onClick={handleDisableTotp} disabled={saving || disableCode.length < 6}
                       className="w-full py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50">
                       Disable 2FA
@@ -238,20 +238,20 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
                       </>
                     ) : (
                       <div className="space-y-3">
-                        <p className="text-xs text-gray-700">
+                        <p className="text-xs text-gray-700 dark:text-gray-300">
                           Scan this QR code in your authenticator app or enter the secret manually.
                         </p>
-                        <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 rounded-xl border">
+                        <div className="flex flex-col items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border">
                           <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(totpSetup.provisioning_uri)}`}
                             alt="QR code"
                             className="rounded"
                           />
-                          <code className="text-xs font-mono text-gray-600 break-all text-center">{totpSetup.secret}</code>
+                          <code className="text-xs font-mono text-gray-600 dark:text-gray-400 break-all text-center">{totpSetup.secret}</code>
                         </div>
                         <input value={totpCode} onChange={e => setTotpCode(e.target.value)}
                           maxLength={6} placeholder="Enter the 6-digit code"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-center focus:ring-2 focus:ring-indigo-500" />
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono text-center focus:ring-2 focus:ring-indigo-500" />
                         <button onClick={handleVerifyTotp} disabled={saving || totpCode.length < 6}
                           className="w-full py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50">
                           {saving ? 'Verifying…' : 'Verify & Enable 2FA'}
@@ -261,12 +261,12 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
 
                     {backupCodes.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-gray-700">
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                           🔑 Save these backup codes — they won't be shown again:
                         </p>
                         <div className="grid grid-cols-2 gap-1">
                           {backupCodes.map((code, i) => (
-                            <code key={i} className="text-xs font-mono bg-gray-100 rounded px-2 py-1">{code}</code>
+                            <code key={i} className="text-xs font-mono bg-gray-100 dark:bg-gray-700 rounded px-2 py-1">{code}</code>
                           ))}
                         </div>
                       </div>

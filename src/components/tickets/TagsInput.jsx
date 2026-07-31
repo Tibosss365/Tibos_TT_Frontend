@@ -43,7 +43,7 @@ export default function TagsInput({
 
   return (
     <div
-      className={`flex flex-wrap gap-1.5 p-2 border rounded-lg bg-white min-h-[38px] focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-50' : 'border-gray-300'}`}
+      className={`flex flex-wrap gap-1.5 p-2 border rounded-lg bg-white dark:bg-gray-800 min-h-[38px] focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-50 dark:bg-gray-800' : 'border-gray-300 dark:border-gray-600'}`}
     >
       {tags.map(tag => (
         <span
@@ -71,7 +71,7 @@ export default function TagsInput({
           onKeyDown={handleKey}
           onBlur={() => addTag(inputVal)}
           placeholder={tags.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[80px] outline-none text-sm text-gray-700 bg-transparent"
+          className="flex-1 min-w-[80px] outline-none text-sm text-gray-700 dark:text-gray-300 bg-transparent"
         />
       )}
     </div>
