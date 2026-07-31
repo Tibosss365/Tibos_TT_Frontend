@@ -132,7 +132,7 @@ export default function NewTicket() {
     priority:    defaultPriority,
     contactName: currentUser?.name || '',
     email:       userEmail,
-    company:     isEndUser ? '' : 'Acme Corp',
+    company:     '',
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -206,6 +206,7 @@ export default function NewTicket() {
     if (!isEndUser && !form.company.trim()) errs.company = 'Required'
     if (!form.contactName.trim()) errs.contactName = 'Required'
     if (!isEndUser && !form.email.trim())   errs.email   = 'Required'
+    if (!form.phone.trim())       errs.phone       = 'Required'
     if (!form.subject.trim())     errs.subject     = 'Required'
     if (!form.description.trim()) errs.description = 'Required'
     // Agents must set at least one account owner (CC'd on status emails)
@@ -317,7 +318,7 @@ export default function NewTicket() {
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>Company *</label>
-                  <input className={inputCls('company')} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Acme Corp" />
+                  <input className={inputCls('company')} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Customer company name" />
                   {errors.company && <p className="text-xs text-rose-500 mt-1">{errors.company}</p>}
                 </div>
               )}
@@ -340,8 +341,9 @@ export default function NewTicket() {
                 </div>
               )}
               <div>
-                <label className={labelCls}>Phone</label>
+                <label className={labelCls}>Phone *</label>
                 <input className={inputCls('phone')} value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+1 (555) 000-0000" />
+                {errors.phone && <p className="text-xs text-rose-500 mt-1">{errors.phone}</p>}
               </div>
             </div>
           </Card>
