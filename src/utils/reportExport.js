@@ -78,6 +78,9 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
   const ticketRows = list.map(t => ({
     id: t.id,
     subject: t.subject || '',
+    company: t.company || '',
+    contactName: t.contactName || t.submitter || '',
+    contactEmail: t.email || '',
     category: t.category ? getCategoryName(t.category) : '',
     status: STATUS_LABEL[t.status] || t.status || '',
     priority: t.priority || '',
@@ -135,10 +138,10 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
 
   // ── Tickets sheet ──
-  const tRows = [['Ticket #', 'Subject', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
-  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
+  const tRows = [['Ticket #', 'Subject', 'Company', 'Contact Person', 'Contact Email', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
+  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.company, t.contactName, t.contactEmail, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
-  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
+  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
 
   XLSX.writeFile(wb, `helpdesk-report-${dateStamp()}.xlsx`)
@@ -238,7 +241,8 @@ export async function exportTicketsPdf(tickets, getAgentName, meta = {}) {
 
 // ── Company-wise report exports ───────────────────────────────────────────────
 // `rows` is a pre-computed array of company stat objects:
-//   { name, domain, total, open, closed, critical, slaPct, lastTicket }
+//   { name, domain, contactName, contactEmail, contactPhone,
+//     total, open, closed, critical, slaPct, lastTicket }
 
 export async function exportCompanyExcel(rows, meta = {}) {
   const XLSX = await import('xlsx')
@@ -249,13 +253,20 @@ export async function exportCompanyExcel(rows, meta = {}) {
     ['Generated', new Date().toLocaleString()],
     ['Filter', filterLabel],
     [],
-    ['Company', 'Domain', 'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket'],
+    ['Company', 'Domain', 'Contact Person', 'Contact Email', 'Contact Phone',
+     'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket'],
   ]
-  rows.forEach(r => aoa.push([r.name, r.domain || '', r.total, r.open, r.closed, r.critical, r.slaPct, r.lastTicket || '']))
+  rows.forEach(r => aoa.push([
+    r.name, r.domain || '', r.contactName || '', r.contactEmail || '', r.contactPhone || '',
+    r.total, r.open, r.closed, r.critical, r.slaPct, r.lastTicket || '',
+  ]))
 
   const wb = XLSX.utils.book_new()
   const ws = XLSX.utils.aoa_to_sheet(aoa)
-  ws['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 9 }, { wch: 8 }, { wch: 20 }]
+  ws['!cols'] = [
+    { wch: 28 }, { wch: 24 }, { wch: 22 }, { wch: 28 }, { wch: 18 },
+    { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 9 }, { wch: 8 }, { wch: 20 },
+  ]
   XLSX.utils.book_append_sheet(wb, ws, 'Companies')
   XLSX.writeFile(wb, `company-report-${dateStamp()}.xlsx`)
 }
@@ -275,11 +286,18 @@ export async function exportCompanyPdf(rows, meta = {}) {
 
   autoTable(doc, {
     startY: 92,
-    head: [['Company', 'Domain', 'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket']],
-    body: rows.map(r => [r.name, r.domain || '', r.total, r.open, r.closed, r.critical, `${r.slaPct}%`, r.lastTicket || '']),
+    head: [['Company', 'Domain', 'Contact Person', 'Contact Email', 'Total', 'Open', 'Closed', 'Critical', 'SLA %', 'Last Ticket']],
+    body: rows.map(r => [r.name, r.domain || '', r.contactName || '', r.contactEmail || '', r.total, r.open, r.closed, r.critical, `${r.slaPct}%`, r.lastTicket || '']),
     headStyles: { fillColor: ACCENT, textColor: 255 },
-    styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-    columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 100 }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' } },
+    styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak' },
+    columnStyles: {
+      0: { cellWidth: 84 },   // Company
+      1: { cellWidth: 74 },   // Domain
+      2: { cellWidth: 68 },   // Contact Person
+      3: { cellWidth: 96 },   // Contact Email
+      4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' },
+      7: { halign: 'center' }, 8: { halign: 'center' },
+    },
     theme: 'striped',
   })
 

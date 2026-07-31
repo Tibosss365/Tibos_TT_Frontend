@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Building2, Ticket, FolderOpen, CheckCircle2, ShieldCheck, Search,
   TrendingUp, TrendingDown, Minus, AlertTriangle, FileSpreadsheet, FileText, Trophy,
@@ -8,6 +8,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
+import { useAdminStore } from '../stores/adminStore'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { exportCompanyExcel, exportCompanyPdf } from '../utils/reportExport'
@@ -151,10 +152,27 @@ function CompanyCard({ c, color }) {
 
 export default function CompanyDashboard() {
   const { tickets } = useTicketStore()
+  const { domainCompanies, fetchDomainCompanies } = useAdminStore()
   const [dateRange, setDateRange] = useState('all')
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('total')
   const [exporting, setExporting] = useState(null)
+
+  // Registry holds the authoritative contact person for each company/domain —
+  // load it so exports can include contact name / email / phone.
+  useEffect(() => {
+    if (!domainCompanies || domainCompanies.length === 0) fetchDomainCompanies?.()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Lookup by email domain and by lowercased company name
+  const registryIndex = useMemo(() => {
+    const byDomain = {}, byName = {}
+    ;(domainCompanies || []).forEach(d => {
+      if (d.domain) byDomain[String(d.domain).toLowerCase()] = d
+      if (d.company_name) byName[String(d.company_name).toLowerCase()] = d
+    })
+    return { byDomain, byName }
+  }, [domainCompanies])
 
   const rangedTickets = useMemo(
     () => tickets.filter(t => inRange(t.created, dateRange)),
@@ -201,7 +219,21 @@ export default function CompanyDashboard() {
     return head
   }, [companies])
 
-  const exportRows = filtered.map(c => ({ name: c.name, domain: c.domain, total: c.total, open: c.open, closed: c.closed, critical: c.critical, slaPct: c.slaPct, lastTicket: c.lastTicket }))
+  const exportRows = filtered.map(c => {
+    // Match the registry on domain first (authoritative key), then company name
+    const reg = registryIndex.byDomain[String(c.domain || '').toLowerCase()]
+             || registryIndex.byName[String(c.name || '').toLowerCase()]
+             || {}
+    return {
+      name: c.name,
+      domain: c.domain || reg.domain || '',
+      contactName: reg.contact_name || '',
+      contactEmail: reg.contact_email || '',
+      contactPhone: reg.contact_phone || '',
+      total: c.total, open: c.open, closed: c.closed, critical: c.critical,
+      slaPct: c.slaPct, lastTicket: c.lastTicket,
+    }
+  })
   const filterLabel = (DATE_RANGES.find(r => r.key === dateRange)?.label || 'All Time') + (search ? ` · "${search}"` : '')
 
   const doExport = async (kind) => {
