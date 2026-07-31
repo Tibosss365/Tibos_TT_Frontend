@@ -135,6 +135,9 @@ export default function NewTicket() {
     contactName: isEndUser ? (currentUser?.name || '') : '',
     email:       userEmail,
     company:     '',
+    // Default the assignee to the logged-in agent (they can reassign) — end
+    // users can't self-assign, so leave theirs unassigned.
+    assignee:    isEndUser ? '' : (currentUser?.id || ''),
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
