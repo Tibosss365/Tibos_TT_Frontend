@@ -81,6 +81,7 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     company: t.company || '',
     contactName: t.contactName || t.submitter || '',
     contactEmail: t.email || '',
+    contactPhone: t.phone || '',
     category: t.category ? getCategoryName(t.category) : '',
     status: STATUS_LABEL[t.status] || t.status || '',
     priority: t.priority || '',
@@ -138,10 +139,10 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
 
   // ── Tickets sheet ──
-  const tRows = [['Ticket #', 'Subject', 'Company', 'Contact Person', 'Contact Email', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
-  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.company, t.contactName, t.contactEmail, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
+  const tRows = [['Ticket #', 'Subject', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
+  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
-  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
+  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
 
   XLSX.writeFile(wb, `helpdesk-report-${dateStamp()}.xlsx`)
