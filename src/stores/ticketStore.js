@@ -2,6 +2,40 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { api, normalizeTicket } from '../api/client'
 
+// Clean up legacy bloated tickets payload from localStorage to immediately free storage quota
+try {
+  const legacy = localStorage.getItem('helpdesk-tickets')
+  if (legacy && (legacy.includes('"tickets"') || legacy.length > 5000)) {
+    localStorage.removeItem('helpdesk-tickets')
+  }
+} catch (_) {}
+
+const safeTicketStorage = {
+  getItem: (name) => {
+    try {
+      const raw = localStorage.getItem(name)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, JSON.stringify(value))
+    } catch (e) {
+      console.warn('[ticketStore] Storage quota exceeded or unavailable:', e)
+      try {
+        localStorage.removeItem(name)
+      } catch (_) {}
+    }
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name)
+    } catch (_) {}
+  },
+}
+
 export const useTicketStore = create(
   persist(
     (set, get) => ({
@@ -411,11 +445,11 @@ export const useTicketStore = create(
     }),
     {
       name: 'helpdesk-tickets',
-      partialize: (s) => {
-        // eslint-disable-next-line no-unused-vars
-        const { deletedTickets, ...rest } = s
-        return rest
-      },
+      storage: safeTicketStorage,
+      // Never persist server-backed ticket lists to localStorage to prevent QuotaExceededError
+      partialize: (s) => ({
+        filters: s.filters,
+      }),
     }
   )
 )

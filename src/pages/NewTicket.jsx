@@ -58,14 +58,18 @@ function KbSuggestions({ subject, description }) {
     timerRef.current = setTimeout(async () => {
       setLoading(true)
       try {
-        await fetchArticles({ search: query, page: 1, page_size: 4, language: 'en' })
-        setHits(useKnowledgeStore.getState().articles.slice(0, 4))
+        if (typeof fetchArticles === 'function') {
+          await fetchArticles({ search: query, page: 1, page_size: 4, language: 'en' })
+          setHits(useKnowledgeStore.getState().articles.slice(0, 4))
+        }
+      } catch (err) {
+        console.warn('KbSuggestions search error:', err)
       } finally {
         setLoading(false)
       }
     }, 600)
     return () => clearTimeout(timerRef.current)
-  }, [query])
+  }, [query, fetchArticles])
 
   if (!query || query.length < 5) return null
 
