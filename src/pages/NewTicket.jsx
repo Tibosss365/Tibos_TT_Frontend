@@ -47,6 +47,7 @@ function KbSuggestions({ subject, description }) {
   const { fetchArticles } = useKnowledgeStore()
   const [hits, setHits]   = useState([])
   const [loading, setLoading] = useState(false)
+  const [available, setAvailable] = useState(true)
   const timerRef = useRef(null)
   const navigate = useNavigate()
 
@@ -54,24 +55,28 @@ function KbSuggestions({ subject, description }) {
 
   useEffect(() => {
     clearTimeout(timerRef.current)
-    if (query.length < 5) { setHits([]); return }
+    if (!available || query.length < 5) { setHits([]); return }
     timerRef.current = setTimeout(async () => {
       setLoading(true)
       try {
         if (typeof fetchArticles === 'function') {
           await fetchArticles({ search: query, page: 1, page_size: 4, language: 'en' })
-          setHits(useKnowledgeStore.getState().articles.slice(0, 4))
+          const storeArticles = useKnowledgeStore.getState().articles || []
+          setHits(storeArticles.slice(0, 4))
         }
       } catch (err) {
+        if (err?.message?.includes('404') || err?.message === 'Not Found') {
+          setAvailable(false)
+        }
         console.warn('KbSuggestions search error:', err)
       } finally {
         setLoading(false)
       }
     }, 600)
     return () => clearTimeout(timerRef.current)
-  }, [query, fetchArticles])
+  }, [query, fetchArticles, available])
 
-  if (!query || query.length < 5) return null
+  if (!available || !query || query.length < 5) return null
 
   return (
     <Card>

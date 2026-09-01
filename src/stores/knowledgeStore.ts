@@ -62,17 +62,23 @@ const DEFAULT_PAGINATION: Omit<PaginatedArticles, 'items'> = {
   total: 0, page: 1, page_size: 20, pages: 0,
 }
 
+let isKbApiSupported = true
+
 export const useKnowledgeStore = create<KBState>((set, get) => ({
   // ── Categories ──────────────────────────────────────────────────────────────
   categories: [],
   categoriesLoading: false,
 
   fetchCategories: async () => {
+    if (!isKbApiSupported) return
     set({ categoriesLoading: true, error: null })
     try {
       const data = await kbCategoryApi.list()
       set({ categories: data, categoriesLoading: false })
     } catch (e: any) {
+      if (e?.message === 'Not Found' || e?.message?.includes('404')) {
+        isKbApiSupported = false
+      }
       set({ error: e.message, categoriesLoading: false })
     }
   },
@@ -100,11 +106,15 @@ export const useKnowledgeStore = create<KBState>((set, get) => ({
   articlesLoading: false,
 
   fetchArticles: async (filters = {}) => {
+    if (!isKbApiSupported) return
     set({ articlesLoading: true, error: null })
     try {
       const data = await kbArticleApi.list(filters)
       set({ articles: data.items, pagination: { total: data.total, page: data.page, page_size: data.page_size, pages: data.pages }, articlesLoading: false })
     } catch (e: any) {
+      if (e?.message === 'Not Found' || e?.message?.includes('404')) {
+        isKbApiSupported = false
+      }
       set({ error: e.message, articlesLoading: false })
     }
   },
