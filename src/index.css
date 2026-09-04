@@ -302,6 +302,16 @@ html.dark select option {
   background-color: #1e293b;
   color: #f1f5f9;
 }
+
+/* ── Dark mode: neutralize inline colors from pasted email HTML ─────────────
+   Outlook/Gmail trails carry inline style="color:...;background:..." on
+   spans/tables/etc. that cleanEmailHtml() doesn't strip. In light mode these
+   blend in; in dark mode they leave unreadable white boxes with dark text. */
+html.dark .email-body [style] {
+  background-color: transparent !important;
+  background-image: none !important;
+  color: inherit !important;
+}
 html.dark select option:checked,
 html.dark select option:hover {
   background-color: #334155;
