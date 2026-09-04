@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, Fragment } from 'react'
-import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download, UserCheck } from 'lucide-react'
+import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download, UserCheck, MessageSquare } from 'lucide-react'
 import AdminFeatureTabs from '../components/admin/AdminFeatureTabs'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
 import { useAdminStore } from '../stores/adminStore'
@@ -26,6 +26,7 @@ const TABS = [
   { id: 'email',                icon: Mail,              labelKey: 'email' },
   { id: 'alerts',               icon: Bell,              labelKey: 'alerts' },
   { id: 'sso',                  icon: Shield,            labelKey: 'sso' },
+  { id: 'teams',                icon: MessageSquare,     labelKey: 'teams' },
   { id: 'domains',              icon: Globe2,            labelKey: 'domainCompanies' },
   // ── Feature tabs ──────────────────────────────────────────────────────────
   { id: 'customFields',         icon: Tag,               labelKey: 'customFields',  group: 'features' },
@@ -2902,6 +2903,55 @@ export default function Admin() {
   const [ssoTestResult, setSsoTestResult] = useState(null)  // { ok, message }
   const [ssoShowSecret, setSsoShowSecret] = useState(false)
 
+  // ── Microsoft Teams (two-way chat bot) state ────────────────────────────────
+  const { teamsConfig, fetchTeamsConfig, saveTeamsConfig, testTeamsConfig } = useAdminStore()
+  const [teamsEdits, setTeamsEdits] = useState({
+    enabled: false, tenant_id: '', app_id: '', app_password: '',
+    default_category: 'other', default_priority: 'medium',
+  })
+  const [teamsSaving, setTeamsSaving] = useState(false)
+  const [teamsTesting, setTeamsTesting] = useState(false)
+  const [teamsTestResult, setTeamsTestResult] = useState(null)  // { ok, message }
+  const [teamsShowSecret, setTeamsShowSecret] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'teams') fetchTeamsConfig()
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const c = teamsConfig || {}
+    setTeamsEdits({
+      enabled:           c.enabled ?? false,
+      tenant_id:         c.tenant_id || '',
+      app_id:            c.app_id || '',
+      app_password:      '',   // never pre-fill the secret
+      default_category:  c.default_category || 'other',
+      default_priority:  c.default_priority || 'medium',
+    })
+  }, [teamsConfig])
+
+  const handleSaveTeams = async () => {
+    setTeamsSaving(true)
+    setTeamsTestResult(null)
+    try {
+      await saveTeamsConfig(teamsEdits)
+      addToast('Teams config saved', 'success')
+    } catch (e) {
+      addToast(e?.message || 'Could not save Teams config', 'error')
+    } finally { setTeamsSaving(false) }
+  }
+
+  const handleTestTeams = async () => {
+    setTeamsTesting(true)
+    setTeamsTestResult(null)
+    try {
+      const res = await testTeamsConfig()
+      setTeamsTestResult(res)
+    } catch (e) {
+      setTeamsTestResult({ ok: false, message: e?.message || 'Test failed' })
+    } finally { setTeamsTesting(false) }
+  }
+
   // ── SAML SP Metadata helpers ────────────────────────────────────────────────
   // The SP (Service Provider) values Azure AD needs for SAML configuration
   const samlEntityId  = `${BASE}/auth/saml/metadata`
@@ -4598,6 +4648,165 @@ export default function Admin() {
               </Card>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Microsoft Teams two-way chat Tab ─────────────────────────────── */}
+      {tab === 'teams' && (
+        <div className="space-y-5 max-w-3xl">
+
+          {/* Header info banner */}
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-indigo-500/8 border border-indigo-500/20">
+            <MessageSquare size={16} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+            <div className="text-xs t-main leading-relaxed">
+              <span className="font-semibold">Two-way Microsoft Teams chat</span> — a Teams bot that opens a ticket
+              from the first message in a chat, and keeps every reply (either side) in sync between that chat and
+              the ticket's conversation. Requires an Azure Bot resource — see the setup steps below.
+            </div>
+          </div>
+
+          {/* Setup walkthrough */}
+          <Card>
+            <CardHeader title="Setup: Azure Bot + Teams App" subtitle="One-time setup in the Azure Portal and Teams Admin Center" />
+            <ol className="space-y-3 text-xs t-main leading-relaxed list-decimal list-inside">
+              <li>In the <strong>Azure Portal</strong>, create a new <strong>Azure Bot</strong> resource. Choose
+                &nbsp;<strong>Single Tenant</strong> (simplest) or <strong>Multi Tenant</strong> — either works.</li>
+              <li>Creating it also creates an <strong>App registration</strong>. Open that app →
+                <strong> Certificates &amp; secrets</strong> → New client secret → copy the value immediately
+                (it's shown once).</li>
+              <li>Back in the Azure Bot resource → <strong>Configuration</strong> → set <strong>Messaging endpoint</strong> to
+                the URL shown below.</li>
+              <li>In the same Bot resource → <strong>Channels</strong> → add the <strong>Microsoft Teams</strong> channel.</li>
+              <li>Enter the <strong>Directory (tenant) ID</strong>, <strong>Application (client) ID</strong> and the
+                <strong> client secret</strong> you copied into the fields below, enable the toggle, and save.</li>
+              <li>Create/upload a Teams app manifest referencing this bot's App ID as its <code>bots[].botId</code>,
+                then sideload it in Teams (Apps → Manage your apps → Upload a custom app) or publish it org-wide via
+                the Teams Admin Center.</li>
+            </ol>
+
+            <div className="mt-4">
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className="text-[10px] font-bold t-sub uppercase tracking-wider">Messaging Endpoint</label>
+                <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider">Required</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-[11px] font-mono t-main bg-black/5 dark:bg-white/5 px-3 py-2 rounded-lg border border-glass truncate">
+                  {teamsConfig?.messaging_endpoint || `${BASE}/api/messages`}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => { navigator.clipboard.writeText(teamsConfig?.messaging_endpoint || `${BASE}/api/messages`); addToast('Copied', 'success') }}
+                  className="p-2 rounded-lg border border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 transition-all flex-shrink-0"
+                >
+                  <Pencil size={12} />
+                </button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Config form */}
+          <Card>
+            <CardHeader title="Bot Credentials" subtitle="From the Azure Bot resource's App registration" />
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-black/5 dark:bg-white/3 border border-glass mb-4">
+              <div>
+                <div className="text-xs font-bold t-main">Enable Teams Integration</div>
+                <div className="text-[11px] t-muted mt-0.5">Turn off to stop accepting Teams messages without losing saved credentials</div>
+              </div>
+              <button type="button" onClick={() => setTeamsEdits(e => ({ ...e, enabled: !e.enabled }))}>
+                {teamsEdits.enabled
+                  ? <ToggleRight size={30} className="text-indigo-500" />
+                  : <ToggleLeft size={30} className="t-muted" />}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1 block">
+                  Directory (Tenant) ID <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  className="glass-input w-full text-sm font-mono"
+                  value={teamsEdits.tenant_id}
+                  onChange={e => setTeamsEdits(f => ({ ...f, tenant_id: e.target.value }))}
+                  placeholder="e.g. 11111111-2222-3333-4444-555555555555 (or botframework.com for Multi Tenant)"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1 block">
+                  Application (Client) ID <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  className="glass-input w-full text-sm font-mono"
+                  value={teamsEdits.app_id}
+                  onChange={e => setTeamsEdits(f => ({ ...f, app_id: e.target.value }))}
+                  placeholder="Microsoft App ID from the Azure Bot resource"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1 block">
+                  Client Secret {teamsConfig?.app_password_set && <span className="normal-case font-normal t-muted">(saved — leave blank to keep it)</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    type={teamsShowSecret ? 'text' : 'password'}
+                    className="glass-input w-full text-sm font-mono pr-9"
+                    value={teamsEdits.app_password}
+                    onChange={e => setTeamsEdits(f => ({ ...f, app_password: e.target.value }))}
+                    placeholder={teamsConfig?.app_password_set ? '••••••••••••' : 'Client secret value'}
+                  />
+                  <button type="button" onClick={() => setTeamsShowSecret(s => !s)} className="absolute right-2.5 top-1/2 -translate-y-1/2 t-muted hover:t-main">
+                    {teamsShowSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1 block">Default Category</label>
+                  <select
+                    className="glass-input w-full text-sm"
+                    value={teamsEdits.default_category}
+                    onChange={e => setTeamsEdits(f => ({ ...f, default_category: e.target.value }))}
+                  >
+                    {categories.map(c => <option key={c.id} value={c.slug || c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold t-sub uppercase tracking-wider mb-1 block">Default Priority</label>
+                  <select
+                    className="glass-input w-full text-sm"
+                    value={teamsEdits.default_priority}
+                    onChange={e => setTeamsEdits(f => ({ ...f, default_priority: e.target.value }))}
+                  >
+                    {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                  </select>
+                </div>
+              </div>
+              <p className="text-[11px] t-muted">Applied to tickets auto-created from a brand-new Teams chat (the requester didn't pick these themselves).</p>
+            </div>
+
+            {teamsTestResult && (
+              <div className={`mt-4 flex items-start gap-2.5 p-3 rounded-xl border text-xs ${teamsTestResult.ok ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400'}`}>
+                {teamsTestResult.ok ? <CheckCircle2 size={14} className="flex-shrink-0 mt-0.5" /> : <XCircle size={14} className="flex-shrink-0 mt-0.5" />}
+                <div>
+                  <div className="font-semibold">{teamsTestResult.ok ? 'Credentials valid' : 'Test failed'}</div>
+                  <div className="mt-0.5 opacity-80">{teamsTestResult.message}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-4">
+              <Button variant="ghost" size="sm" onClick={handleTestTeams} disabled={teamsTesting}>
+                {teamsTesting ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                Test Connection
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleSaveTeams} disabled={teamsSaving}>
+                {teamsSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                Save Teams Config
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 

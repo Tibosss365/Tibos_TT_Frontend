@@ -535,6 +535,28 @@ export const useAdminStore = create(
         return await api.post('/admin/sso/test', {})
       },
 
+      // ── Microsoft Teams two-way chat (Azure Bot) config ─────────────────────
+      teamsConfig: null,
+
+      fetchTeamsConfig: async () => {
+        try {
+          const data = await api.get('/admin/teams')
+          set({ teamsConfig: data })
+        } catch (e) {
+          console.error('fetchTeamsConfig error', e)
+        }
+      },
+
+      saveTeamsConfig: async (body) => {
+        const data = await api.put('/admin/teams', body)
+        set({ teamsConfig: data })
+        return data
+      },
+
+      testTeamsConfig: async () => {
+        return await api.post('/admin/teams/test', {})
+      },
+
       // ── Graph instant-delivery webhook (Microsoft Graph change notifications) ──
       getWebhookStatus:  async () => await api.get('/inbound-email/webhook-status'),
       enableWebhook:     async () => await api.post('/inbound-email/enable-webhook', {}),

@@ -142,6 +142,7 @@ export function normalizeTicket(t) {
     _uuid:       String(t.id),
     id:          t.ticket_id,
     subject:     t.subject,
+    type:        t.type || 'request',
     category:    t.category,
     priority:    t.priority,
     status:      t.status,

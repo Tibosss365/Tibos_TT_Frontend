@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate, Search, GitBranch } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
@@ -31,6 +31,20 @@ const TICKET_TYPE_CONFIG = {
     label: 'Incident',
     desc: 'Something is broken or causing disruption right now',
     active: 'bg-rose-500/15 border-rose-500/50 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/40',
+    inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
+  },
+  problem: {
+    icon: Search,
+    label: 'Problem',
+    desc: 'Root cause behind one or more recurring incidents',
+    active: 'bg-purple-500/15 border-purple-500/50 text-purple-600 dark:text-purple-400 ring-1 ring-purple-500/40',
+    inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
+  },
+  change: {
+    icon: GitBranch,
+    label: 'Change',
+    desc: 'Planned change or maintenance that needs approval first',
+    active: 'bg-cyan-500/15 border-cyan-500/50 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-500/40',
     inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
   },
 }

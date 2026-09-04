@@ -1,0 +1,35 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "PASTE-YOUR-BOT-APP-ID-HERE",
+  "developer": {
+    "name": "Tibos Tech",
+    "websiteUrl": "https://tt.tibostech.in",
+    "privacyUrl": "https://tt.tibostech.in",
+    "termsOfUseUrl": "https://tt.tibostech.in"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "HelpdeskPro",
+    "full": "HelpdeskPro IT Support"
+  },
+  "description": {
+    "short": "Open and reply to support tickets from Teams",
+    "full": "Chat with the HelpdeskPro bot to open a support ticket, and get replies from your support agent right in this conversation."
+  },
+  "accentColor": "#6366F1",
+  "bots": [
+    {
+      "botId": "PASTE-YOUR-BOT-APP-ID-HERE",
+      "scopes": ["personal", "team", "groupChat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}

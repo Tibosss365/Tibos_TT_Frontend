@@ -2,11 +2,13 @@ import { useAdminStore } from '../stores/adminStore'
 
 export const STATUSES      = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
 export const PRIORITIES    = ['critical', 'high', 'medium', 'low']
-export const TICKET_TYPES  = ['request', 'incident']
+export const TICKET_TYPES  = ['request', 'incident', 'problem', 'change']
 
 export const TICKET_TYPE_META = {
   request:  { label: 'Request',  color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/30',   dot: 'bg-blue-500',   icon: '📋' },
   incident: { label: 'Incident', color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   border: 'border-rose-500/30',   dot: 'bg-rose-500',   icon: '⚠️' },
+  problem:  { label: 'Problem',  color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30', dot: 'bg-purple-500', icon: '🔍' },
+  change:   { label: 'Change',   color: 'text-cyan-600 dark:text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/30',   dot: 'bg-cyan-500',   icon: '🔧' },
 }
 export const CATEGORIES = {
   hardware: 'Hardware',

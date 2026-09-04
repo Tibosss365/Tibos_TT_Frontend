@@ -8,6 +8,7 @@ const SOURCE_CONFIG = {
   api:     { label: 'API',      color: 'bg-yellow-100 text-yellow-700', icon: '⚙️' },
   walk_in: { label: 'Walk-In',  color: 'bg-orange-100 text-orange-700', icon: '🚶' },
   chat:    { label: 'Chat',     color: 'bg-pink-100 text-pink-700',    icon: '💬' },
+  teams:   { label: 'Teams',    color: 'bg-violet-100 text-violet-700', icon: '👥' },
 }
 
 export default function SourceBadge({ source = 'portal', size = 'sm' }) {

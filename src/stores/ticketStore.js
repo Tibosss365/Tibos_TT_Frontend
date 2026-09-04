@@ -82,6 +82,7 @@ export const useTicketStore = create(
       addTicket: async (formData) => {
         const body = {
           subject:           formData.subject,
+          type:              formData.type || 'request',
           category:          formData.category,
           priority:          formData.priority,
           submitter_name:    formData.contactName || formData.submitter || '',
@@ -114,6 +115,7 @@ export const useTicketStore = create(
       updateTicket: async (uuid, changes) => {
         const body = {}
         if (changes.subject      !== undefined) body.subject      = changes.subject
+        if (changes.type         !== undefined) body.type         = changes.type
         if (changes.category     !== undefined) body.category     = changes.category
         if (changes.priority     !== undefined) body.priority     = changes.priority
         if (changes.status       !== undefined) body.status       = changes.status

@@ -68,8 +68,10 @@ export default function App() {
         <Route path="/admin"             element={<StaffOnly><Admin /></StaffOnly>} />
         <Route path="/analytics"         element={<StaffOnly><Analytics /></StaffOnly>} />
         <Route path="/deleted"           element={<StaffOnly><DeletedItems /></StaffOnly>} />
-        <Route path="/knowledge"         element={<StaffOnly><Knowledge /></StaffOnly>} />
-        <Route path="/knowledge/article/:slug" element={<StaffOnly><ArticleDetail /></StaffOnly>} />
+        {/* Knowledge base is readable by everyone, incl. end-users — both pages
+            internally gate authoring/admin actions to staff via role checks. */}
+        <Route path="/knowledge"         element={<Knowledge />} />
+        <Route path="/knowledge/article/:slug" element={<ArticleDetail />} />
         <Route path="/email"             element={<StaffOnly><EmailPage /></StaffOnly>} />
         <Route path="/activity"          element={<StaffOnly><ActivityLog /></StaffOnly>} />
         <Route path="*"                  element={<DefaultRedirect />} />
