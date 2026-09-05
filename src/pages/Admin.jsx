@@ -2466,14 +2466,28 @@ export default function Admin() {
     timezone:              systemSettings?.timezone              || 'Asia/Kolkata',
     sessionTimeoutMinutes: systemSettings?.sessionTimeoutMinutes ?? 480,
   })
+  // Company settings now load asynchronously from the backend (Layout fetches
+  // on mount) — resync the edit buffers once the real values arrive.
+  useEffect(() => {
+    setSysEdits({
+      language:              systemSettings?.language              || 'en',
+      timezone:              systemSettings?.timezone              || 'Asia/Kolkata',
+      sessionTimeoutMinutes: systemSettings?.sessionTimeoutMinutes ?? 480,
+    })
+  }, [systemSettings])
 
-  const handleSaveSystem = () => {
-    updateSystemSettings(sysEdits)
-    addToast('General settings saved', 'success')
+  const handleSaveSystem = async () => {
+    try {
+      await updateSystemSettings(sysEdits)
+      addToast('General settings saved', 'success')
+    } catch (e) {
+      addToast(e?.message || 'Failed to save general settings', 'error')
+    }
   }
 
   const [companyEdits, setCompanyEdits] = useState({ ...companyProfile })
   const logoInputRef = useRef(null)
+  useEffect(() => { setCompanyEdits({ ...companyProfile }) }, [companyProfile])
 
   // ── Ticket Settings local state ──────────────────────────────────────────
   const [tktEdits, setTktEdits] = useState({ ...ticketSettings })
@@ -2526,9 +2540,13 @@ export default function Admin() {
     reader.readAsDataURL(file)
   }
 
-  const handleSaveCompany = () => {
-    updateCompanyProfile(companyEdits)
-    addToast('Company profile saved', 'success')
+  const handleSaveCompany = async () => {
+    try {
+      await updateCompanyProfile(companyEdits)
+      addToast('Company profile saved', 'success')
+    } catch (e) {
+      addToast(e?.message || 'Failed to save company profile', 'error')
+    }
   }
 
   // ── Groups local state ────────────────────────────────────────────────────

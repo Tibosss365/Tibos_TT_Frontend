@@ -6,18 +6,17 @@ import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGE
 export const useAdminStore = create(
   persist(
     (set, get) => ({
-      // ── System / General settings ──────────────────────────────────────────
+      // ── System / General settings + Company profile ─────────────────────────
+      // Both live in one backend row (/admin/company-settings) — shared across
+      // every admin/browser. (Used to be Zustand-persist-only, i.e. private to
+      // one browser's localStorage, which is why it looked like it kept
+      // "resetting": every fresh browser/profile just saw these hardcoded
+      // defaults, never anything actually saved.)
       systemSettings: {
         language:               'en',           // default: English
         timezone:               'Asia/Kolkata', // default: IST
         sessionTimeoutMinutes:  480,            // default: 8 hours (0 = Never)
       },
-
-      updateSystemSettings: (changes) => {
-        set(s => ({ systemSettings: { ...s.systemSettings, ...changes } }))
-      },
-
-      // ── Company profile ─────────────────────────────────────────────────────
       companyProfile: {
         name: 'HelpdeskPro',
         website: '',
@@ -26,7 +25,45 @@ export const useAdminStore = create(
         logo: null,
       },
 
-      updateCompanyProfile: (changes) => {
+      fetchCompanySettings: async () => {
+        try {
+          const data = await api.get('/admin/company-settings')
+          set({
+            systemSettings: {
+              language: data.language,
+              timezone: data.timezone,
+              sessionTimeoutMinutes: data.session_timeout_minutes,
+            },
+            companyProfile: {
+              name: data.name || 'HelpdeskPro',
+              website: data.website || '',
+              phone: data.phone || '',
+              address: data.address || '',
+              logo: data.logo || null,
+            },
+          })
+        } catch (e) {
+          console.error('fetchCompanySettings error', e)
+        }
+      },
+
+      updateSystemSettings: async (changes) => {
+        const body = {}
+        if (changes.language              !== undefined) body.language = changes.language
+        if (changes.timezone              !== undefined) body.timezone = changes.timezone
+        if (changes.sessionTimeoutMinutes !== undefined) body.session_timeout_minutes = changes.sessionTimeoutMinutes
+        await api.put('/admin/company-settings', body)
+        set(s => ({ systemSettings: { ...s.systemSettings, ...changes } }))
+      },
+
+      updateCompanyProfile: async (changes) => {
+        const body = {}
+        if (changes.name    !== undefined) body.name    = changes.name
+        if (changes.website !== undefined) body.website = changes.website
+        if (changes.phone   !== undefined) body.phone   = changes.phone
+        if (changes.address !== undefined) body.address = changes.address
+        if (changes.logo    !== undefined) body.logo    = changes.logo
+        await api.put('/admin/company-settings', body)
         set(s => ({ companyProfile: { ...s.companyProfile, ...changes } }))
       },
 
@@ -781,7 +818,8 @@ export const useAdminStore = create(
         // stale localStorage can't hide or override shared data.
         const {
           categories, groups, alertSettings, domainCompanies,
-          onHoldReasons, resolutionCodes, cannedResponses, ...rest
+          onHoldReasons, resolutionCodes, cannedResponses,
+          systemSettings, companyProfile, ...rest
         } = state
         return rest
       },

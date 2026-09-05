@@ -1396,22 +1396,90 @@ function AssetsTab() {
 }
 
 // ── Escalation Rules Tab ───────────────────────────────────────────────────────
+
+// Ordered tier ladder editor — shared by the "new rule" form and per-rule edit.
+function LevelsEditor({ levels, setLevels }) {
+  const setLevel = (i, patch) => setLevels(ls => ls.map((l, idx) => idx === i ? { ...l, ...patch } : l))
+  const prevHours = (i) => (i === 0 ? 0 : Number(levels[i - 1]?.hours) || 0)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Escalation tiers</label>
+        <span className="text-[11px] text-gray-400">each fires once, as the ticket ages past its threshold</span>
+      </div>
+      <div className="space-y-2">
+        {levels.length === 0 && <p className="text-xs text-amber-600 italic">No tiers yet — add at least one, or this rule does nothing.</p>}
+        {levels.map((lv, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400 w-10 flex-shrink-0">T{i + 1}</span>
+            <input type="number" min={prevHours(i) + 1} value={lv.hours}
+              onChange={e => setLevel(i, { hours: e.target.value })}
+              placeholder="hours"
+              className="w-20 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800" />
+            <span className="text-xs text-gray-400 flex-shrink-0">hrs →</span>
+            <input value={lv.notify_email || ''} onChange={e => setLevel(i, { notify_email: e.target.value })}
+              placeholder="notify email"
+              className="flex-1 min-w-0 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800" />
+            <button onClick={() => setLevels(ls => ls.filter((_, idx) => idx !== i))}
+              className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none flex-shrink-0">×</button>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => setLevels(ls => [...ls, { hours: prevHours(ls.length) + 4, notify_email: '', escalate_to_ids: [] }])}
+        className="mt-2 text-xs font-medium text-indigo-600 hover:text-indigo-700">+ Add tier</button>
+    </div>
+  )
+}
+
+function escalationSummary(r) {
+  const levels = r.levels || []
+  if (levels.length === 0) return `${r.priority} tickets → no tiers configured`
+  return `${r.priority} tickets → ` + levels.map((lv, i) => `T${i + 1} at ${lv.hours}h`).join(', ')
+}
+
 function EscalationTab() {
-  const { escalationRules, escalationLoading, fetchEscalationRules, createEscalationRule, deleteEscalationRule } = useFeatureStore()
+  const { escalationRules, escalationLoading, fetchEscalationRules, createEscalationRule, updateEscalationRule, deleteEscalationRule } = useFeatureStore()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', priority: 'high', hours_before_escalation: 4, notify_email: '', is_active: true })
+  const [form, setForm] = useState({ name: '', priority: 'high', is_active: true })
+  const [newLevels, setNewLevels] = useState([{ hours: 4, notify_email: '', escalate_to_ids: [] }])
   const [saving, setSaving] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editLevels, setEditLevels] = useState([])
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => { fetchEscalationRules() }, [])
+
+  const cleanLevels = (ls) => ls
+    .filter(l => Number(l.hours) > 0)
+    .map(l => ({ hours: Number(l.hours), notify_email: l.notify_email || null, escalate_to_ids: l.escalate_to_ids || [] }))
+    .sort((a, b) => a.hours - b.hours)
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await createEscalationRule({ ...form, hours_before_escalation: Number(form.hours_before_escalation), escalate_to_ids: [] })
+      await createEscalationRule({ ...form, levels: cleanLevels(newLevels) })
       setShowForm(false)
-      setForm({ name: '', priority: 'high', hours_before_escalation: 4, notify_email: '', is_active: true })
+      setForm({ name: '', priority: 'high', is_active: true })
+      setNewLevels([{ hours: 4, notify_email: '', escalate_to_ids: [] }])
     } finally {
       setSaving(false)
+    }
+  }
+
+  const startEdit = (r) => {
+    setEditingId(r.id)
+    setEditLevels((r.levels || []).map(l => ({ ...l })))
+  }
+
+  const saveEdit = async (id) => {
+    setEditSaving(true)
+    try {
+      await updateEscalationRule(id, { levels: cleanLevels(editLevels) })
+      setEditingId(null)
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -1420,7 +1488,7 @@ function EscalationTab() {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Escalation Rules</h3>
-          <p className="text-sm text-gray-500">Auto-escalate tickets that breach time thresholds.</p>
+          <p className="text-sm text-gray-500">Auto-escalate tickets that sit untouched — through multiple tiers if they keep sitting.</p>
         </div>
         <AddButton label="Add Rule" onClick={() => setShowForm(true)} />
       </div>
@@ -1431,23 +1499,14 @@ function EscalationTab() {
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Rule name *"
             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Trigger Priority</label>
-              <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
-                {['critical','high','medium','low'].map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Hours before escalation</label>
-              <input type="number" min={1} value={form.hours_before_escalation} onChange={e => setForm(f => ({ ...f, hours_before_escalation: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
-            </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 block">Trigger Priority</label>
+            <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500">
+              {['critical','high','medium','low'].map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
           </div>
-          <input value={form.notify_email} onChange={e => setForm(f => ({ ...f, notify_email: e.target.value }))}
-            placeholder="Notification email (optional)"
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+          <LevelsEditor levels={newLevels} setLevels={setNewLevels} />
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name}
               className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
@@ -1465,12 +1524,28 @@ function EscalationTab() {
       ) : (
         <div className="space-y-2">
           {escalationRules.map(r => (
-            <div key={r.id} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
-              <div>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r.name}</span>
-                <p className="text-xs text-gray-400 mt-0.5">{r.priority} tickets → escalate after {r.hours_before_escalation}h</p>
+            <div key={r.id} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{r.name}</span>
+                  <p className="text-xs text-gray-400 mt-0.5">{escalationSummary(r)}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <button onClick={() => editingId === r.id ? setEditingId(null) : startEdit(r)} className="text-indigo-500 hover:text-indigo-600 text-sm">
+                    {editingId === r.id ? 'Close' : 'Edit tiers'}
+                  </button>
+                  <button onClick={() => deleteEscalationRule(r.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
+                </div>
               </div>
-              <button onClick={() => deleteEscalationRule(r.id)} className="text-red-400 hover:text-red-600 text-sm">Delete</button>
+              {editingId === r.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                  <LevelsEditor levels={editLevels} setLevels={setEditLevels} />
+                  <button onClick={() => saveEdit(r.id)} disabled={editSaving}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                    {editSaving ? 'Saving…' : 'Save tiers'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -18,6 +18,7 @@ export function Layout() {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
     fetchOnHoldReasons, fetchResolutionCodes, fetchCannedResponses,
+    fetchCompanySettings,
   } = useAdminStore()
   const { fetchNotifications, addNotification, fetchPendingApprovals } = useNotificationStore()
   const { activeModal, closeModal, sidebarOpen, toggleSidebar } = useUiStore()
@@ -50,6 +51,7 @@ export function Layout() {
     fetchCannedResponses()
     fetchNotifications()
     fetchPendingApprovals()
+    fetchCompanySettings()
 
     // Open SSE connection
     const es = new EventSource(`${BASE}/events?token=${encodeURIComponent(token)}`)
