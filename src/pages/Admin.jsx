@@ -4025,6 +4025,7 @@ export default function Admin() {
                     <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
                     <input type="password" className={`${inputCls} pl-7`} value={newAgent.password} onChange={e => setNewAgent(a => ({ ...a, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
                   </div>
+                  <p className="text-[10px] t-muted mt-1">At least 8 characters, with a letter and a number.</p>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
@@ -4079,6 +4080,7 @@ export default function Admin() {
                     <Lock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-sub" />
                     <input type="password" className={`${inputCls} pl-7`} value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
                   </div>
+                  <p className="text-[10px] t-muted mt-1">At least 8 characters, with a letter and a number.</p>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">

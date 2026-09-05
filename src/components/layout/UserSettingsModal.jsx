@@ -61,7 +61,8 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
 
   const handleChangePassword = async () => {
     if (newPass !== confirmPass) { setError('New passwords do not match'); return }
-    if (newPass.length < 4) { setError('Password must be at least 4 characters'); return }
+    if (newPass.length < 8) { setError('Password must be at least 8 characters long'); return }
+    if (!/[A-Za-z]/.test(newPass) || !/[0-9]/.test(newPass)) { setError('Password must contain at least one letter and one number'); return }
     setSaving(true); setError(''); setSuccess('')
     try {
       await updateOwnSettings({ current_password: currentPass, new_password: newPass })
@@ -198,6 +199,7 @@ export default function UserSettingsModal({ user, onClose, onSaved }) {
                 <input type="password" value={newPass} onChange={e => setNewPass(e.target.value)}
                   placeholder="New password"
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
+                <p className="text-[11px] text-gray-400 -mt-1.5">At least 8 characters, with a letter and a number.</p>
                 <input type="password" value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
                   placeholder="Confirm new password"
                   className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" />
