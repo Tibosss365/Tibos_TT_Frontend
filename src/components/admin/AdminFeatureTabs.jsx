@@ -165,11 +165,12 @@ const COND_OPS = [
   { value: 'contains',   label: 'contains' },
 ]
 const ACTION_TYPES = [
-  { value: 'assign',       label: 'Assign to agent' },
-  { value: 'set_priority', label: 'Set priority' },
-  { value: 'set_status',   label: 'Set status' },
-  { value: 'add_tag',      label: 'Add tag' },
-  { value: 'set_group',    label: 'Set group' },
+  { value: 'assign',            label: 'Assign to agent' },
+  { value: 'assign_least_busy', label: 'Assign to least-busy agent' },
+  { value: 'set_priority',      label: 'Set priority' },
+  { value: 'set_status',        label: 'Set status' },
+  { value: 'add_tag',           label: 'Add tag' },
+  { value: 'set_group',         label: 'Set group' },
 ]
 const A_PRIORITIES = ['critical', 'high', 'medium', 'low']
 const A_STATUSES = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
@@ -192,6 +193,7 @@ function actionValueOptions(type, { categories, groups, agents }) {
   if (type === 'set_priority') return A_PRIORITIES
   if (type === 'set_status')   return A_STATUSES
   if (type === 'assign')       return agents.filter(a => a.id !== 'unassigned').map(a => ({ value: String(a.id), label: a.name }))
+  if (type === 'assign_least_busy') return [{ value: '*', label: '— Any group (all active agents) —' }, ...groups.map(g => ({ value: g.id, label: g.name }))]
   if (type === 'set_group')    return groups.map(g => ({ value: g.id, label: g.name }))
   return null // add_tag → free text
 }
