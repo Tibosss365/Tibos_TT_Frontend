@@ -504,11 +504,45 @@ export const useAdminStore = create(
           subject:      e.subject,
           status:       e.status,
           ticketId:     e.ticket_number || null,
+          ticketUuid:   e.ticket_id || null,   // null = no live ticket (never converted, or the ticket was since deleted)
           errorMessage: e.error_message || null,
           processedAt:  e.processed_at,
+          hasBody:      !!e.has_body,
         }))
         set({ emailLog: items })
         return { items, total: data.total }
+      },
+
+      // Single-entry fetch, including the actual email body (omitted from the list).
+      fetchEmailLogDetail: async (logId) => {
+        const e = await api.get(`/inbound-email/logs/${logId}`)
+        return {
+          id:           String(e.id),
+          fromEmail:    e.from_email,
+          fromName:     e.from_name,
+          subject:      e.subject,
+          status:       e.status,
+          ticketId:     e.ticket_number || null,
+          ticketUuid:   e.ticket_id || null,
+          errorMessage: e.error_message || null,
+          processedAt:  e.processed_at,
+          body:         e.body || '',
+        }
+      },
+
+      // Manually turn a filtered/duplicate/error/orphaned log entry into a ticket.
+      convertEmailLogToTicket: async (logId) => {
+        const data = await api.post(`/inbound-email/logs/${logId}/convert`, {})
+        set(s => ({
+          emailLog: s.emailLog.map(e => e.id === String(logId) ? {
+            ...e,
+            status: data.status,
+            ticketId: data.ticket_number || null,
+            ticketUuid: data.ticket_id || null,
+            errorMessage: null,
+          } : e),
+        }))
+        return data
       },
 
       clearInboundLogs: async () => {
