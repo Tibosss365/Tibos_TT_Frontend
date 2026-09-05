@@ -21,7 +21,7 @@ const ACTION_KEYS = [
   { to: '/tickets/new',      icon: PlusCircle, key: 'submitTicket',                  color: 'text-emerald-500' },
   { to: '/tickets/my-portal', icon: Ticket,    key: 'myTickets',   userOnly: true,  color: 'text-sky-500' },
   { to: '/knowledge',        icon: BookOpen,   key: 'knowledge',   staffOnly: true, color: 'text-amber-500' },
-  { to: '/email',            icon: Mail,       key: 'email',       staffOnly: true, color: 'text-rose-500' },
+  { to: '/email-log',        icon: Mail,       key: 'email',       staffOnly: true, color: 'text-rose-500' },
   { to: '/analytics',        icon: BarChart3,  key: 'analytics',   staffOnly: true, color: 'text-violet-500' },
   { to: '/activity',         icon: Activity,   key: 'activity',    adminOnly: true, color: 'text-orange-500' },
   { to: '/admin',            icon: Settings,   key: 'admin',       adminOnly: true, color: 'text-teal-500' },

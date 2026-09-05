@@ -14,6 +14,7 @@ import DeletedItems from './pages/DeletedItems'
 import Knowledge from './pages/Knowledge'
 import ArticleDetail from './pages/Knowledge/ArticleDetail'
 import EmailPage from './pages/Email'
+import EmailLog from './pages/EmailLog'
 import ActivityLog from './pages/ActivityLog'
 import CsatSurvey from './pages/CsatSurvey'
 import { useUiStore } from './stores/uiStore'
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/knowledge"         element={<Knowledge />} />
         <Route path="/knowledge/article/:slug" element={<ArticleDetail />} />
         <Route path="/email"             element={<StaffOnly><EmailPage /></StaffOnly>} />
+        <Route path="/email-log"         element={<StaffOnly><EmailLog /></StaffOnly>} />
         <Route path="/activity"          element={<StaffOnly><ActivityLog /></StaffOnly>} />
         <Route path="*"                  element={<DefaultRedirect />} />
       </Route>
