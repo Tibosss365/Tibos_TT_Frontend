@@ -143,7 +143,7 @@ export default function EmailLog() {
   }
 
   const openTickets = tickets
-    .filter(t => t.status !== 'closed')
+    .filter(t => t.status !== 'closed' && t.status !== 'resolved')
     .sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0))
 
   const handleConvert = async (entry) => {
@@ -213,7 +213,7 @@ export default function EmailLog() {
 
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <CardHeader title="Open Tickets" subtitle={`${openTickets.length} not closed — click one to view its email communication`} />
+          <CardHeader title="Open Tickets" subtitle={`${openTickets.length} not yet resolved — click one to see why and view its email communication`} />
         </div>
 
         {openTickets.length === 0 ? (
