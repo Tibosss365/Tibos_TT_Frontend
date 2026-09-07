@@ -248,6 +248,7 @@ export const useTicketStore = create(
         const data = await api.post(`/tickets/${uuid}/comments`, {
           text: event.text,
           send_to_customer: event.sendToCustomer ?? false,
+          cc: event.cc || undefined,
         })
         const updated = normalizeTicket(data)
         // Preserve attachments — comment POST response returns [] for attachments

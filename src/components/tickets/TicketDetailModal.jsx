@@ -905,19 +905,20 @@ export function TicketDetailModal({ ticket, onClose }) {
   }
 
   const handleSendEmail = async () => {
-    if (!composeTo.trim() || !composeBody.trim()) return
+    if (!composeBody.trim()) return
     await uploadPendingFiles()
-    addTimelineEvent(ticket._uuid, {
-      type: 'email_out',
-      text: composeBody,
-      subject: composeSubject,
-      to: composeTo,
-      cc: composeCc,
-      author: currentUser?.name || 'Agent',
-    })
-    setComposeMode('comment')
-    setComposeTo(''); setComposeCc(''); setComposeSubject(''); setComposeBody('')
-    addToast('Email sent to customer', 'success')
+    try {
+      await addTimelineEvent(ticket._uuid, {
+        text: composeBody,
+        sendToCustomer: true,
+        cc: composeCc,
+      })
+      setComposeMode('comment')
+      setComposeTo(''); setComposeCc(''); setComposeSubject(''); setComposeBody('')
+      addToast('Email sent to customer', 'success')
+    } catch (e) {
+      addToast(e.message || 'Could not send email', 'error')
+    }
   }
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
@@ -1303,18 +1304,18 @@ export function TicketDetailModal({ ticket, onClose }) {
                           >✕ Cancel</button>
                         </div>
 
-                        {/* To */}
+                        {/* To — always the ticket's own requester; replies must thread into
+                            the existing conversation, so this isn't freely editable. */}
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-semibold t-sub w-6">To</span>
                           <input
-                            className="glass-input flex-1 text-xs py-1.5"
-                            value={composeTo}
-                            onChange={e => setComposeTo(e.target.value)}
-                            placeholder="recipient@example.com"
+                            className="glass-input flex-1 text-xs py-1.5 opacity-70 cursor-not-allowed"
+                            value={composeTo || 'No email on this ticket'}
+                            readOnly
                           />
                         </div>
 
-                        {/* CC */}
+                        {/* CC — additional recipients on top of any account owners already cc'd */}
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-semibold t-sub w-6">CC</span>
                           <input
@@ -1325,14 +1326,14 @@ export function TicketDetailModal({ ticket, onClose }) {
                           />
                         </div>
 
-                        {/* Subject */}
+                        {/* Subject is fixed by the backend ("[TICKET-ID] Update on your ticket")
+                            so this replies into the same thread — shown for reference only. */}
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-semibold t-sub w-6">Re</span>
                           <input
-                            className="glass-input flex-1 text-xs py-1.5"
-                            value={composeSubject}
-                            onChange={e => setComposeSubject(e.target.value)}
-                            placeholder="Subject"
+                            className="glass-input flex-1 text-xs py-1.5 opacity-70 cursor-not-allowed"
+                            value={`[${ticket.id}] ${composeSubject}`}
+                            readOnly
                           />
                         </div>
 
@@ -1370,7 +1371,8 @@ export function TicketDetailModal({ ticket, onClose }) {
                             variant="primary"
                             size="sm"
                             onClick={handleSendEmail}
-                            disabled={(!composeTo.trim() || !composeBody.trim()) || uploading}
+                            disabled={!composeTo.trim() || !composeBody.trim() || uploading}
+                            title={!composeTo.trim() ? 'This ticket has no requester email on file' : undefined}
                           >
                             {uploading ? <SpinIcon size={13} className="animate-spin" /> : <Send size={13} />}
                             {uploading ? 'Uploading…' : 'Send Email'}
