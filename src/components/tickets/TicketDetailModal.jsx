@@ -1207,9 +1207,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                                   {ev.cc   && <div className="text-[11px] t-muted"><span className="font-semibold t-sub">CC:</span> {ev.cc}</div>}
                                 </div>
 
-                                {/* Body */}
-                                <div className="px-3 py-3">
-                                  <div className="text-xs t-main leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: ev.text }} />
+                                {/* Body — full HTML (including any quoted trail the sender's
+                                    mail client attached), sanitized like the email preview. */}
+                                <div className="px-3 py-3 email-body">
+                                  <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanEmailHtml(ev.text) }} />
                                 </div>
 
                                 {/* Reply actions (only on received emails, staff only) */}

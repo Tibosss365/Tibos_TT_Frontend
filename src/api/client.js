@@ -178,10 +178,14 @@ export function normalizeTicket(t) {
     updated:     t.updated_at,
     deletedAt:   t.deleted_at || null,
     timeline: (t.timeline || []).map(ev => ({
-      type:   ev.type,
-      text:   ev.text,
-      ts:     ev.created_at,
-      author: ev.author?.name || '',
+      type:    ev.type,
+      text:    ev.text,
+      ts:      ev.created_at,
+      author:  ev.author?.name || '',
+      from:    ev.email_from    || '',
+      to:      ev.email_to      || '',
+      cc:      ev.email_cc      || '',
+      subject: ev.email_subject || '',
     })),
     attachments: (t.attachments || []).map(a => ({
       id:          a.id,
