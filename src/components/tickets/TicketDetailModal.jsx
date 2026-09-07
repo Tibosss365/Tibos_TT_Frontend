@@ -832,6 +832,9 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
   const [expandedEmail, setExpandedEmail] = useState(null) // track which email is expanded
+  // In conversationOnly mode the whole point is reading email content, so every
+  // email starts open — this tracks ones the agent has manually collapsed instead.
+  const [collapsedEmails, setCollapsedEmails] = useState(() => new Set())
 
   // Compose attachments (files/pasted images pending upload)
   const [composeFiles, setComposeFiles]   = useState([]) // Array<File>
@@ -1136,7 +1139,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                       const isEmailIn  = ev.type === 'email_in'
                       const isComment  = ev.type === 'comment'
                       const isEmail    = isEmailOut || isEmailIn
-                      const isExpanded = expandedEmail === i
+                      const isExpanded = conversationOnly ? !collapsedEmails.has(i) : expandedEmail === i
 
                       /* ── Email bubble (in or out) ── */
                       if (isEmail) {
@@ -1149,7 +1152,17 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                             {/* Email header row */}
                             <div
                               className="flex items-start justify-between gap-2 px-3 py-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                              onClick={() => setExpandedEmail(isExpanded ? null : i)}
+                              onClick={() => {
+                                if (conversationOnly) {
+                                  setCollapsedEmails(prev => {
+                                    const next = new Set(prev)
+                                    if (next.has(i)) next.delete(i); else next.add(i)
+                                    return next
+                                  })
+                                } else {
+                                  setExpandedEmail(isExpanded ? null : i)
+                                }
+                              }}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 {isEmailOut
