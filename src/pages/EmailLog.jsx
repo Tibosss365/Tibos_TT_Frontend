@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Inbox, ArrowRight, XCircle, RefreshCw, TicketPlus, Loader2, Mail } from 'lucide-react'
+import { Inbox, ArrowRight, XCircle, RefreshCw, TicketPlus, Loader2, Mail, Trash2, AlertTriangle } from 'lucide-react'
 import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUiStore } from '../stores/uiStore'
@@ -91,12 +91,39 @@ function EmailPreviewModal({ entry, onClose, onConverted }) {
   )
 }
 
+// ── Scrolling ticker of emails that never became a ticket, so it's noticeable
+// without having to scan the table (like a news headline strip). ──
+function UnconvertedTicker({ entries, onSelect }) {
+  if (entries.length === 0) return null
+
+  const chips = entries.map(entry => (
+    <button
+      key={entry.id}
+      onClick={() => onSelect(entry)}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 mx-1.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-colors whitespace-nowrap flex-shrink-0"
+    >
+      <AlertTriangle size={11} />
+      {entry.subject || '(no subject)'} — not converted
+    </button>
+  ))
+
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-amber-500/5 py-2 group">
+      <div className="flex items-center w-max animate-marquee group-hover:[animation-play-state:paused]">
+        <div className="flex items-center flex-shrink-0">{chips}</div>
+        <div className="flex items-center flex-shrink-0" aria-hidden="true">{chips}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function EmailLog() {
-  const { emailLog, fetchInboundLogs, clearInboundLogs, convertEmailLogToTicket } = useAdminStore()
+  const { emailLog, fetchInboundLogs, clearInboundLogs, convertEmailLogToTicket, deleteEmailLogEntry } = useAdminStore()
   const { fetchTicket } = useTicketStore()
   const { addToast } = useUiStore()
   const [loading, setLoading] = useState(false)
   const [convertingId, setConvertingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [previewEntry, setPreviewEntry] = useState(null)
   const [openTicket, setOpenTicket] = useState(null)
   const [ticketLoading, setTicketLoading] = useState(false)
@@ -117,6 +144,19 @@ export default function EmailLog() {
       addToast(e.message || 'Could not convert this email', 'error')
     } finally {
       setConvertingId(null)
+    }
+  }
+
+  const handleDelete = async (entry) => {
+    if (!window.confirm(`Delete this log entry ("${entry.subject || '(no subject)'}")? This only removes the log — any ticket it already became is untouched.`)) return
+    setDeletingId(entry.id)
+    try {
+      await deleteEmailLogEntry(entry.id)
+      addToast('Log entry deleted', 'success')
+    } catch (e) {
+      addToast(e.message || 'Could not delete this entry', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -155,6 +195,11 @@ export default function EmailLog() {
         </button>
       </div>
 
+      <UnconvertedTicker
+        entries={emailLog.filter(e => !e.ticketUuid)}
+        onSelect={entry => setPreviewEntry(entry)}
+      />
+
       <Card>
         <div className="flex items-center justify-between mb-3">
           <CardHeader title="Recent Activity" subtitle={`${emailLog.length} recent entries`} />
@@ -189,6 +234,7 @@ export default function EmailLog() {
                   // never-converted entries AND ones whose ticket was since deleted.
                   const canConvert = !entry.ticketUuid
                   const isConverting = convertingId === entry.id
+                  const isDeleting = deletingId === entry.id
                   return (
                     <tr
                       key={entry.id}
@@ -222,19 +268,29 @@ export default function EmailLog() {
                         {entry.processedAt ? new Date(entry.processedAt).toLocaleString() : '—'}
                       </td>
                       <td className="py-2.5 pl-3 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                        {canConvert && (
+                        <div className="inline-flex items-center gap-1.5">
+                          {canConvert && (
+                            <button
+                              onClick={() => handleConvert(entry)}
+                              disabled={isConverting}
+                              title={entry.hasBody ? 'Create a ticket from this email' : 'Original email content was not saved — ticket will be created with the subject only'}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 border border-indigo-500/20 transition-all disabled:opacity-50"
+                            >
+                              {isConverting
+                                ? <Loader2 size={11} className="animate-spin" />
+                                : <TicketPlus size={11} />}
+                              {isConverting ? 'Converting…' : 'Convert to Ticket'}
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleConvert(entry)}
-                            disabled={isConverting}
-                            title={entry.hasBody ? 'Create a ticket from this email' : 'Original email content was not saved — ticket will be created with the subject only'}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 border border-indigo-500/20 transition-all disabled:opacity-50"
+                            onClick={() => handleDelete(entry)}
+                            disabled={isDeleting}
+                            title="Delete this log entry"
+                            className="p-1.5 rounded-lg t-muted hover:text-rose-500 hover:bg-rose-500/10 transition-all disabled:opacity-50"
                           >
-                            {isConverting
-                              ? <Loader2 size={11} className="animate-spin" />
-                              : <TicketPlus size={11} />}
-                            {isConverting ? 'Converting…' : 'Convert to Ticket'}
+                            {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   )

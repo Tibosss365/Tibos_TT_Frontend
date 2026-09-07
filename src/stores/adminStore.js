@@ -550,6 +550,13 @@ export const useAdminStore = create(
         set({ emailLog: [] })
       },
 
+      // Delete one log entry. Only removes the log row — a ticket it already
+      // converted to (if any) is untouched.
+      deleteEmailLogEntry: async (logId) => {
+        await api.delete(`/inbound-email/logs/${logId}`)
+        set(s => ({ emailLog: s.emailLog.filter(e => e.id !== String(logId)) }))
+      },
+
       addEmailLogEntry: (entry) => {
         set(s => ({ emailLog: [entry, ...s.emailLog].slice(0, 100) }))
       },
