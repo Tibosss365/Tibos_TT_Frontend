@@ -500,7 +500,7 @@ function AttachmentRow({ att, ticketUuid, compact = false }) {
 
 
 // ── Main Modal ────────────────────────────────────────────────────────────────
-export function TicketDetailModal({ ticket, onClose }) {
+export function TicketDetailModal({ ticket, onClose, conversationOnly = false }) {
   const {
     updateTicket, addTimelineEvent, softDelete, fetchTicket,
     addTask, toggleTask, deleteTask,
@@ -519,7 +519,7 @@ export function TicketDetailModal({ ticket, onClose }) {
   const isEndUser = currentUser?.role === 'user'
 
 
-  const [activeTab, setActiveTab] = useState(isEndUser ? 'conversations' : 'details')
+  const [activeTab, setActiveTab] = useState(conversationOnly || isEndUser ? 'conversations' : 'details')
   const [resolverId, setResolverId]     = useState(currentUser?.id || '')
   const [resolutionCode, setResolutionCode] = useState('')
   const [editingResolution, setEditingResolution] = useState(false)
@@ -1075,7 +1075,9 @@ export function TicketDetailModal({ ticket, onClose }) {
           {/* Left: Tabs */}
           <div className="flex-1 min-w-0 flex flex-col lg:overflow-hidden">
 
-            {/* Tab bar */}
+            {/* Tab bar — omitted entirely in conversationOnly mode (e.g. opened from the
+                Email Log page), so there's nothing to switch away from the conversation. */}
+            {!conversationOnly && (
             <div className="flex border-b border-glass px-2 sm:px-4 flex-shrink-0 overflow-x-auto">
               {(isEndUser ? MODAL_TABS.filter(t => t.id === 'details' || t.id === 'conversations') : MODAL_TABS).map(({ id, icon: Icon, label }) => {
                 // Badge counts
@@ -1100,6 +1102,7 @@ export function TicketDetailModal({ ticket, onClose }) {
                 )
               })}
             </div>
+            )}
 
             {/* Tab Content */}
             <div className="flex-1 lg:overflow-y-auto p-4 sm:p-5">

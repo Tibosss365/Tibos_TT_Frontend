@@ -369,7 +369,7 @@ export default function EmailLog() {
       )}
 
       {openTicket && (
-        <TicketDetailModal ticket={openTicket} onClose={() => setOpenTicket(null)} />
+        <TicketDetailModal ticket={openTicket} onClose={() => setOpenTicket(null)} conversationOnly />
       )}
     </div>
   )
