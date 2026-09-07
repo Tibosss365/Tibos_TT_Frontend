@@ -16,6 +16,13 @@ const STATUS_META = {
   filtered:  { label: 'Filtered',  cls: 'bg-slate-500/10  text-slate-500  dark:text-slate-400  border-slate-500/20'  },
 }
 
+const TICKET_STATUS_META = {
+  'open':        { label: 'Open',        cls: 'bg-blue-500/10    text-blue-500    dark:text-blue-400    border-blue-500/20'    },
+  'in-progress': { label: 'In Progress', cls: 'bg-violet-500/10  text-violet-500  dark:text-violet-400  border-violet-500/20'  },
+  'on-hold':     { label: 'On Hold',     cls: 'bg-amber-500/10   text-amber-600   dark:text-amber-400   border-amber-500/20'   },
+  'resolved':    { label: 'Resolved',    cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
+}
+
 // ── Preview modal for an entry with no live ticket (never converted, or its ticket was later deleted) ──
 function EmailPreviewModal({ entry, onClose, onConverted }) {
   const { fetchEmailLogDetail, convertEmailLogToTicket } = useAdminStore()
@@ -119,7 +126,7 @@ function UnconvertedTicker({ entries, onSelect }) {
 
 export default function EmailLog() {
   const { emailLog, fetchInboundLogs, clearInboundLogs, convertEmailLogToTicket, deleteEmailLogEntry } = useAdminStore()
-  const { fetchTicket } = useTicketStore()
+  const { tickets, fetchTickets, fetchTicket } = useTicketStore()
   const { addToast } = useUiStore()
   const [loading, setLoading] = useState(false)
   const [convertingId, setConvertingId] = useState(null)
@@ -132,8 +139,12 @@ export default function EmailLog() {
 
   const load = async () => {
     setLoading(true)
-    try { await fetchInboundLogs() } finally { setLoading(false) }
+    try { await Promise.all([fetchInboundLogs(), fetchTickets()]) } finally { setLoading(false) }
   }
+
+  const openTickets = tickets
+    .filter(t => t.status !== 'closed')
+    .sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0))
 
   const handleConvert = async (entry) => {
     setConvertingId(entry.id)
@@ -199,6 +210,54 @@ export default function EmailLog() {
         entries={emailLog.filter(e => !e.ticketUuid)}
         onSelect={entry => setPreviewEntry(entry)}
       />
+
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <CardHeader title="Open Tickets" subtitle={`${openTickets.length} not closed — click one to view its email communication`} />
+        </div>
+
+        {openTickets.length === 0 ? (
+          <div className="py-10 text-center">
+            <Mail size={28} className="mx-auto t-muted mb-2 opacity-40" />
+            <p className="text-sm t-muted">No open tickets right now.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-glass">
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Ticket</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Subject</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Requester</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Status</th>
+                  <th className="text-left pb-2 text-[10px] font-bold t-sub uppercase tracking-wider">Updated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-glass">
+                {openTickets.map(t => (
+                  <tr
+                    key={t._uuid}
+                    onClick={() => setOpenTicket(t)}
+                    className="hover:bg-black/3 dark:hover:bg-white/3 transition-colors cursor-pointer"
+                  >
+                    <td className="py-2.5 pr-3 font-medium t-main whitespace-nowrap">{t.id}</td>
+                    <td className="py-2.5 pr-3 t-main truncate max-w-xs">{t.subject}</td>
+                    <td className="py-2.5 pr-3 t-muted truncate max-w-[180px]">{t.email || '—'}</td>
+                    <td className="py-2.5 pr-3">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border ${TICKET_STATUS_META[t.status]?.cls || ''}`}>
+                        {TICKET_STATUS_META[t.status]?.label || t.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 t-muted whitespace-nowrap text-xs">
+                      {t.updated ? new Date(t.updated).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <Card>
         <div className="flex items-center justify-between mb-3">
