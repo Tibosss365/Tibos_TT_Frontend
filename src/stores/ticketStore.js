@@ -249,6 +249,7 @@ export const useTicketStore = create(
           text: event.text,
           send_to_customer: event.sendToCustomer ?? false,
           cc: event.cc || undefined,
+          bcc: event.bcc || undefined,
         })
         const updated = normalizeTicket(data)
         // Preserve attachments — comment POST response returns [] for attachments

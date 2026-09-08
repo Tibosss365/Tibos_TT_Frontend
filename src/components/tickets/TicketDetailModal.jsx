@@ -14,6 +14,8 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useUserStore } from '../../stores/userStore'
 import { useUiStore } from '../../stores/uiStore'
+import { useEmailStore } from '../../stores/emailStore'
+import { RichDescription } from './RichDescription'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 import { useT } from '../../utils/i18n'
 import { looksLikeHtml, cleanEmailHtml, htmlToText } from '../../utils/htmlContent'
@@ -515,8 +517,11 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
           cannedResponses, resolutionCodes, onHoldReasons } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
+  const { signatures, fetchSignatures } = useEmailStore()
   const t = useT()
   const isEndUser = currentUser?.role === 'user'
+
+  useEffect(() => { if (!isEndUser) fetchSignatures() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const [activeTab, setActiveTab] = useState(conversationOnly || isEndUser ? 'conversations' : 'details')
@@ -543,6 +548,9 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   // Canned responses picker
   const [cannedOpen, setCannedOpen]             = useState(false)
   const cannedRef = useRef(null)
+  // Same picker, mirrored for the New Email compose body
+  const [emailCannedOpen, setEmailCannedOpen]   = useState(false)
+  const emailCannedRef = useRef(null)
 
   // Linked ticket add-link form
   const [linkSearch, setLinkSearch]             = useState('')
@@ -580,6 +588,12 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   // Close canned picker on outside click
   useEffect(() => {
     const handler = (e) => { if (cannedRef.current && !cannedRef.current.contains(e.target)) setCannedOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (e) => { if (emailCannedRef.current && !emailCannedRef.current.contains(e.target)) setEmailCannedOpen(false) }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
@@ -829,6 +843,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const [composeMode, setComposeMode] = useState('comment') // 'comment' | 'email'
   const [composeTo, setComposeTo]     = useState('')
   const [composeCc, setComposeCc]     = useState('')
+  const [composeBcc, setComposeBcc]   = useState('')
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
   const [expandedEmail, setExpandedEmail] = useState(null) // track which email is expanded
@@ -861,20 +876,29 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
 
   const removeComposeFile = (idx) => setComposeFiles(prev => prev.filter((_, i) => i !== idx))
 
+  // Signature block appended below the cursor when opening a fresh compose —
+  // the agent's default one from Admin → Email → Signatures, if they have one.
+  const signatureHtml = () => {
+    const sig = signatures.find(s => s.is_default) || signatures[0]
+    return sig?.body_html ? `<br/><br/>${sig.body_html}` : ''
+  }
+
   const openReply = (ev, replyAll = false) => {
     setComposeMode('email')
     setComposeTo(ev.from || liveTicket.email || '')
     setComposeCc(replyAll ? (ev.cc || '') : '')
+    setComposeBcc('')
     setComposeSubject(ev.subject ? `Re: ${ev.subject}` : `Re: ${liveTicket.subject || ''}`)
-    setComposeBody('')
+    setComposeBody(signatureHtml())
   }
 
   const openNewEmail = () => {
     setComposeMode('email')
     setComposeTo(liveTicket.email || '')
     setComposeCc('')
+    setComposeBcc('')
     setComposeSubject(liveTicket.subject || '')
-    setComposeBody('')
+    setComposeBody(signatureHtml())
   }
 
   const uploadPendingFiles = async () => {
@@ -915,9 +939,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
         text: composeBody,
         sendToCustomer: true,
         cc: composeCc,
+        bcc: composeBcc,
       })
       setComposeMode('comment')
-      setComposeTo(''); setComposeCc(''); setComposeSubject(''); setComposeBody('')
+      setComposeTo(''); setComposeCc(''); setComposeBcc(''); setComposeSubject(''); setComposeBody('')
       addToast('Email sent to customer', 'success')
     } catch (e) {
       addToast(e.message || 'Could not send email', 'error')
@@ -1343,6 +1368,17 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                           />
                         </div>
 
+                        {/* BCC — blind-copied, never visible to To/CC recipients */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold t-sub w-6">BCC</span>
+                          <input
+                            className="glass-input flex-1 text-xs py-1.5"
+                            value={composeBcc}
+                            onChange={e => setComposeBcc(e.target.value)}
+                            placeholder="bcc@example.com (optional)"
+                          />
+                        </div>
+
                         {/* Subject is fixed by the backend ("[TICKET-ID] Update on your ticket")
                             so this replies into the same thread — shown for reference only. */}
                         <div className="flex items-center gap-2">
@@ -1354,15 +1390,14 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                           />
                         </div>
 
-                        {/* Body */}
-                        <textarea
+                        {/* Body — rich formatting toolbar, paste-aware (screenshots become
+                            attachments, pasted email HTML keeps its formatting/trail) */}
+                        <RichDescription
                           value={composeBody}
-                          onChange={e => setComposeBody(e.target.value)}
-                          onPaste={handleComposePaste}
-                          className="glass-input w-full text-sm resize-none"
-                          rows={5}
+                          onChange={setComposeBody}
+                          toolbar
+                          onImagePaste={file => addComposeFiles([file])}
                           placeholder="Write your email message… (paste screenshots directly)"
-                          autoFocus
                         />
 
                         {/* Attached files preview */}
@@ -1379,6 +1414,44 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                           >
                             <Paperclip size={12} /> Attach
                           </button>
+                          {/* Canned Response picker — inserts into the email body */}
+                          {cannedResponses.length > 0 && (
+                            <div className="relative" ref={emailCannedRef}>
+                              <button
+                                type="button"
+                                onClick={() => setEmailCannedOpen(v => !v)}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border border-glass t-muted hover:t-main hover:bg-indigo-500/5 hover:border-indigo-500/30 transition-all"
+                                title="Insert canned response"
+                              >
+                                <BookOpen size={12} /> Canned
+                              </button>
+                              {emailCannedOpen && (
+                                <div className="absolute bottom-full mb-1 left-0 z-50 w-72 rounded-xl border border-glass shadow-glass-lg animate-fade-in overflow-hidden" style={{ background: 'var(--c-card-bg)' }}>
+                                  <div className="px-3 py-2 border-b border-glass text-[10px] font-bold t-sub uppercase tracking-wider">Canned Responses</div>
+                                  <div className="max-h-48 overflow-y-auto">
+                                    {cannedResponses.map(cr => (
+                                      <button
+                                        key={cr.id}
+                                        type="button"
+                                        onClick={() => {
+                                          const body = cr.body
+                                            .replace(/{contact_name}/g, liveTicket.submitter || '')
+                                            .replace(/{ticket_id}/g, liveTicket.id || '')
+                                            .replace(/{agent_name}/g, currentUser?.name || '')
+                                          setComposeBody(prev => prev ? `${prev}<br/><br/>${body}` : body)
+                                          setEmailCannedOpen(false)
+                                        }}
+                                        className="w-full text-left px-3 py-2.5 hover:bg-indigo-500/5 transition-colors border-b border-glass last:border-0"
+                                      >
+                                        <div className="text-xs font-semibold t-main">{cr.title}</div>
+                                        <div className="text-[10px] t-muted mt-0.5 line-clamp-2 whitespace-pre-line">{cr.body}</div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <div className="flex-1" />
                           <button
                             onClick={() => { setComposeMode('comment'); setComposeFiles([]) }}

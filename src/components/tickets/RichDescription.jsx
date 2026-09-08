@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { Bold, Italic, Underline, List, ListOrdered, Link2 } from 'lucide-react'
 import { cleanEmailHtml } from '../../utils/htmlContent'
 
 // Decode quoted-printable (common in .eml bodies): soft line-breaks + =XX hex.
@@ -23,7 +24,15 @@ function extractEmailBody(raw) {
  * drop a .eml/.txt/.html file — the conversation trail is preserved as HTML.
  * Plain typing works normally. Emits cleaned HTML (or '' when empty).
  */
-export function RichDescription({ value, onChange, placeholder = '', className = '', invalid = false }) {
+const TOOLBAR_BUTTONS = [
+  { cmd: 'bold',          icon: Bold,        title: 'Bold' },
+  { cmd: 'italic',        icon: Italic,      title: 'Italic' },
+  { cmd: 'underline',     icon: Underline,   title: 'Underline' },
+  { cmd: 'insertUnorderedList', icon: List,        title: 'Bulleted list' },
+  { cmd: 'insertOrderedList',   icon: ListOrdered, title: 'Numbered list' },
+]
+
+export function RichDescription({ value, onChange, placeholder = '', className = '', invalid = false, toolbar = false, onImagePaste = null }) {
   const ref = useRef(null)
 
   // Sync external value (template fill, file drop) without disturbing the caret
@@ -41,6 +50,16 @@ export function RichDescription({ value, onChange, placeholder = '', className =
   }
 
   const handlePaste = (e) => {
+    if (onImagePaste) {
+      for (const item of e.clipboardData?.items || []) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+          const file = item.getAsFile()
+          if (file) onImagePaste(file)
+          return
+        }
+      }
+    }
     const html = e.clipboardData?.getData('text/html')
     if (html) {
       e.preventDefault()
@@ -67,21 +86,62 @@ export function RichDescription({ value, onChange, placeholder = '', className =
     // .msg (Outlook binary) can't be parsed in the browser — user should paste instead.
   }
 
+  const format = (cmd) => {
+    ref.current?.focus()
+    if (cmd === 'link') {
+      const url = window.prompt('Link URL:')
+      if (!url) return
+      // eslint-disable-next-line deprecation/deprecation
+      document.execCommand('createLink', false, url)
+    } else {
+      // eslint-disable-next-line deprecation/deprecation
+      document.execCommand(cmd, false)
+    }
+    emit()
+  }
+
   return (
-    <div
-      ref={ref}
-      contentEditable
-      role="textbox"
-      aria-multiline="true"
-      onInput={emit}
-      onBlur={emit}
-      onPaste={handlePaste}
-      onDrop={handleDrop}
-      onDragOver={(e) => e.preventDefault()}
-      data-placeholder={placeholder}
-      suppressContentEditableWarning
-      className={`email-body rt-editable glass-input w-full text-sm leading-relaxed overflow-y-auto ${invalid ? 'border-rose-500' : ''} ${className}`}
-      style={{ minHeight: '140px', maxHeight: '360px' }}
-    />
+    <div>
+      {toolbar && (
+        <div className="flex items-center gap-0.5 mb-1.5 pb-1.5 border-b border-glass">
+          {TOOLBAR_BUTTONS.map(({ cmd, icon: Icon, title }) => (
+            <button
+              key={cmd}
+              type="button"
+              title={title}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => format(cmd)}
+              className="p-1.5 rounded-lg t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <Icon size={13} />
+            </button>
+          ))}
+          <button
+            type="button"
+            title="Insert link"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => format('link')}
+            className="p-1.5 rounded-lg t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+          >
+            <Link2 size={13} />
+          </button>
+        </div>
+      )}
+      <div
+        ref={ref}
+        contentEditable
+        role="textbox"
+        aria-multiline="true"
+        onInput={emit}
+        onBlur={emit}
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        data-placeholder={placeholder}
+        suppressContentEditableWarning
+        className={`email-body rt-editable glass-input w-full text-sm leading-relaxed overflow-y-auto ${invalid ? 'border-rose-500' : ''} ${className}`}
+        style={{ minHeight: '140px', maxHeight: '360px' }}
+      />
+    </div>
   )
 }
