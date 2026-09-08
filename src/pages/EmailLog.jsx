@@ -8,6 +8,27 @@ import { Modal } from '../components/ui/Modal'
 import { Button } from '../components/ui/Button'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import { cleanEmailHtml } from '../utils/htmlContent'
+import { api, normalizeTicket } from '../api/client'
+
+// Statuses that count as "not yet resolved" — fetched directly with a status
+// filter instead of paging through the entire tickets table and filtering
+// client-side, which was the reason this list took so long to appear.
+const OPEN_STATUSES = ['open', 'in-progress', 'on-hold']
+
+async function fetchOpenTickets() {
+  const perStatus = await Promise.all(OPEN_STATUSES.map(async (status) => {
+    let items = []
+    let page = 1
+    while (true) {
+      const data = await api.get(`/tickets?status=${status}&page=${page}&page_size=100&sort=newest`)
+      items = [...items, ...(data.items || []).map(normalizeTicket)]
+      if (page >= (data.pages || 1) || (data.items || []).length === 0) break
+      page++
+    }
+    return items
+  }))
+  return perStatus.flat()
+}
 
 const STATUS_META = {
   processed: { label: 'Converted', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' },
@@ -126,7 +147,7 @@ function UnconvertedTicker({ entries, onSelect }) {
 
 export default function EmailLog() {
   const { emailLog, fetchInboundLogs, clearInboundLogs, convertEmailLogToTicket, deleteEmailLogEntry } = useAdminStore()
-  const { tickets, fetchTickets, fetchTicket } = useTicketStore()
+  const { fetchTicket } = useTicketStore()
   const { addToast } = useUiStore()
   const [loading, setLoading] = useState(false)
   const [convertingId, setConvertingId] = useState(null)
@@ -134,17 +155,19 @@ export default function EmailLog() {
   const [previewEntry, setPreviewEntry] = useState(null)
   const [openTicket, setOpenTicket] = useState(null)
   const [ticketLoading, setTicketLoading] = useState(false)
+  const [openTickets, setOpenTickets] = useState([])
 
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = async () => {
     setLoading(true)
-    try { await Promise.all([fetchInboundLogs(), fetchTickets()]) } finally { setLoading(false) }
+    try {
+      const [, tix] = await Promise.all([fetchInboundLogs(), fetchOpenTickets()])
+      setOpenTickets(tix.sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0)))
+    } finally {
+      setLoading(false)
+    }
   }
-
-  const openTickets = tickets
-    .filter(t => t.status !== 'closed' && t.status !== 'resolved')
-    .sort((a, b) => new Date(b.updated || 0) - new Date(a.updated || 0))
 
   const handleConvert = async (entry) => {
     setConvertingId(entry.id)
