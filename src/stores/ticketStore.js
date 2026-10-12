@@ -36,6 +36,11 @@ const safeTicketStorage = {
   },
 }
 
+// Share an in-flight full refresh so bursts of live events do not start
+// several identical paginated downloads at once.
+let ticketsFetchPromise = null
+let ticketsRefreshQueued = false
+
 export const useTicketStore = create(
   persist(
     (set, get) => ({
@@ -49,21 +54,47 @@ export const useTicketStore = create(
       // ── API Methods ────────────────────────────────────────────────────────
 
       fetchTickets: async () => {
-        set({ loading: true })
-        try {
-          let allTickets = []
-          let page = 1
-          while (true) {
-            const data = await api.get(`/tickets?page=${page}&page_size=100`)
-            const items = (data.items || []).map(normalizeTicket)
-            allTickets = [...allTickets, ...items]
-            if (page >= (data.pages || 1) || items.length === 0) break
-            page++
+        if (ticketsFetchPromise) {
+          ticketsRefreshQueued = true
+          return ticketsFetchPromise
+        }
+
+        const fetchAllPages = async () => {
+          set({ loading: true })
+          try {
+            const firstPage = await api.get('/tickets?page=1&page_size=100')
+            const pages = Math.max(1, Number(firstPage.pages) || 1)
+            const pageData = [firstPage]
+
+            // Fetch at most four pages concurrently to reduce latency without
+            // flooding the API when an account has a large ticket history.
+            for (let start = 2; start <= pages; start += 4) {
+              const end = Math.min(start + 3, pages)
+              const batch = await Promise.all(
+                Array.from({ length: end - start + 1 }, (_, index) =>
+                  api.get(`/tickets?page=${start + index}&page_size=100`)
+                )
+              )
+              pageData.push(...batch)
+            }
+
+            const allTickets = pageData.flatMap(data => (data.items || []).map(normalizeTicket))
+            set({ tickets: allTickets, loading: false })
+          } catch (e) {
+            console.error('fetchTickets error', e)
+            set({ loading: false })
           }
-          set({ tickets: allTickets, loading: false })
-        } catch (e) {
-          console.error('fetchTickets error', e)
-          set({ loading: false })
+        }
+
+        ticketsFetchPromise = fetchAllPages()
+        try {
+          await ticketsFetchPromise
+        } finally {
+          ticketsFetchPromise = null
+          if (ticketsRefreshQueued) {
+            ticketsRefreshQueued = false
+            void get().fetchTickets()
+          }
         }
       },
 
@@ -187,8 +218,15 @@ export const useTicketStore = create(
       },
 
       permanentBulkDelete: async (uuids) => {
-        await Promise.allSettled(uuids.map(uuid => api.delete(`/tickets/${uuid}/permanent`)))
-        set(s => ({ deletedTickets: s.deletedTickets.filter(t => !uuids.includes(t._uuid)) }))
+        const results = await Promise.allSettled(
+          uuids.map(uuid => api.delete(`/tickets/${uuid}/permanent`))
+        )
+        const deleted = uuids.filter((_, index) => results[index].status === 'fulfilled')
+        const failedCount = results.length - deleted.length
+        set(s => ({ deletedTickets: s.deletedTickets.filter(t => !deleted.includes(t._uuid)) }))
+        if (failedCount) {
+          throw new Error(`${failedCount} ticket${failedCount !== 1 ? 's' : ''} could not be permanently deleted.`)
+        }
       },
 
       fetchTicket: async (uuid) => {
