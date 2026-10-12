@@ -432,6 +432,8 @@ export const useAdminStore = create(
               moveToFolder:        data.move_to_folder     || '',
               filterRules:         data.filter_rules       || [],
               lastPolledAt:        data.last_polled_at     || null,
+              lastPollAttemptAt:   data.last_poll_attempt_at || null,
+              lastPollError:       data.last_poll_error || null,
               processedCount:      data.processed_count    || 0,
             },
           })
@@ -474,6 +476,8 @@ export const useAdminStore = create(
             auth_type:           data.auth_type,
             filterRules:         data.filter_rules    || [],
             lastPolledAt:        data.last_polled_at  || null,
+            lastPollAttemptAt:   data.last_poll_attempt_at || null,
+            lastPollError:       data.last_poll_error || null,
             processedCount:      data.processed_count || 0,
           },
         }))
@@ -487,6 +491,8 @@ export const useAdminStore = create(
           inboundEmail: {
             ...s.inboundEmail,
             lastPolledAt:   data.polled_at,
+            lastPollAttemptAt: data.polled_at,
+            lastPollError: data.error || null,
             processedCount: (s.inboundEmail.processedCount || 0) + (data.processed || 0),
           },
         }))

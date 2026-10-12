@@ -282,6 +282,26 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
   const [newRule, setNewRule] = useState({ field: 'subject', operator: 'contains', value: '' })
   const set = (k, v) => setInboundEdits(p => ({ ...p, [k]: v }))
 
+  // Keep the displayed poll status current while this admin panel is open.
+  useEffect(() => {
+    let active = true
+    const refreshPollStatus = async () => {
+      try {
+        const data = await api.get('/inbound-email')
+        if (active) setInboundEdits(previous => ({
+          ...previous,
+          lastPolledAt: data.last_polled_at || null,
+          lastPollAttemptAt: data.last_poll_attempt_at || null,
+          lastPollError: data.last_poll_error || null,
+          processedCount: data.processed_count || 0,
+        }))
+      } catch (_) {}
+    }
+    refreshPollStatus()
+    const timer = setInterval(refreshPollStatus, 15000)
+    return () => { active = false; clearInterval(timer) }
+  }, [setInboundEdits])
+
   // ── Filter rule handlers ─────────────────────────────────────────────────
   const addRule = () => {
     const val = newRule.value.trim()
@@ -517,6 +537,13 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
                   <div className="text-xs font-semibold t-main">{inboundEdits.processedCount || 0}</div>
                 </div>
               </div>
+              {inboundEdits.lastPollError && (
+                <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600 dark:text-red-400">
+                  <div className="font-semibold flex items-center gap-1.5"><AlertCircle size={13}/> Latest poll failed</div>
+                  <div className="mt-1 break-words">{inboundEdits.lastPollError}</div>
+                  {inboundEdits.lastPollAttemptAt && <div className="mt-1 opacity-75">Attempted {new Date(inboundEdits.lastPollAttemptAt).toLocaleString()}</div>}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
