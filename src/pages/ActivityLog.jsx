@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Activity, LogIn, RefreshCw, Search, X,
+  Activity, LogIn, RefreshCw, Search, X, Code2,
   MessageSquare, CheckCircle2, UserCheck, Send, MailOpen,
   ChevronLeft, ChevronRight, LogOut, KeyRound, ShieldAlert,
   AlertTriangle, CheckCircle,
@@ -13,6 +13,7 @@ import { fmtDateTime, timeAgo } from '../utils/ticketUtils'
 const TABS = [
   { id: 'login',    label: 'Login History',       icon: LogIn },
   { id: 'activity', label: 'Modification History', icon: Activity },
+  { id: 'requests', label: 'Request Log', icon: Code2 },
 ]
 
 const ROLE_COLOR = {
@@ -100,6 +101,10 @@ export default function ActivityLog() {
   const [modAction, setModAction]         = useState('')
   const [modAgent, setModAgent]           = useState('')
   const [modPage, setModPage]             = useState(1)
+  const [requestSearch, setRequestSearch] = useState('')
+  const [requestMethod, setRequestMethod] = useState('')
+  const [requestOutcome, setRequestOutcome] = useState('')
+  const [requestPage, setRequestPage] = useState(1)
 
   // ── Session action state ───────────────────────────────────────────────
   const [confirmAction, setConfirmAction] = useState(null) // { type:'kill'|'reset', sess }
@@ -109,8 +114,9 @@ export default function ActivityLog() {
   const {
     loginHistory, loginTotal, loginLoading, loginError, loginFromLocal,
     modifications, modTotal, modLoading, modError,
+    requestAudit, requestAuditTotal, requestAuditLoading, requestAuditError,
     agentSummary,
-    fetchLoginHistory, fetchModifications, fetchAgentSummary,
+    fetchLoginHistory, fetchModifications, fetchRequestAudit, fetchAgentSummary,
     revokeSession, forcePasswordReset,
     purgeStale,
   } = useActivityStore()
@@ -118,6 +124,7 @@ export default function ActivityLog() {
   // ── Derived pages ──────────────────────────────────────────────────────
   const loginPages = Math.ceil(loginTotal / 50) || 1
   const modPages   = Math.ceil(modTotal   / 50) || 1
+  const requestPages = Math.ceil(requestAuditTotal / 50) || 1
 
   // ── Session security actions ───────────────────────────────────────────
   const showFeedback = (ok, msg) => {
@@ -168,6 +175,10 @@ export default function ActivityLog() {
     })
   }, [fetchModifications, modPage, modSearch, modAction, modAgent])
 
+  const loadRequests = useCallback(() => {
+    fetchRequestAudit({ page: requestPage, pageSize: 50, search: requestSearch, method: requestMethod, outcome: requestOutcome })
+  }, [fetchRequestAudit, requestPage, requestSearch, requestMethod, requestOutcome])
+
   // Initial load + re-fetch on filter/page change
   useEffect(() => {
     purgeStale()
@@ -183,10 +194,15 @@ export default function ActivityLog() {
     }
   }, [activeTab, loadMods, fetchAgentSummary])
 
+  useEffect(() => {
+    if (activeTab === 'requests') loadRequests()
+  }, [activeTab, loadRequests])
+
   const switchTab = (id) => {
     setActiveTab(id)
     setLoginSearch(''); setLoginRole(''); setLoginActiveOnly(false); setLoginPage(1)
     setModSearch('');   setModAction('');  setModAgent('');           setModPage(1)
+    setRequestSearch(''); setRequestMethod(''); setRequestOutcome(''); setRequestPage(1)
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────
@@ -209,10 +225,10 @@ export default function ActivityLog() {
         </div>
         <Button
           variant="ghost" size="sm"
-          onClick={activeTab === 'login' ? loadLogins : loadMods}
-          disabled={activeTab === 'login' ? loginLoading : modLoading}
+          onClick={activeTab === 'login' ? loadLogins : activeTab === 'activity' ? loadMods : loadRequests}
+          disabled={activeTab === 'login' ? loginLoading : activeTab === 'activity' ? modLoading : requestAuditLoading}
         >
-          <RefreshCw size={14} className={(loginLoading || modLoading) ? 'animate-spin' : ''} />
+          <RefreshCw size={14} className={(loginLoading || modLoading || requestAuditLoading) ? 'animate-spin' : ''} />
           Refresh
         </Button>
       </div>
@@ -458,6 +474,31 @@ export default function ActivityLog() {
       )}
 
       {/* ══ MODIFICATION HISTORY ══════════════════════════════════════════════ */}
+      {activeTab === 'requests' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative"><Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 t-muted" />
+              <input className={`${inputCls} pl-7 w-64`} placeholder="Search user, route, IP" value={requestSearch} onChange={e => { setRequestSearch(e.target.value); setRequestPage(1) }} />
+            </div>
+            <select className={`${inputCls} w-32`} value={requestMethod} onChange={e => { setRequestMethod(e.target.value); setRequestPage(1) }}><option value="">All Methods</option>{['GET','POST','PUT','PATCH','DELETE'].map(m => <option key={m}>{m}</option>)}</select>
+            <select className={`${inputCls} w-32`} value={requestOutcome} onChange={e => { setRequestOutcome(e.target.value); setRequestPage(1) }}><option value="">Pass and Fail</option><option value="pass">Passed</option><option value="fail">Failed</option></select>
+            <Button variant="ghost" size="sm" onClick={loadRequests} disabled={requestAuditLoading}><Search size={12} /> Apply</Button>
+          </div>
+          {requestAuditError && <div className="px-4 py-3 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs">{requestAuditError}</div>}
+          <Card>{requestAuditLoading ? <div className="flex items-center justify-center py-16 gap-3 t-muted"><RefreshCw size={20} className="animate-spin" /><span className="text-sm">Loading request log...</span></div> : requestAudit.length === 0 ? <div className="py-16 text-center text-sm t-muted">No requests recorded yet.</div> : <>
+            <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b" style={{ borderColor: 'var(--c-border)' }}>{['User','Method','Endpoint','Result','IP Address','Time'].map(h => <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold t-sub uppercase tracking-wider whitespace-nowrap">{h}</th>)}</tr></thead>
+              <tbody>{requestAudit.map(entry => <tr key={entry.id} className="border-b hover:bg-black/3 dark:hover:bg-white/3" style={{ borderColor: 'var(--c-border)' }}>
+                <td className="px-4 py-3"><div className="text-xs font-medium t-main">{entry.user_name || 'Unauthenticated'}</div><div className="text-[10px] t-muted">{entry.user_email || '-'}</div></td>
+                <td className="px-4 py-3 font-mono text-xs font-semibold t-main">{entry.method}</td><td className="px-4 py-3 font-mono text-xs t-muted max-w-md truncate" title={entry.path}>{entry.path}</td>
+                <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${entry.outcome === 'pass' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/25' : 'bg-red-500/10 text-red-400 border-red-500/25'}`}>{entry.outcome === 'pass' ? 'Passed' : 'Failed'} - {entry.status_code}</span></td>
+                <td className="px-4 py-3 font-mono text-xs t-muted">{entry.ip_address || '-'}</td><td className="px-4 py-3 whitespace-nowrap"><div className="text-xs t-muted">{timeAgo(entry.ts)}</div><div className="text-[10px] t-sub">{fmtDateTime(entry.ts)}</div></td>
+              </tr>)}</tbody></table></div>
+            <Pagination page={requestPage} pages={requestPages} onPage={setRequestPage} />
+            <div className="px-4 py-2 text-[11px] t-muted">{requestAuditTotal} total request{requestAuditTotal !== 1 ? 's' : ''} - retained for 30 days</div>
+          </>}</Card>
+        </div>
+      )}
+
       {activeTab === 'activity' && (
         <div className="space-y-4">
 

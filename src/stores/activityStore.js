@@ -52,6 +52,11 @@ export const useActivityStore = create(
       loginError: null,
       loginFromLocal: false, // true when data came from localStorage fallback
 
+      requestAudit: [],
+      requestAuditTotal: 0,
+      requestAuditLoading: false,
+      requestAuditError: null,
+
       modifications: [],     // fetched from /activity/modifications
       modTotal: 0,
       modPage: 1,
@@ -182,6 +187,22 @@ export const useActivityStore = create(
             modLoading: false,
             modError: e.message || 'Failed to load modification history from server',
           })
+        }
+      },
+
+      fetchRequestAudit: async (opts = {}) => {
+        const { page = 1, pageSize = 50, search = '', method = '', outcome = '' } = opts
+        set({ requestAuditLoading: true, requestAuditError: null })
+        try {
+          const params = new URLSearchParams({ page, page_size: pageSize })
+          if (search) params.set('search', search)
+          if (method) params.set('method', method)
+          if (outcome) params.set('outcome', outcome)
+          const data = await api.get(`/activity/requests?${params}`)
+          const items = Array.isArray(data) ? data : (data?.items || [])
+          set({ requestAudit: items, requestAuditTotal: data?.total ?? items.length, requestAuditLoading: false })
+        } catch (e) {
+          set({ requestAuditLoading: false, requestAuditError: e.message || 'Failed to load request audit log' })
         }
       },
 
