@@ -78,7 +78,11 @@ export const useTicketStore = create(
               pageData.push(...batch)
             }
 
-            const allTickets = pageData.flatMap(data => (data.items || []).map(normalizeTicket))
+            const allTickets = [...new Map(
+              pageData
+                .flatMap(data => (data.items || []).map(normalizeTicket))
+                .map(ticket => [ticket._uuid, ticket])
+            ).values()]
             set({ tickets: allTickets, loading: false })
           } catch (e) {
             console.error('fetchTickets error', e)

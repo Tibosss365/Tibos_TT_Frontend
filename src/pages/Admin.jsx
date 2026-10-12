@@ -2840,7 +2840,8 @@ export default function Admin() {
   const handlePollNow = async () => {
     try {
       const result = await pollInbound()
-      await fetchInboundLogs()   // reload the log table with real DB entries
+      // Refresh the log table without delaying the poll result/button state.
+      void fetchInboundLogs().catch(err => console.warn('Could not refresh inbound email logs:', err))
       if (result.error) {
         addToast(`Poll completed with error: ${result.error}`, 'error')
       } else {
