@@ -1,22 +1,22 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import CompanyDashboard from './pages/CompanyDashboard'
-import AllTickets from './pages/AllTickets'
-import MyTickets from './pages/MyTickets'
-import UserPortal from './pages/UserPortal'
-import NewTicket from './pages/NewTicket'
-import Admin from './pages/Admin'
-import Analytics from './pages/Analytics'
-import DeletedItems from './pages/DeletedItems'
-import Knowledge from './pages/Knowledge'
-import ArticleDetail from './pages/Knowledge/ArticleDetail'
-import EmailPage from './pages/Email'
-import EmailLog from './pages/EmailLog'
-import ActivityLog from './pages/ActivityLog'
-import CsatSurvey from './pages/CsatSurvey'
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const CompanyDashboard = lazy(() => import('./pages/CompanyDashboard'))
+const AllTickets = lazy(() => import('./pages/AllTickets'))
+const MyTickets = lazy(() => import('./pages/MyTickets'))
+const UserPortal = lazy(() => import('./pages/UserPortal'))
+const NewTicket = lazy(() => import('./pages/NewTicket'))
+const Admin = lazy(() => import('./pages/Admin'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const DeletedItems = lazy(() => import('./pages/DeletedItems'))
+const Knowledge = lazy(() => import('./pages/Knowledge'))
+const ArticleDetail = lazy(() => import('./pages/Knowledge/ArticleDetail'))
+const EmailPage = lazy(() => import('./pages/Email'))
+const EmailLog = lazy(() => import('./pages/EmailLog'))
+const ActivityLog = lazy(() => import('./pages/ActivityLog'))
+const CsatSurvey = lazy(() => import('./pages/CsatSurvey'))
 import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
@@ -54,6 +54,7 @@ export default function App() {
   }, [language])
 
   return (
+    <Suspense fallback={<div className="p-8 text-center text-sm t-muted">Loading page…</div>}>
     <Routes>
       {/* Public — no auth required */}
       <Route path="/csat/:token" element={<CsatSurvey />} />
@@ -79,5 +80,6 @@ export default function App() {
         <Route path="*"                  element={<DefaultRedirect />} />
       </Route>
     </Routes>
+    </Suspense>
   )
 }

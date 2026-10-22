@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment } from 'react'
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import { Users, SlidersHorizontal, Mail, LayoutGrid, Trash2, Plus, Save, RefreshCw, ShieldCheck, Link2, Link2Off, KeyRound, Globe, CheckCircle2, AlertCircle, Inbox, ToggleLeft, ToggleRight, Zap, Clock, Hash, ArrowRight, XCircle, Loader2, Eye, EyeOff, Tag, Pencil, Lock, Palette, Building2, Phone, MapPin, ImagePlus, X, Ticket, FileText, ToggleLeft as TogOff, ToggleRight as TogOn, ChevronDown, Users2, Settings2, Timer, Bell, BellRing, UserX, AtSign, Send, CalendarDays, PauseCircle, Shield, ExternalLink, Info, Search, Globe2, Cpu, Webhook, Radio, Monitor, AlertTriangle, RotateCcw, Paintbrush, Upload, Download, UserCheck, MessageSquare } from 'lucide-react'
 import AdminFeatureTabs from '../components/admin/AdminFeatureTabs'
 import { LANGUAGES, TIMEZONES, SESSION_TIMEOUTS } from '../locales/translations'
@@ -1670,11 +1670,22 @@ const getReportStatItems = (reportType = 'daily') => {
     { key: 'includeCreatedToday',  label: `Created ${p}`,         emoji: '📥', color: 'emerald' },
     { key: 'includeResolvedToday', label: `Resolved ${p}`,        emoji: '✅', color: 'teal' },
     { key: 'includeAgentStats',    label: 'Agent status table',   emoji: '👥', color: 'indigo' },
+    { key: 'includeAgentPerformance', label: 'Agent Performance', emoji: '📊', color: 'cyan' },
+    { key: 'includeDailyAgentReport', label: 'Daily Report', color: 'indigo' },
+    { key: 'includeCategorySpecialists', label: 'Category Specialists · Completed Tickets', emoji: '🏷️', color: 'teal' },
   ]
 }
 
-function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
+function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [], tickets = [] }) {
   const [activeReport, setActiveReport] = useState('daily')
+  const [dashboardVisibleAgentIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboard-visible-agent-ids')
+      if (saved === null) return null
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed.map(String) : null
+    } catch { return null }
+  })
 
   const REPORT_TABS = [
     { key: 'daily',   label: 'Daily',   emoji: '📅' },
@@ -1685,7 +1696,71 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
   const defaults = DEFAULT_ALERT_SETTINGS.reports[activeReport].template
   const tmpl = alertEdits.reports?.[activeReport]?.template || defaults
   const statItems = getReportStatItems(activeReport)
-
+  const performancePreview = useMemo(() => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tomorrow = new Date(today.getTime() + 86400000)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const activeAgents = agents.filter(agent => agent.id !== 'unassigned' && agent.is_active !== false && (agent.role === 'technician' || agent.role === 'admin'))
+    const completed = ticket => ticket.status === 'resolved' || ticket.status === 'closed'
+    const agentNameById = new Map(activeAgents.map(agent => [String(agent.id), agent.name]))
+    const statsByAgent = new Map(activeAgents.map(agent => [String(agent.id), { id: agent.id, name: agent.name, completed: 0, createdToday: 0, underOneHour: 0, oneToTwoHours: 0, twoToTwentyFourHours: 0, resolvedToday: 0, resolvedUnderOneHour: 0, resolvedOneToTwoHours: 0, resolvedTwoToTwentyFourHours: 0, month: 0 }]))
+    const categories = new Map()
+    tickets.forEach(ticket => {
+      const agentId = String(ticket.assignee || '')
+      const agentRow = statsByAgent.get(agentId)
+      const created = ticket.created ? new Date(ticket.created) : null
+      if (agentRow && created && !Number.isNaN(created.getTime())) {
+        if (created >= today && created < tomorrow) agentRow.createdToday++
+        if (created >= monthStart && created < tomorrow) agentRow.month++
+        if (ticket.status !== 'resolved' && ticket.status !== 'closed') {
+          const ageHours = (now - created) / 3600000
+          if (ageHours >= 0 && ageHours < 1) agentRow.underOneHour++
+          else if (ageHours >= 1 && ageHours < 2) agentRow.oneToTwoHours++
+          else if (ageHours >= 2 && ageHours < 24) agentRow.twoToTwentyFourHours++
+        }
+      }
+      if (!completed(ticket)) return
+      const timeline = ticket.timeline || []
+      let resolvedAt = ticket.resolvedAt ? new Date(ticket.resolvedAt) : null
+      if (resolvedAt && Number.isNaN(resolvedAt.getTime())) resolvedAt = null
+      for (let index = timeline.length - 1; index >= 0; index--) {
+        const event = timeline[index]
+        const text = (event.text || '').replace(/<[^>]*>/g, '')
+        const completionEvent = event.type === 'resolved' || event.type === 'closed' ||
+          (event.type === 'status' && /\b(?:resolved|closed)\b/i.test(text))
+        if (!resolvedAt && completionEvent) {
+          if (event.ts) resolvedAt = new Date(event.ts)
+          break
+        }
+      }
+      if (!resolvedAt && ticket.updated) resolvedAt = new Date(ticket.updated)
+      if (agentRow && resolvedAt && !Number.isNaN(resolvedAt.getTime()) && resolvedAt >= today && resolvedAt < tomorrow) {
+        agentRow.resolvedToday++
+        if (created && !Number.isNaN(created.getTime())) {
+          const resolutionHours = (resolvedAt.getTime() - created.getTime()) / 3600000
+          if (resolutionHours >= 0 && resolutionHours < 1) agentRow.resolvedUnderOneHour++
+          else if (resolutionHours >= 1 && resolutionHours < 2) agentRow.resolvedOneToTwoHours++
+          else if (resolutionHours >= 2 && resolutionHours < 24) agentRow.resolvedTwoToTwentyFourHours++
+        }
+      }
+      if (agentRow) {
+        agentRow.completed++
+      }
+      const name = ticket.category || 'Uncategorized'
+      if (!categories.has(name)) categories.set(name, { name, counts: {} })
+      const row = categories.get(name)
+      const agentName = agentNameById.get(agentId) || 'Unassigned'
+      row.counts[agentName] = (row.counts[agentName] || 0) + 1
+    })
+    return { rows: [...statsByAgent.values()], categories: [...categories.values()].sort((a, b) => a.name.localeCompare(b.name)), agents: activeAgents }
+  }, [agents, tickets])
+  const visiblePerformanceRows = dashboardVisibleAgentIds === null
+    ? performancePreview.rows
+    : performancePreview.rows.filter(row => dashboardVisibleAgentIds.includes(String(row.id)))
+  const visiblePerformanceAgents = dashboardVisibleAgentIds === null
+    ? performancePreview.agents
+    : performancePreview.agents.filter(agent => dashboardVisibleAgentIds.includes(String(agent.id)))
   const setTmpl = patch =>
     setAlertEdits(s => ({
       ...s,
@@ -1761,6 +1836,7 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
                 emerald: 'border-emerald-400/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400',
                 teal:    'border-teal-400/40    bg-teal-500/5    text-teal-700    dark:text-teal-400',
                 indigo:  'border-indigo-400/40  bg-indigo-500/5  text-indigo-700  dark:text-indigo-400',
+                cyan:    'border-cyan-400/40    bg-cyan-500/5    text-cyan-700    dark:text-cyan-400',
               }[color]
               return (
                 <label key={key}
@@ -1808,14 +1884,50 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls }) {
               </span>
             ))}
           </div>
-          {tmpl.footer && <div className="text-[10px] t-muted mt-2 pt-2 border-t border-glass">{tmpl.footer}</div>}
+          {tmpl.includeAgentPerformance !== false && <div className="mt-3 rounded-xl border border-indigo-500/20 bg-white/70 p-3 dark:bg-slate-900/60">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div><div className="flex items-center gap-2 text-sm font-bold t-main"><span className="text-sky-500">⌁</span>Agent Performance</div><div className="mt-0.5 text-[10px] t-sub">Live ticket totals by agent · aging buckets count currently unresolved assigned tickets</div></div>
+              <div className="rounded-lg border border-sky-400/50 px-3 py-1.5 text-[10px] font-semibold text-sky-500">♙ Display agents ({visiblePerformanceRows.length}/{performancePreview.rows.length})</div>
+            </div>
+            <div className="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+              {visiblePerformanceRows.map(row => <div key={row.id} className="rounded-lg border border-glass bg-gradient-to-br from-sky-500/[0.08] to-cyan-500/[0.03] px-2.5 py-2">
+                <div className="flex items-center justify-between gap-2"><div className="min-w-0"><div className="text-[8px] font-bold uppercase tracking-wide t-sub">Resolved score</div><div className="truncate text-xs font-bold t-main">{row.name}</div></div><div className="shrink-0 rounded-lg bg-emerald-500/10 px-2 py-1 text-right"><div className="text-base font-extrabold leading-4 text-emerald-500">{row.completed}</div><div className="text-[7px] font-bold uppercase text-emerald-500">completed</div></div></div>
+              </div>)}
+              {visiblePerformanceRows.length === 0 && <div className="col-span-full py-4 text-center text-[10px] t-muted">No agents selected on the dashboard</div>}
+            </div>
+          </div>}
+          {tmpl.includeDailyAgentReport !== false && <div className="mt-3 overflow-hidden rounded-xl border border-glass bg-white/70 dark:bg-slate-900/60">
+            <div className="border-b border-glass px-3 py-2"><div className="text-xs font-bold t-main">Daily Report</div><div className="mt-0.5 text-[10px] t-sub">Agent ticket activity for {new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div></div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[860px] text-[10px]"><thead><tr className="border-b border-glass bg-black/[0.03] dark:bg-white/[0.04] t-sub"><th className="px-2.5 py-2 text-left font-bold uppercase">Agent</th><th className="px-2.5 py-2 text-left font-bold uppercase">Today created</th><th className="px-2.5 py-2 text-left font-bold uppercase">Open &lt; 1h</th><th className="px-2.5 py-2 text-left font-bold uppercase">Open 1–2h</th><th className="px-2.5 py-2 text-left font-bold uppercase">Open 2–24h</th><th className="px-2.5 py-2 text-left font-bold uppercase">Resolved today</th><th className="px-2.5 py-2 text-left font-bold uppercase">Resolved &lt; 1h</th><th className="px-2.5 py-2 text-left font-bold uppercase">Resolved 1–2h</th><th className="px-2.5 py-2 text-left font-bold uppercase">Resolved 2–24h</th><th className="px-2.5 py-2 text-left font-bold uppercase">This month</th></tr></thead>
+                <tbody>{visiblePerformanceRows.map(row => <tr key={row.id} className="border-b border-glass last:border-0 hover:bg-indigo-500/[0.035]"><td className="px-2.5 py-2 font-semibold t-main">{row.name}</td>{[row.createdToday, row.underOneHour, row.oneToTwoHours, row.twoToTwentyFourHours, row.resolvedToday, row.resolvedUnderOneHour, row.resolvedOneToTwoHours, row.resolvedTwoToTwentyFourHours, row.month].map((value, index) => <td key={index} className="px-2.5 py-2 tabular-nums t-main">{value}</td>)}</tr>)}
+                  {visiblePerformanceRows.length === 0 && <tr><td colSpan={10} className="px-2 py-4 text-center t-muted">No agent ticket data available</td></tr>}</tbody>
+              </table>
+            </div>
+          </div>}
+          {tmpl.includeCategorySpecialists !== false && <div className="mt-3 rounded-xl border border-glass bg-white/70 p-3 dark:bg-slate-900/60">
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold t-main"><span className="text-violet-500">♧</span>Category Specialists · Completed Tickets</div>
+            <div className="overflow-x-auto rounded-xl border border-glass">
+              <table className="w-full min-w-max text-[10px]"><thead><tr className="border-b border-glass bg-black/[0.03] dark:bg-white/[0.04]">
+                <th className="sticky left-0 z-10 bg-slate-50 px-2.5 py-2 text-left text-[9px] font-bold uppercase tracking-wide t-sub dark:bg-slate-900">Category</th>
+                {visiblePerformanceAgents.map(agent => <th key={agent.id} className="whitespace-nowrap px-2.5 py-2 text-left text-[9px] font-bold uppercase tracking-wide t-sub">{agent.name}</th>)}
+              </tr></thead>
+                <tbody>{performancePreview.categories.map(row => <tr key={row.name} className="border-b border-glass last:border-0 hover:bg-violet-500/[0.035]">
+                  <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-2.5 py-2 font-medium t-main dark:bg-slate-900">{row.name}</td>
+                  {visiblePerformanceAgents.map(agent => { const count = row.counts[agent.name] || 0; return <td key={agent.id} className="whitespace-nowrap px-2.5 py-2">{count ? <span className="inline-flex rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500">{count} completed</span> : <span className="t-sub">—</span>}</td> })}
+                </tr>)}
+                  {performancePreview.categories.length === 0 && <tr><td colSpan={visiblePerformanceAgents.length + 1} className="px-2 py-5 text-center t-muted">No completed category data available</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>}{tmpl.footer && <div className="text-[10px] t-muted mt-2 pt-2 border-t border-glass">{tmpl.footer}</div>}
         </div>
       </div>
     </Card>
   )
 }
 
-function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving }) {
+function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving, agents, tickets }) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState('')
 
@@ -2034,7 +2146,7 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
       </Card>
 
       {/* ── 3. Report Email Templates ────────────────────────────────────── */}
-      <ReportTemplatesCard alertEdits={alertEdits} setAlertEdits={setAlertEdits} inputCls={inputCls} />
+      <ReportTemplatesCard alertEdits={alertEdits} setAlertEdits={setAlertEdits} inputCls={inputCls} agents={agents} tickets={tickets} />
 
       {/* ── 4. Alert Email Account ───────────────────────────────────────── */}
       <AlertEmailConfigCard alertEdits={alertEdits} setAlertEdits={setAlertEdits} inputCls={inputCls} />
@@ -3119,7 +3231,24 @@ export default function Admin() {
   const handleSaveAlerts = async () => {
     setAlertSaving(true)
     try {
-      await saveAlertSettings(alertEdits)
+      let selectedAgentIds = null
+      try {
+        const raw = localStorage.getItem('dashboard-visible-agent-ids')
+        const parsed = raw === null ? null : JSON.parse(raw)
+        if (Array.isArray(parsed)) selectedAgentIds = parsed.map(String)
+      } catch { /* keep the all-active-agents fallback */ }
+
+      const reports = { ...alertEdits.reports }
+      for (const key of ['daily', 'weekly', 'monthly']) {
+        const report = reports[key] || {}
+        const template = { ...(report.template || {}) }
+        if (selectedAgentIds === null) delete template.selectedAgentIds
+        else template.selectedAgentIds = selectedAgentIds
+        reports[key] = { ...report, template }
+      }
+      const settings = { ...alertEdits, reports }
+      await saveAlertSettings(settings)
+      setAlertEdits(settings)
       addToast('Alert settings saved', 'success')
     } catch (err) {
       addToast(err?.message || 'Failed to save alert settings', 'error')
@@ -4283,6 +4412,8 @@ export default function Admin() {
           onSave={handleSaveAlerts}
           onTest={handleTestAlert}
           saving={alertSaving}
+          agents={agents}
+          tickets={tickets}
         />
       )}
 

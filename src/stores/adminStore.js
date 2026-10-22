@@ -590,6 +590,7 @@ export const useAdminStore = create(
         } catch (e) {
           // Settings already saved locally; backend sync optional
           console.error('saveAlertSettings backend error', e)
+          throw e
         }
       },
 

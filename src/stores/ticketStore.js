@@ -60,11 +60,20 @@ export const useTicketStore = create(
         }
 
         const fetchAllPages = async () => {
-          set({ loading: true })
+          // Keep cached tickets visible during background refreshes. Only show
+          // the global loading state when there is no data to render yet.
+          set({ loading: get().tickets.length === 0 })
           try {
             const firstPage = await api.get('/tickets?page=1&page_size=100')
             const pages = Math.max(1, Number(firstPage.pages) || 1)
             const pageData = [firstPage]
+            const loadedTickets = new Map((firstPage.items || []).map(item => {
+              const ticket = normalizeTicket(item)
+              return [ticket._uuid, ticket]
+            }))
+            // Publish the first page immediately so dashboards can render while
+            // the remaining pages are fetched in the background.
+            set({ tickets: [...loadedTickets.values()], loading: false })
 
             // Fetch at most four pages concurrently to reduce latency without
             // flooding the API when an account has a large ticket history.
@@ -76,6 +85,11 @@ export const useTicketStore = create(
                 )
               )
               pageData.push(...batch)
+              batch.flatMap(data => data.items || []).forEach(item => {
+                const ticket = normalizeTicket(item)
+                loadedTickets.set(ticket._uuid, ticket)
+              })
+              set({ tickets: [...loadedTickets.values()] })
             }
 
             const allTickets = [...new Map(

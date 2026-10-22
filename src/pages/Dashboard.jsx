@@ -1,11 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Ticket, Clock, CheckCircle, AlertTriangle, Activity,
-  AlarmClock, ArrowRight, ChevronRight, Filter, X, PauseCircle, Users, EyeOff,
+  AlarmClock, ArrowRight, ChevronRight, ChevronDown, Filter, X, PauseCircle, Users, EyeOff,
   FileSpreadsheet, FileText, Inbox, RotateCcw,
 } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { StatsCard } from '../components/ui/StatsCard'
@@ -14,6 +13,8 @@ import { Button } from '../components/ui/Button'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
 import { exportTicketsExcel, exportTicketsPdf } from '../utils/reportExport'
+
+const DashboardCharts = lazy(() => import('../components/dashboard/DashboardCharts'))
 
 const DEFAULT_CHART_COLORS = ['#0ea5e9','#2563eb','#06b6d4','#10b981','#f59e0b','#ef4444','#64748b','#ec4899','#f97316','#84cc16']
 
@@ -48,7 +49,6 @@ const EMPTY_FILTERS = {
   status: '', priority: '', category: '', group: '', type: '', sla: '',
 }
 
-// ── Overdue duration (live ticking) ──────────────────────────────────────────
 function OverdueDuration({ slaDueTime }) {
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -169,6 +169,31 @@ export default function Dashboard() {
   const { tickets, loading } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const navigate = useNavigate()
+  const [dashboardDay, setDashboardDay] = useState(() => new Date())
+  const [selectedAgentIds, setSelectedAgentIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dashboard-visible-agent-ids')
+      if (saved === null) return null
+      const parsed = JSON.parse(saved)
+      return Array.isArray(parsed) ? parsed.map(String) : null
+    } catch { return null }
+  })
+  const [agentPickerOpen, setAgentPickerOpen] = useState(false)
+
+  // Roll daily metrics over automatically at local midnight.
+  useEffect(() => {
+    let timer
+    const scheduleNextDay = () => {
+      const now = new Date()
+      const nextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1)
+      timer = setTimeout(() => {
+        setDashboardDay(new Date())
+        scheduleNextDay()
+      }, Math.max(1000, nextDay.getTime() - now.getTime()))
+    }
+    scheduleNextDay()
+    return () => clearTimeout(timer)
+  }, [])
 
   // ── Report exports — respect the active dashboard filters ───────────────────
   const [exporting, setExporting] = useState(null) // 'excel' | 'pdf' | null
@@ -209,6 +234,29 @@ export default function Dashboard() {
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }
+  const handleAgentDailyExcel = async () => {
+    setExporting('agent-daily-excel')
+    try {
+      const XLSX = await import('xlsx')
+      const dateLabel = dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+      const rows = [
+        ['Daily Agent Report', dateLabel],
+        [],
+        ['Agent', 'Today created', 'Open < 1h', 'Open 1–2h', 'Open 2–24h', 'Resolved today', 'Resolved < 1h', 'Resolved 1–2h', 'Resolved 2–24h', 'This month'],
+        ...visibleAgentStats.map(agent => [agent.name, agent.today, agent.underOneHour, agent.oneToTwoHours, agent.twoToTwentyFourHours, agent.resolvedToday, agent.resolvedUnderOneHour, agent.resolvedOneToTwoHours, agent.resolvedTwoToTwentyFourHours, agent.month]),
+      ]
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.aoa_to_sheet(rows)
+      worksheet['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }]
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Agent Report')
+      const datePart = `${dashboardDay.getFullYear()}-${String(dashboardDay.getMonth() + 1).padStart(2, '0')}-${String(dashboardDay.getDate()).padStart(2, '0')}`
+      XLSX.writeFile(workbook, `daily-agent-report-${datePart}.xlsx`)
+    } catch (e) {
+      console.error('Daily agent Excel export failed', e)
+    } finally {
+      setExporting(null)
+    }
+  }
 
   // ── SLA ignore state (persisted in localStorage) ──────────────────────────
   const [ignoredSlaIds, setIgnoredSlaIds] = useState(() => {
@@ -244,185 +292,204 @@ export default function Dashboard() {
 
   // ── Filtered tickets (without status — used for status chip counts) ─────────
   const filteredTickets = useMemo(() => {
-    let result = [...tickets]
     const now = new Date()
-
+    let from = null
+    let to = null
     if (dashFilters.dateRange === 'today') {
-      const start = new Date(now); start.setHours(0, 0, 0, 0)
-      result = result.filter(t => new Date(t.created) >= start)
+      from = new Date(now); from.setHours(0, 0, 0, 0)
     } else if (dashFilters.dateRange === 'week') {
-      const start = new Date(now)
-      start.setDate(now.getDate() - now.getDay())
-      start.setHours(0, 0, 0, 0)
-      result = result.filter(t => new Date(t.created) >= start)
+      from = new Date(now)
+      from.setDate(now.getDate() - now.getDay())
+      from.setHours(0, 0, 0, 0)
     } else if (dashFilters.dateRange === 'month') {
-      const start = new Date(now.getFullYear(), now.getMonth(), 1)
-      result = result.filter(t => new Date(t.created) >= start)
+      from = new Date(now.getFullYear(), now.getMonth(), 1)
     } else if (dashFilters.dateRange === 'custom') {
-      if (dashFilters.dateFrom)
-        result = result.filter(t => new Date(t.created) >= new Date(dashFilters.dateFrom))
+      if (dashFilters.dateFrom) from = new Date(dashFilters.dateFrom)
       if (dashFilters.dateTo) {
-        const end = new Date(dashFilters.dateTo); end.setHours(23, 59, 59, 999)
-        result = result.filter(t => new Date(t.created) <= end)
+        to = new Date(dashFilters.dateTo); to.setHours(23, 59, 59, 999)
       }
     }
-
-    if (dashFilters.priority) result = result.filter(t => t.priority === dashFilters.priority)
-    if (dashFilters.category) result = result.filter(t => t.category === dashFilters.category)
-    if (dashFilters.group)    result = result.filter(t => t.group === dashFilters.group)
-    if (dashFilters.type)     result = result.filter(t => t.type === dashFilters.type)
-    if (dashFilters.sla === 'open')        result = result.filter(t => t.status === 'open')
-    else if (dashFilters.sla === 'in-progress') result = result.filter(t => t.status === 'in-progress')
-    else if (dashFilters.sla === 'on-hold')     result = result.filter(t => t.status === 'on-hold')
-    else if (dashFilters.sla === 'resolved')    result = result.filter(t => t.status === 'resolved')
-    else if (dashFilters.sla === 'critical')    result = result.filter(t => t.priority === 'critical')
-    else if (dashFilters.sla === 'overdue')     result = result.filter(t =>
-      (t.slaStatus === 'overdue' || (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
-      !ignoredSlaIds[t.id]
-    )
-
-    return result
+    const fromTime = from?.getTime()
+    const toTime = to?.getTime()
+    return tickets.filter(ticket => {
+      if (from || to) {
+        const created = new Date(ticket.created).getTime()
+        if (!Number.isFinite(created) || (Number.isFinite(fromTime) && created < fromTime) || (Number.isFinite(toTime) && created > toTime)) return false
+      }
+      if (dashFilters.priority && ticket.priority !== dashFilters.priority) return false
+      if (dashFilters.category && ticket.category !== dashFilters.category) return false
+      if (dashFilters.group && ticket.group !== dashFilters.group) return false
+      if (dashFilters.type && ticket.type !== dashFilters.type) return false
+      if (dashFilters.sla === 'open' && ticket.status !== 'open') return false
+      if (dashFilters.sla === 'in-progress' && ticket.status !== 'in-progress') return false
+      if (dashFilters.sla === 'on-hold' && ticket.status !== 'on-hold') return false
+      if (dashFilters.sla === 'resolved' && ticket.status !== 'resolved') return false
+      if (dashFilters.sla === 'critical' && ticket.priority !== 'critical') return false
+      if (dashFilters.sla === 'overdue') {
+        const overdue = ticket.slaStatus === 'overdue' || (ticket.slaStatus === 'active' && ticket.slaDueTime && new Date(ticket.slaDueTime).getTime() < Date.now())
+        if (!overdue || ignoredSlaIds[ticket.id]) return false
+      }
+      return true
+    })
   }, [tickets, dashFilters, ignoredSlaIds])
 
   // ── Status chip counts ──────────────────────────────────────────────────────
-  const statusCounts = useMemo(() => {
-    const counts = { '': filteredTickets.length }
-    filteredTickets.forEach(t => {
-      counts[t.status] = (counts[t.status] || 0) + 1
-    })
-    return counts
-  }, [filteredTickets])
-
-  // ── Display tickets (filteredTickets + status filter) ──────────────────────
   const displayTickets = useMemo(() => {
     if (!dashFilters.status) return filteredTickets
     return filteredTickets.filter(t => t.status === dashFilters.status)
   }, [filteredTickets, dashFilters.status])
 
   // ── Core stats ──────────────────────────────────────────────────────────────
-  const stats = useMemo(() => {
-    const open       = displayTickets.filter(t => t.status === 'open').length
-    const inProgress = displayTickets.filter(t => t.status === 'in-progress').length
-    const onHold     = displayTickets.filter(t => t.status === 'on-hold').length
-    const resolved   = displayTickets.filter(t => t.status === 'resolved').length
-    const reopened   = displayTickets.filter(t => (t.reopenCount || 0) > 0).length
-    const critical   = displayTickets.filter(t => t.priority === 'critical').length
-    const slaOverdue = displayTickets.filter(t =>
-      (t.slaStatus === 'overdue' ||
-      (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
-      !ignoredSlaIds[t.id]
-    ).length
-    // Unpicked / unassigned open pool — tickets waiting for an agent to pick up
-    const unassigned = displayTickets.filter(t =>
-      !t.assignee && t.status !== 'resolved' && t.status !== 'closed'
-    ).length
-    return { open, inProgress, onHold, resolved, reopened, critical, slaOverdue, unassigned, total: displayTickets.length }
-  }, [displayTickets, ignoredSlaIds])
-
-  // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
-  const overdueTickets = useMemo(() => {
-    return displayTickets
-      .filter(t =>
-        (t.slaStatus === 'overdue' ||
-        (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime) < new Date())) &&
-        !ignoredSlaIds[t.id]
-      )
-      .sort((a, b) => {
-        const aMs = a.slaDueTime ? Date.now() - new Date(a.slaDueTime).getTime() : 0
-        const bMs = b.slaDueTime ? Date.now() - new Date(b.slaDueTime).getTime() : 0
-        return bMs - aMs
-      })
-  }, [displayTickets, ignoredSlaIds])
-
-  // ── Chart data ──────────────────────────────────────────────────────────────
-  const categoryData = useMemo(() => {
-    const catColorMap = Object.fromEntries(
-      categories.map((c, i) => [c.id, c.color || DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length]])
-    )
-    const counts = {}
-    displayTickets.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1 })
-    return Object.entries(counts)
-      .map(([cat, count]) => ({ name: getCategoryName(cat), count, fill: catColorMap[cat] || '#0ea5e9' }))
-      .sort((a, b) => b.count - a.count)
-  }, [displayTickets, categories, getCategoryName])
-
-  const statusData = useMemo(() => {
-    const counts = {}
-    displayTickets.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1 })
-    return Object.entries(counts).map(([status, count]) => ({
-      name: status.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join(' '),
-      count,
-      fill: { open:'#3b82f6', 'in-progress':'#0ea5e9', 'on-hold':'#f59e0b', resolved:'#10b981', closed:'#64748b' }[status] || '#0ea5e9',
-    }))
-  }, [displayTickets])
-
-  // ── Company-wise distribution, labelled "Company (@domain)" (top 10) ────────
-  const companyData = useMemo(() => {
-    const map = {}  // company -> { count, domains: { domain: n } }
-    displayTickets.forEach(t => {
-      const c = (t.company || '').trim() || 'Unknown'
-      const email = (t.email || '').trim().toLowerCase()
+  const dashboardData = useMemo(() => {
+    const now = Date.now()
+    const stats = { open: 0, inProgress: 0, onHold: 0, resolved: 0, reopened: 0, critical: 0, slaOverdue: 0, unassigned: 0, total: displayTickets.length }
+    const statusCounts = { '': filteredTickets.length }
+    const chartStatusCounts = {}
+    const categoryCounts = new Map()
+    const companyCounts = new Map()
+    const agentCounts = new Map(agents.filter(agent => agent.id !== 'unassigned' && agent.is_active !== false && (agent.role === 'technician' || agent.role === 'admin')).map(agent => [String(agent.id), { id: agent.id, name: agent.name, initials: agent.initials || agent.name.slice(0, 2).toUpperCase(), total: 0, open: 0, inProgress: 0, onHold: 0, resolved: 0 }]))
+    const overdueTickets = []
+    const recent = []
+    const activityEvents = []
+    const keepNewest = (list, item, limit, dateValue) => {
+      const time = new Date(dateValue).getTime()
+      if (!Number.isFinite(time)) return
+      if (list.length < limit) { list.push({ item, time }); return }
+      let oldestIndex = 0
+      for (let index = 1; index < list.length; index++) if (list[index].time < list[oldestIndex].time) oldestIndex = index
+      if (time > list[oldestIndex].time) list[oldestIndex] = { item, time }
+    }
+    for (const ticket of filteredTickets) statusCounts[ticket.status] = (statusCounts[ticket.status] || 0) + 1
+    for (const ticket of displayTickets) {
+      chartStatusCounts[ticket.status] = (chartStatusCounts[ticket.status] || 0) + 1
+      if (ticket.status === 'open') stats.open++
+      if (ticket.status === 'in-progress') stats.inProgress++
+      if (ticket.status === 'on-hold') stats.onHold++
+      if (ticket.status === 'resolved') stats.resolved++
+      if ((ticket.reopenCount || 0) > 0) stats.reopened++
+      if (ticket.priority === 'critical') stats.critical++
+      const overdue = ticket.slaStatus === 'overdue' || (ticket.slaStatus === 'active' && ticket.slaDueTime && new Date(ticket.slaDueTime).getTime() < now)
+      if (overdue && !ignoredSlaIds[ticket.id]) { stats.slaOverdue++; overdueTickets.push(ticket) }
+      if (!ticket.assignee && ticket.status !== 'resolved' && ticket.status !== 'closed') stats.unassigned++
+      categoryCounts.set(ticket.category, (categoryCounts.get(ticket.category) || 0) + 1)
+      const company = (ticket.company || '').trim() || 'Unknown'
+      const email = (ticket.email || '').trim().toLowerCase()
       const domain = email.includes('@') ? email.split('@')[1] : ''
-      if (!map[c]) map[c] = { count: 0, domains: {} }
-      map[c].count++
-      if (domain) map[c].domains[domain] = (map[c].domains[domain] || 0) + 1
-    })
-    return Object.entries(map)
-      .map(([company, v]) => {
-        const topDomain = Object.entries(v.domains).sort((a, b) => b[1] - a[1])[0]?.[0]
-        return { name: topDomain ? `${company} (@${topDomain})` : company, count: v.count }
-      })
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10)
-      .map((d, i) => ({ ...d, fill: DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length] }))
-  }, [displayTickets])
+      if (!companyCounts.has(company)) companyCounts.set(company, { count: 0, domains: new Map() })
+      const companyRow = companyCounts.get(company)
+      companyRow.count++
+      if (domain) companyRow.domains.set(domain, (companyRow.domains.get(domain) || 0) + 1)
+      const agent = agentCounts.get(String(ticket.assignee || ''))
+      if (agent) {
+        agent.total++
+        if (ticket.status === 'open') agent.open++
+        if (ticket.status === 'in-progress') agent.inProgress++
+        if (ticket.status === 'on-hold') agent.onHold++
+        if (ticket.status === 'resolved') agent.resolved++
+      }
+      keepNewest(recent, ticket, 6, ticket.created)
+      for (const event of ticket.timeline || []) keepNewest(activityEvents, { ...event, ticketId: ticket.id, ticketSubject: ticket.subject }, 8, event.ts)
+    }
+    overdueTickets.sort((a, b) => (b.slaDueTime ? now - new Date(b.slaDueTime).getTime() : 0) - (a.slaDueTime ? now - new Date(a.slaDueTime).getTime() : 0))
+    recent.sort((a, b) => b.time - a.time)
+    activityEvents.sort((a, b) => b.time - a.time)
+    const categoryColors = new Map(categories.map((category, index) => [category.id, category.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]]))
+    const categoryData = [...categoryCounts].map(([category, count]) => ({ name: getCategoryName(category), count, fill: categoryColors.get(category) || '#0ea5e9' })).sort((a, b) => b.count - a.count)
+    const statusData = Object.entries(chartStatusCounts).map(([status, count]) => ({ name: status.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '), count, fill: { open: '#3b82f6', 'in-progress': '#0ea5e9', 'on-hold': '#f59e0b', resolved: '#10b981', closed: '#64748b' }[status] || '#0ea5e9' }))
+    const companyData = [...companyCounts].map(([company, row]) => {
+      const topDomain = [...row.domains].sort((a, b) => b[1] - a[1])[0]?.[0]
+      return { name: topDomain ? `${company} (@${topDomain})` : company, count: row.count }
+    }).sort((a, b) => b.count - a.count).slice(0, 10).map((row, index) => ({ ...row, fill: DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length] }))
+    return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, recent: recent.map(row => row.item), activityFeed: activityEvents.map(row => row.item), agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
+  }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName])
+  const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, recent, activityFeed, agentData } = dashboardData
 
-  const recent = useMemo(() =>
-    [...displayTickets].sort((a, b) => new Date(b.created) - new Date(a.created)).slice(0, 6),
-    [displayTickets]
-  )
-
-  const activityFeed = useMemo(() => {
-    const events = []
-    displayTickets.forEach(ticket => {
-      ;(ticket.timeline || []).forEach(ev => {
-        events.push({ ...ev, ticketId: ticket.id, ticketSubject: ticket.subject })
-      })
-    })
-    return events.sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 8)
-  }, [displayTickets])
-
-  // ── Agent wise ticket counts ────────────────────────────────────────────────
-  const agentData = useMemo(() => {
-    return agents
-      .filter(a => a.id !== 'unassigned' && a.is_active !== false
-        && (a.role === 'technician' || a.role === 'admin'))
-      .map(agent => {
-        const agentTickets = displayTickets.filter(t => t.assignee === String(agent.id))
-        return {
-          id:         agent.id,
-          name:       agent.name,
-          initials:   agent.initials || agent.name.slice(0, 2).toUpperCase(),
-          total:      agentTickets.length,
-          open:       agentTickets.filter(t => t.status === 'open').length,
-          inProgress: agentTickets.filter(t => t.status === 'in-progress').length,
-          onHold:     agentTickets.filter(t => t.status === 'on-hold').length,
-          resolved:   agentTickets.filter(t => t.status === 'resolved').length,
-        }
-      })
-      .sort((a, b) => b.total - a.total)
-  }, [displayTickets, agents])
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div className="glass-card px-3 py-2 text-xs border border-glass shadow-glass">
-        <div className="t-muted mb-1">{label || payload[0]?.name}</div>
-        <div className="t-main font-bold">{payload[0]?.value} tickets</div>
-      </div>
-    )
+  // Agent workload and resolution summary, calculated from live ticket data.
+  const dailyAgents = useMemo(() => agents
+    .filter(a => a.id !== 'unassigned' && a.is_active !== false && (a.role === 'technician' || a.role === 'admin'))
+    .sort((a, b) => a.name.localeCompare(b.name)), [agents])
+  const visibleAgents = useMemo(() => selectedAgentIds === null
+    ? dailyAgents
+    : dailyAgents.filter(agent => selectedAgentIds.includes(String(agent.id))), [dailyAgents, selectedAgentIds])
+  const toggleVisibleAgent = agentId => {
+    const current = selectedAgentIds === null ? dailyAgents.map(agent => String(agent.id)) : selectedAgentIds
+    const next = current.includes(String(agentId)) ? current.filter(id => id !== String(agentId)) : [...current, String(agentId)]
+    setSelectedAgentIds(next)
+    try { localStorage.setItem('dashboard-visible-agent-ids', JSON.stringify(next)) } catch { /* preference is still applied for this session */ }
   }
-
+  const showAllAgents = () => {
+    setSelectedAgentIds(null)
+    try { localStorage.removeItem('dashboard-visible-agent-ids') } catch { /* preference is still reset for this session */ }
+  }
+  const agentWorkSummary = useMemo(() => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const tomorrow = new Date(today.getTime() + 86400000)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const completed = ticket => ticket.status === 'resolved' || ticket.status === 'closed'
+    const validDate = value => value instanceof Date && !Number.isNaN(value.getTime())
+    const resolvedAt = ticket => {
+      if (ticket.resolvedAt) {
+        const explicitDate = new Date(ticket.resolvedAt)
+        if (validDate(explicitDate)) return explicitDate
+      }
+      const timeline = ticket.timeline || []
+      for (let index = timeline.length - 1; index >= 0; index--) {
+        const event = timeline[index]
+        const text = (event.text || '').replace(/<[^>]*>/g, '')
+        const completionEvent = event.type === 'resolved' || event.type === 'closed' ||
+          (event.type === 'status' && /\b(?:resolved|closed)\b/i.test(text))
+        if (completionEvent && event.ts) return new Date(event.ts)
+      }
+      return completed(ticket) && ticket.updated ? new Date(ticket.updated) : null
+    }
+    const statsByAgent = new Map(dailyAgents.map(agent => [String(agent.id), {
+      ...agent, today: 0, underOneHour: 0, oneToTwoHours: 0, twoToTwentyFourHours: 0,
+      resolvedToday: 0, resolvedUnderOneHour: 0, resolvedOneToTwoHours: 0,
+      resolvedTwoToTwentyFourHours: 0,
+      month: 0, allTimeResolved: 0,
+    }]))
+    const agentNameById = new Map(dailyAgents.map(agent => [String(agent.id), agent.name]))
+    const categoryMap = new Map()
+    tickets.forEach(ticket => {
+      const agentId = ticket.assignee ? String(ticket.assignee) : ''
+      const agentStats = statsByAgent.get(agentId)
+      const created = ticket.created ? new Date(ticket.created) : null
+      if (agentStats && validDate(created)) {
+        if (created >= today && created < tomorrow) agentStats.today++
+        if (created >= monthStart && created < tomorrow) agentStats.month++
+        if (!completed(ticket)) {
+          const ageHours = (now - created) / 3600000
+          if (ageHours >= 0 && ageHours < 1) agentStats.underOneHour++
+          else if (ageHours >= 1 && ageHours < 2) agentStats.oneToTwoHours++
+          else if (ageHours >= 2 && ageHours < 24) agentStats.twoToTwentyFourHours++
+        }
+      }
+      if (!completed(ticket)) return
+      if (agentStats) agentStats.allTimeResolved++
+      const date = resolvedAt(ticket)
+      if (agentStats && validDate(date) && date >= today && date < tomorrow) {
+        agentStats.resolvedToday++
+        if (validDate(created)) {
+          const resolutionHours = (date.getTime() - created.getTime()) / 3600000
+          if (resolutionHours >= 0 && resolutionHours < 1) agentStats.resolvedUnderOneHour++
+          else if (resolutionHours >= 1 && resolutionHours < 2) agentStats.resolvedOneToTwoHours++
+          else if (resolutionHours >= 2 && resolutionHours < 24) agentStats.resolvedTwoToTwentyFourHours++
+        }
+      }
+      const category = ticket.category || 'uncategorized'
+      if (!categoryMap.has(category)) categoryMap.set(category, { key: category, category, counts: {} })
+      const row = categoryMap.get(category)
+      const agentName = agentNameById.get(agentId) || 'Unassigned'
+      row.counts[agentName] = (row.counts[agentName] || 0) + 1
+    })
+    return { agentStats: [...statsByAgent.values()], categoryRows: [...categoryMap.values()].sort((a, b) => a.category.localeCompare(b.category)) }
+  }, [tickets, dailyAgents, dashboardDay])
+  const visibleAgentStats = useMemo(() => {
+    const ids = new Set(visibleAgents.map(agent => String(agent.id)))
+    return agentWorkSummary.agentStats.filter(agent => ids.has(String(agent.id)))
+  }, [agentWorkSummary.agentStats, visibleAgents])
+  // ── Overdue tickets (sorted by most overdue first) ─────────────────────────
   const selectCls = "h-8 px-2.5 text-xs rounded-lg border border-glass bg-white/60 dark:bg-slate-800 t-main focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer min-w-[120px]"
 
   return (
@@ -624,23 +691,100 @@ export default function Dashboard() {
         <StatsCard label="Total Tickets" value={loading ? '…' : stats.total}       icon={Activity}      color="cyan"    />
       </div>
 
+      <Card>
+        <CardHeader
+          title={<div className="flex items-center gap-2"><Activity size={15} className="text-indigo-500" />Agent Performance</div>}
+          subtitle={loading ? 'Showing loaded tickets while the remaining live data refreshes…' : 'Live ticket totals by agent · aging buckets count currently unresolved assigned tickets'}
+          action={<div className="relative">
+            <Button variant="outline" size="sm" onClick={() => setAgentPickerOpen(open => !open)}>
+              <Users size={13} /> Display agents ({visibleAgents.length}/{dailyAgents.length}) <ChevronDown size={13} />
+            </Button>
+            {agentPickerOpen && <div className="absolute right-0 z-30 mt-2 max-h-72 w-64 overflow-y-auto rounded-xl border border-glass bg-white p-2 shadow-xl dark:bg-slate-900">
+              <div className="sticky top-0 flex items-center justify-between border-b border-glass bg-white px-2 py-2 dark:bg-slate-900">
+                <span className="text-[11px] font-bold t-main">Choose agents</span>
+                <button type="button" onClick={showAllAgents} className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-400">Show all</button>
+              </div>
+              {dailyAgents.map(agent => <label key={agent.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-xs t-main hover:bg-indigo-500/5">
+                <input type="checkbox" checked={visibleAgents.some(item => String(item.id) === String(agent.id))} onChange={() => toggleVisibleAgent(agent.id)} className="accent-indigo-500" />
+                <span className="truncate">{agent.name}</span>
+              </label>)}
+              {dailyAgents.length === 0 && <div className="px-2 py-4 text-center text-xs t-sub">No active agents available.</div>}
+            </div>}
+          </div>}
+        />
+        {loading && tickets.length === 0 ? <div className="py-8 text-center text-sm t-sub">Loading live ticket data…</div> : <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-2 mb-3">
+            {visibleAgentStats.map(agent => <div key={agent.id} className="relative overflow-hidden rounded-lg border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] p-3">
+              <div className="absolute right-0 top-0 h-14 w-14 rounded-full bg-indigo-500/[0.06] blur-2xl" />
+              <div className="relative flex items-start justify-between gap-3">
+                <div className="min-w-0"><div className="text-[9px] font-bold uppercase tracking-wider t-sub">Resolved score</div><div className="mt-0.5 text-sm font-bold t-main truncate">{agent.name}</div></div>
+                <div className="shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-right"><div className="text-lg leading-5 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div><div className="text-[8px] font-bold uppercase tracking-wide text-emerald-500/80">completed</div></div>
+              </div>
+            </div>)}
+            {visibleAgentStats.length === 0 && <div className="col-span-full py-5 text-center text-xs t-sub">No agents selected.</div>}
+          </div>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-xs font-bold t-main">Daily Agent Metrics</h3>
+            <Button variant="outline" size="sm" onClick={handleAgentDailyExcel} disabled={exporting === 'agent-daily-excel'}>
+              <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'agent-daily-excel' ? 'Preparing Excel…' : 'Download Excel'}
+            </Button>
+          </div>
+          <div className="mb-6 overflow-x-auto rounded-xl border border-glass">
+            <table className="w-full text-xs min-w-max">
+              <thead><tr className="bg-black/[0.03] dark:bg-white/[0.04] border-b border-glass">
+                {[
+                  { label: 'Agent' },
+                  { label: 'Today created', date: dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
+                  { label: 'Open < 1h' },
+                  { label: 'Open 1–2h' },
+                  { label: 'Open 2–24h' },
+                  { label: 'Resolved today' },
+                  { label: 'Resolved < 1h' },
+                  { label: 'Resolved 1–2h' },
+                  { label: 'Resolved 2–24h' },
+                  { label: 'This month' },
+                ].map(({ label, date }) => <th key={label} className="py-2.5 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap"><div>{label}</div>{date && <div className="mt-0.5 text-[9px] font-medium normal-case tracking-normal t-muted">{date}</div>}</th>)}
+              </tr></thead>
+              <tbody>{visibleAgentStats.map(agent => <tr key={agent.id} className="border-b border-glass last:border-0 hover:bg-indigo-500/[0.035]">
+                <td className="py-3 px-3 font-semibold t-main">{agent.name}</td>
+                {[agent.today, agent.underOneHour, agent.oneToTwoHours, agent.twoToTwentyFourHours, agent.resolvedToday, agent.resolvedUnderOneHour, agent.resolvedOneToTwoHours, agent.resolvedTwoToTwentyFourHours, agent.month].map((count, index) => <td key={index} className="py-3 px-3 tabular-nums t-main">{count}</td>)}
+              </tr>)}
+              {agentWorkSummary.agentStats.length === 0 && <tr><td colSpan={10} className="py-6 text-center t-sub">No agent ticket data available.</td></tr>}</tbody>
+            </table>
+          </div>
+          <div className="flex items-center gap-2 mb-3"><Users size={14} className="text-violet-500" /><h3 className="text-xs font-bold t-main">Category Specialists · Completed Tickets</h3></div>
+          <div className="overflow-x-auto rounded-xl border border-glass">
+            <table className="w-full text-xs min-w-max">
+              <thead><tr className="bg-black/[0.03] dark:bg-white/[0.04] border-b border-glass">
+                {['Category', ...visibleAgents.map(agent => agent.name)].map((heading, index) => <th key={`${heading}-${index}`} className="py-3 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">{heading}</th>)}
+              </tr></thead>
+              <tbody>{agentWorkSummary.categoryRows.map(row => <tr key={row.key} className="border-b border-glass last:border-0 hover:bg-violet-500/[0.035]">
+                <td className="py-3 px-3 t-main whitespace-nowrap">{getCategoryName(row.category) || 'Uncategorized'}</td>
+                {visibleAgents.map(agent => { const count = row.counts[agent.name] || 0; return <td key={agent.id} className="py-3 px-3">{count ? <span className="inline-flex rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500">{count} completed</span> : <span className="t-sub">—</span>}</td> })}
+              </tr>)}
+              {agentWorkSummary.categoryRows.length === 0 && <tr><td colSpan={visibleAgents.length + 1} className="py-8 text-center t-sub">No resolved or closed tickets yet.</td></tr>}</tbody>
+            </table>
+          </div>
+        </>}
+      </Card>
+
       {/* ── SLA Overdue Report ─────────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title={
             <div className="flex items-center gap-2">
-              <AlarmClock size={15} className={overdueTickets.length > 0 ? 'text-rose-500' : 'text-emerald-500'} />
+              <AlarmClock size={15} className={stats.slaOverdue > 0 ? 'text-rose-500' : 'text-emerald-500'} />
               <span>SLA Overdue Report</span>
-              {overdueTickets.length > 0 && (
+              {stats.slaOverdue > 0 && (
                 <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-500 border border-rose-500/30 animate-pulse">
-                  {overdueTickets.length} overdue
+                  {stats.slaOverdue} overdue
                 </span>
               )}
             </div>
           }
-          subtitle="Tickets that have exceeded their SLA deadline"
+          subtitle={stats.slaOverdue > 25 ? `Showing the 25 most overdue of ${stats.slaOverdue} tickets` : 'Tickets that have exceeded their SLA deadline'}
           action={
-            overdueTickets.length > 0 && (
+            stats.slaOverdue > 0 && (
               <button
                 onClick={() => navigate('/tickets')}
                 className="text-xs text-rose-500 hover:text-rose-400 font-medium transition-colors flex items-center gap-1"
@@ -756,69 +900,8 @@ export default function Dashboard() {
       )}
 
       {/* ── Charts row ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader title="Tickets by Category" subtitle="Distribution across categories" />
-          {categoryData.length === 0 ? (
-            <div className="py-10 text-center text-sm t-muted">No data for selected filters</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={categoryData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <XAxis dataKey="name" tick={{ fill: 'var(--c-chart-text)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'var(--c-chart-text)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--c-chart-grid)' }} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {categoryData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
+      <Suspense fallback={<div className="rounded-xl border border-glass p-8 text-center text-sm t-sub">Loading charts…</div>}><DashboardCharts categoryData={categoryData} statusData={statusData} companyData={companyData} /></Suspense>
 
-        <Card>
-          <CardHeader title="Status Distribution" subtitle="Current ticket statuses" />
-          {statusData.length === 0 ? (
-            <div className="py-10 text-center text-sm t-muted">No data for selected filters</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={statusData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="count">
-                  {statusData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: 'var(--c-chart-text)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-      </div>
-
-      {/* ── Tickets by Company (@domain) ───────────────────────────────────── */}
-      <Card>
-        <CardHeader title="Tickets by Company" subtitle="Top companies by ticket volume — shown as Company (@domain)" />
-        {companyData.length === 0 ? (
-          <div className="py-10 text-center text-sm t-muted">No data for selected filters</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={companyData} margin={{ top: 10, right: 10, left: -12, bottom: 70 }}>
-              <XAxis
-                dataKey="name"
-                tick={{ fill: 'var(--c-chart-text)', fontSize: 10 }}
-                axisLine={false} tickLine={false}
-                interval={0} angle={-35} textAnchor="end" height={80}
-                tickFormatter={(v) => (v.length > 18 ? v.slice(0, 17) + '…' : v)}
-              />
-              <YAxis tick={{ fill: 'var(--c-chart-text)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--c-chart-grid)' }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {companyData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </Card>
-
-      {/* ── Agent Wise Ticket Count ────────────────────────────────────────── */}
       <Card>
         <CardHeader
           title={

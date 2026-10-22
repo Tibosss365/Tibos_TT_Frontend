@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { Outlet, Navigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -9,7 +9,7 @@ import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useUiStore } from '../../stores/uiStore'
-import { TicketDetailModal } from '../tickets/TicketDetailModal'
+const TicketDetailModal = lazy(() => import('../tickets/TicketDetailModal').then(module => ({ default: module.TicketDetailModal })))
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
@@ -136,7 +136,7 @@ export function Layout() {
       <ToastContainer />
 
       {activeModal?.type === 'ticket' && activeModal.data && (
-        <TicketDetailModal ticket={activeModal.data} onClose={closeModal} />
+        <Suspense fallback={null}><TicketDetailModal ticket={activeModal.data} onClose={closeModal} /></Suspense>
       )}
     </div>
   )
