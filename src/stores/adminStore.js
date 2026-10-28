@@ -594,8 +594,8 @@ export const useAdminStore = create(
         }
       },
 
-      sendTestAlert: async () => {
-        return await api.post('/admin/alerts/test', {})
+      sendTestAlert: async (reports) => {
+        return await api.post('/admin/alerts/test', { reports })
       },
 
       // ── SSO / OIDC config ─────────────────────────────────────────────────

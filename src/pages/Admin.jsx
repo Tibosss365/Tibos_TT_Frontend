@@ -2277,10 +2277,10 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
             : <><Save size={13} /> Save Alert Settings</>}
         </Button>
         <Button variant="ghost" size="md" onClick={onTest}>
-          <Send size={13} /> Send Test Alert
+          <Send size={13} /> Send Daily + Monthly Test
         </Button>
         <div className="text-xs t-muted hidden sm:block">
-          Test sends an immediate summary to all configured recipients
+          Test sends the combined template to all configured recipients
         </div>
       </div>
     </div>
@@ -3301,11 +3301,11 @@ export default function Admin() {
 
   const handleTestAlert = async () => {
     try {
-      const result = await sendTestAlert()
+      const result = await sendTestAlert(alertEdits.reports)
       addToast(
         result?.sent > 0
-          ? `Test alert sent to ${result.sent} recipient${result.sent > 1 ? 's' : ''}`
-          : 'Test alert sent',
+          ? `Daily + Monthly report sent to ${result.sent} recipient${result.sent > 1 ? 's' : ''}`
+          : 'Daily + Monthly test email sent',
         'success'
       )
     } catch (err) {
