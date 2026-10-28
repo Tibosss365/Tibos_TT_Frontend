@@ -647,7 +647,6 @@ export const DEFAULT_ALERT_SETTINGS = {
     daily:    { enabled: false, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📊 Daily Helpdesk Report — {date}') },
     weekly:   { enabled: false, day: 'monday', time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('📆 Weekly Helpdesk Report — Week of {date}') },
     monthly:  { enabled: false, dayOfMonth: 1, time: '08:00', template: _DEFAULT_REPORT_TEMPLATE('🗓️ Monthly Helpdesk Report — {month} {year}') },
-    dailyMonthly: { enabled: true, time: '17:45' },
   },
   recipients: {
     includeAdmin: true,

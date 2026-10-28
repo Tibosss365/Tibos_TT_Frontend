@@ -1993,7 +1993,7 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   }
 
   const activeCount  = Object.values(alertEdits.conditions).filter(c => c.enabled).length
-  const reportCount  = ['daily', 'weekly', 'monthly', 'dailyMonthly'].filter(k => alertEdits.reports[k]?.enabled).length
+  const reportCount  = ['daily', 'weekly', 'monthly'].filter(k => alertEdits.reports[k]?.enabled).length
   const recipCount   = (alertEdits.recipients.includeAdmin ? 1 : 0) + alertEdits.recipients.emails.length
   const emailCfg     = alertEdits.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig
   const emailLabel   = emailCfg.useSameAsEmail ? 'main email' : (emailCfg.type === 'm365' ? 'M365' : 'SMTP')
@@ -2088,12 +2088,11 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
           title="Scheduled Reports"
           subtitle="Automated digest emails summarising ticket health on a regular schedule"
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
           {[
             { key: 'daily',   emoji: '📅', label: 'Daily',   hint: 'Every day at a set time' },
             { key: 'weekly',  emoji: '📆', label: 'Weekly',  hint: 'Once a week on your chosen day' },
             { key: 'monthly', emoji: '🗓️', label: 'Monthly', hint: 'Once a month on your chosen date' },
-            { key: 'dailyMonthly', emoji: '📊', label: 'Daily + Monthly', hint: 'Daily and month-to-date report in one email' },
           ].map(({ key, emoji, label, hint }) => {
             const rep = alertEdits.reports[key]
             return (
@@ -3042,7 +3041,6 @@ export default function Admin() {
         daily:    { ...d.reports.daily,   ...(s.reports?.daily   || {}), template: { ...d.reports.daily.template,   ...(s.reports?.daily?.template   || {}) } },
         weekly:   { ...d.reports.weekly,  ...(s.reports?.weekly  || {}), template: { ...d.reports.weekly.template,  ...(s.reports?.weekly?.template  || {}) } },
         monthly:  { ...d.reports.monthly, ...(s.reports?.monthly || {}), template: { ...d.reports.monthly.template, ...(s.reports?.monthly?.template || {}) } },
-        dailyMonthly: { ...d.reports.dailyMonthly, ...(s.reports?.dailyMonthly || {}) },
       },
       alertEmailConfig: { ...d.alertEmailConfig, ...(s.alertEmailConfig || {}),
         smtp: { ...d.alertEmailConfig.smtp, ...(s.alertEmailConfig?.smtp || {}) },
