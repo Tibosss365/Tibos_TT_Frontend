@@ -1930,6 +1930,22 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [],
 function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving, agents, tickets }) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState('')
+  const [combinedPreview, setCombinedPreview] = useState(null)
+  const [combinedPreviewError, setCombinedPreviewError] = useState('')
+  const [combinedPreviewLoading, setCombinedPreviewLoading] = useState(false)
+
+  const loadCombinedPreview = async () => {
+    setCombinedPreviewLoading(true)
+    setCombinedPreviewError('')
+    try {
+      const preview = await api.post('/admin/alerts/daily-monthly/preview', { reports: alertEdits.reports })
+      setCombinedPreview(preview)
+    } catch (error) {
+      setCombinedPreviewError(error?.message || 'Could not load the combined email preview')
+    } finally {
+      setCombinedPreviewLoading(false)
+    }
+  }
 
   const setCond = (key, patch) =>
     setAlertEdits(s => ({ ...s, conditions: { ...s.conditions, [key]: { ...s.conditions[key], ...patch } } }))
@@ -1953,7 +1969,7 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
   }
 
   const activeCount  = Object.values(alertEdits.conditions).filter(c => c.enabled).length
-  const reportCount  = ['daily', 'weekly', 'monthly'].filter(k => alertEdits.reports[k]?.enabled).length
+  const reportCount  = ['daily', 'weekly', 'monthly', 'dailyMonthly'].filter(k => alertEdits.reports[k]?.enabled).length
   const recipCount   = (alertEdits.recipients.includeAdmin ? 1 : 0) + alertEdits.recipients.emails.length
   const emailCfg     = alertEdits.alertEmailConfig || DEFAULT_ALERT_SETTINGS.alertEmailConfig
   const emailLabel   = emailCfg.useSameAsEmail ? 'main email' : (emailCfg.type === 'm365' ? 'M365' : 'SMTP')
@@ -2048,11 +2064,12 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
           title="Scheduled Reports"
           subtitle="Automated digest emails summarising ticket health on a regular schedule"
         />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {[
             { key: 'daily',   emoji: '📅', label: 'Daily',   hint: 'Every day at a set time' },
             { key: 'weekly',  emoji: '📆', label: 'Weekly',  hint: 'Once a week on your chosen day' },
             { key: 'monthly', emoji: '🗓️', label: 'Monthly', hint: 'Once a month on your chosen date' },
+            { key: 'dailyMonthly', emoji: '📊', label: 'Daily + Monthly', hint: 'Daily and month-to-date report in one email' },
           ].map(({ key, emoji, label, hint }) => {
             const rep = alertEdits.reports[key]
             return (
@@ -2103,6 +2120,29 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
               </div>
             )
           })}
+        </div>
+
+        <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold t-main">Combined email preview</div>
+              <div className="mt-0.5 text-[10px] t-muted">Renders the current daily and monthly settings with live backend data. Unsaved edits are included.</div>
+            </div>
+            <button type="button" onClick={loadCombinedPreview} disabled={combinedPreviewLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-500/15 disabled:opacity-50 dark:text-indigo-300">
+              {combinedPreviewLoading ? <Loader2 size={13} className="animate-spin" /> : <Eye size={13} />}
+              {combinedPreviewLoading ? 'Loading preview...' : 'Preview email'}
+            </button>
+          </div>
+          {combinedPreviewError && <div role="alert" className="mt-2 text-xs text-rose-500">{combinedPreviewError}</div>}
+          {combinedPreview && <div className="mt-3 overflow-hidden rounded-lg border border-glass bg-white">
+            <div className="border-b border-glass px-3 py-2 text-[10px] t-sub">
+              <span className="font-semibold t-main">Subject:</span> {combinedPreview.subject}
+              <span className="ml-3">Schedule: {combinedPreview.time} ({combinedPreview.timezone})</span>
+            </div>
+            <iframe title="Daily and monthly report email preview" srcDoc={combinedPreview.html} sandbox=""
+              className="h-[720px] w-full bg-white" />
+          </div>}
         </div>
 
         {/* Report timezone */}
@@ -3001,6 +3041,7 @@ export default function Admin() {
         daily:    { ...d.reports.daily,   ...(s.reports?.daily   || {}), template: { ...d.reports.daily.template,   ...(s.reports?.daily?.template   || {}) } },
         weekly:   { ...d.reports.weekly,  ...(s.reports?.weekly  || {}), template: { ...d.reports.weekly.template,  ...(s.reports?.weekly?.template  || {}) } },
         monthly:  { ...d.reports.monthly, ...(s.reports?.monthly || {}), template: { ...d.reports.monthly.template, ...(s.reports?.monthly?.template || {}) } },
+        dailyMonthly: { ...d.reports.dailyMonthly, ...(s.reports?.dailyMonthly || {}) },
       },
       alertEmailConfig: { ...d.alertEmailConfig, ...(s.alertEmailConfig || {}),
         smtp: { ...d.alertEmailConfig.smtp, ...(s.alertEmailConfig?.smtp || {}) },
