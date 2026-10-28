@@ -403,6 +403,9 @@ export default function Dashboard() {
     return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, recent: recent.map(row => row.item), activityFeed: activityEvents.map(row => row.item), agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
   }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName])
   const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, recent, activityFeed, agentData } = dashboardData
+  const openTicketsFromCard = card => navigate('/tickets', {
+    state: { dashboardCardFilter: card, dashboardFilters: { ...dashFilters } },
+  })
 
   // Agent workload and resolution summary, calculated from live ticket data.
   const dailyAgents = useMemo(() => agents
@@ -680,15 +683,15 @@ export default function Dashboard() {
 
       {/* ── Stats row ──────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-3 sm:gap-4">
-        <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  />
-        <StatsCard label="Unassigned"    value={loading ? '…' : stats.unassigned}  icon={Inbox}         color="orange"  />
-        <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  />
-        <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   />
-        <StatsCard label="Resolved"      value={loading ? '…' : stats.resolved}    icon={CheckCircle}   color="emerald" />
-        <StatsCard label="Reopened"      value={loading ? '…' : stats.reopened}    icon={RotateCcw}     color="amber"   />
-        <StatsCard label="Critical"      value={loading ? '…' : stats.critical}    icon={AlertTriangle} color="rose"    />
-        <StatsCard label="SLA Overdue"   value={loading ? '…' : stats.slaOverdue}  icon={AlarmClock}    color={stats.slaOverdue > 0 ? 'rose' : 'emerald'} />
-        <StatsCard label="Total Tickets" value={loading ? '…' : stats.total}       icon={Activity}      color="cyan"    />
+        <StatsCard label="Open Tickets"  value={loading ? '…' : stats.open}        icon={Ticket}        color="indigo"  onClick={() => openTicketsFromCard('open')} disabled={loading} />
+        <StatsCard label="Unassigned"    value={loading ? '…' : stats.unassigned}  icon={Inbox}         color="orange"  onClick={() => openTicketsFromCard('unassigned')} disabled={loading} />
+        <StatsCard label="In Progress"   value={loading ? '…' : stats.inProgress}  icon={Clock}         color="violet"  onClick={() => openTicketsFromCard('in-progress')} disabled={loading} />
+        <StatsCard label="On Hold"       value={loading ? '…' : stats.onHold}      icon={PauseCircle}   color="amber"   onClick={() => openTicketsFromCard('on-hold')} disabled={loading} />
+        <StatsCard label="Resolved"      value={loading ? '…' : stats.resolved}    icon={CheckCircle}   color="emerald" onClick={() => openTicketsFromCard('resolved')} disabled={loading} />
+        <StatsCard label="Reopened"      value={loading ? '…' : stats.reopened}    icon={RotateCcw}     color="amber"   onClick={() => openTicketsFromCard('reopened')} disabled={loading} />
+        <StatsCard label="Critical"      value={loading ? '…' : stats.critical}    icon={AlertTriangle} color="rose"    onClick={() => openTicketsFromCard('critical')} disabled={loading} />
+        <StatsCard label="SLA Overdue"   value={loading ? '…' : stats.slaOverdue}  icon={AlarmClock}    color={stats.slaOverdue > 0 ? 'rose' : 'emerald'} onClick={() => openTicketsFromCard('sla-overdue')} disabled={loading} />
+        <StatsCard label="Total Tickets" value={loading ? '…' : stats.total}       icon={Activity}      color="cyan"    onClick={() => openTicketsFromCard('total')} disabled={loading} />
       </div>
 
       <Card>

@@ -48,7 +48,7 @@ export const useTicketStore = create(
       myRequests: [],
       deletedTickets: [],
       loading: false,
-      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' },
+      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' },
       selectedIds: [],
 
       // ── API Methods ────────────────────────────────────────────────────────
@@ -451,7 +451,7 @@ export const useTicketStore = create(
       },
 
       resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created' } })
+        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' } })
       },
 
       toggleSelect: (uuid) => {
@@ -482,7 +482,22 @@ export const useTicketStore = create(
             (t.category || '').toLowerCase().includes(q)
           )
         }
-        if (filters.assignee) result = result.filter(t => t.assignee === filters.assignee)
+        if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
+        else if (filters.assignee) result = result.filter(t => String(t.assignee) === String(filters.assignee))
+        const dashboardCardStatus = { open: 'open', 'in-progress': 'in-progress', 'on-hold': 'on-hold', resolved: 'resolved' }
+        if (dashboardCardStatus[filters.dashboardCard]) result = result.filter(t => t.status === dashboardCardStatus[filters.dashboardCard])
+        if (filters.dashboardCard === 'unassigned') result = result.filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed')
+        if (filters.dashboardCard === 'reopened') result = result.filter(t => (t.reopenCount || 0) > 0)
+        if (filters.dashboardCard === 'critical') result = result.filter(t => t.priority === 'critical')
+        if (filters.dashboardCard === 'sla-overdue' || filters.dashboardSla === 'overdue') {
+          let ignoredIds = {}
+          try { ignoredIds = JSON.parse(localStorage.getItem('sla-ignored-ids') || '{}') } catch (_) {}
+          const now = Date.now()
+          result = result.filter(t => {
+            const overdue = t.slaStatus === 'overdue' || (t.slaStatus === 'active' && t.slaDueTime && new Date(t.slaDueTime).getTime() < now)
+            return overdue && !ignoredIds[t.id]
+          })
+        }
         if (filters.dateFrom || filters.dateTo) {
           const field = filters.dateField || 'created'
           const from = filters.dateFrom ? new Date(filters.dateFrom) : null

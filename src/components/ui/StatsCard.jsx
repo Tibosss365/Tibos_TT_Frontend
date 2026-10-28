@@ -1,4 +1,4 @@
-export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend }) {
+export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend, onClick, disabled = false }) {
   const colorMap = {
     indigo:  { bg: 'bg-indigo-500/10 dark:bg-indigo-500/15',  text: 'text-indigo-600 dark:text-indigo-400',  glow: 'shadow-glow-indigo',  val: 'text-indigo-700 dark:text-indigo-300' },
     violet:  { bg: 'bg-violet-500/10 dark:bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-glow-violet',  val: 'text-violet-700 dark:text-violet-300' },
@@ -11,7 +11,19 @@ export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend })
   const c = colorMap[color] || colorMap.indigo
 
   return (
-    <div className={`glass-card p-5 hover:${c.glow} transition-all duration-300 group ring-1 ring-transparent hover:ring-indigo-500/20`}>
+    <div
+      className={`glass-card p-5 transition-all duration-300 group ring-1 ring-transparent ${onClick && !disabled ? `cursor-pointer hover:${c.glow} hover:ring-indigo-500/20 hover:-translate-y-0.5` : ''} ${disabled ? 'opacity-70' : ''}`}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick && !disabled ? 0 : undefined}
+      aria-label={onClick ? `Show ${value} ${label.toLowerCase()}` : undefined}
+      onClick={onClick && !disabled ? onClick : undefined}
+      onKeyDown={onClick && !disabled ? event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      } : undefined}
+    >
       <div className="flex items-start justify-between mb-3">
         <div className={`p-2.5 rounded-xl ${c.bg} ${c.glow} group-hover:scale-110 transition-transform duration-300`}>
           <Icon size={18} className={c.text} />

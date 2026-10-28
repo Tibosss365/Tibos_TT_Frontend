@@ -83,6 +83,7 @@ export default function AllTickets() {
   const t = useT()
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
+  const [dashboardCardFilter, setDashboardCardFilter] = useState('')
   const [staged, setStaged]                   = useState(() => ({
     dateRange: 'all',
     priority:  filters.priority  || '',
@@ -98,6 +99,56 @@ export default function AllTickets() {
   const [showColPicker, setShowColPicker]     = useState(false)
   const colPickerRef = useRef(null)
   const panelRef     = useRef(null)
+
+  // Dashboard KPI cards pass their active filters into this page so the table
+  // opens on the exact ticket subset represented by the clicked card.
+  useEffect(() => {
+    const card = location.state?.dashboardCardFilter
+    if (!card) return
+
+    const dashboard = location.state?.dashboardFilters || {}
+    const today = new Date()
+    const dayString = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    let dateFrom = ''
+    let dateTo = ''
+    if (dashboard.dateRange === 'today') {
+      dateFrom = dayString(today); dateTo = dateFrom
+    } else if (dashboard.dateRange === 'week') {
+      const start = new Date(today)
+      start.setDate(today.getDate() - today.getDay())
+      dateFrom = dayString(start); dateTo = dayString(today)
+    } else if (dashboard.dateRange === 'month') {
+      dateFrom = dayString(new Date(today.getFullYear(), today.getMonth(), 1)); dateTo = dayString(today)
+    } else if (dashboard.dateRange === 'custom') {
+      dateFrom = dashboard.dateFrom || ''; dateTo = dashboard.dateTo || ''
+    }
+
+    const next = {
+      status: dashboard.status || '',
+      priority: dashboard.priority || '',
+      category: dashboard.category || '',
+      group: dashboard.group || '',
+      type: dashboard.type || '',
+      assignee: '',
+      dateFrom,
+      dateTo,
+      dateField: 'created',
+      dashboardCard: '',
+      dashboardSla: '',
+    }
+    if (dashboard.sla === 'open' || dashboard.sla === 'in-progress' || dashboard.sla === 'on-hold' || dashboard.sla === 'resolved') next.status = dashboard.sla
+    if (dashboard.sla === 'critical') next.priority = 'critical'
+    if (dashboard.sla === 'overdue') next.dashboardSla = 'overdue'
+
+    if (card !== 'total') next.dashboardCard = card
+    if (card === 'sla-overdue') next.dashboardSla = 'overdue'
+
+    resetFilters()
+    Object.entries(next).forEach(([key, value]) => setFilter(key, value))
+    setStaged({ ...STAGED_DEFAULTS, priority: next.priority, category: next.category, group: next.group, type: next.type, assignee: next.assignee, dateFrom: next.dateFrom, dateTo: next.dateTo })
+    setDashboardCardFilter(card)
+    window.history.replaceState({}, '')
+  }, [location.key])
 
   // Auto-open ticket from notification nav
   useEffect(() => {
@@ -136,6 +187,7 @@ export default function AllTickets() {
   const clearAllFilters = () => {
     resetFilters()
     setStaged(STAGED_DEFAULTS)
+    setDashboardCardFilter('')
   }
 
   // Status chips apply instantly
@@ -183,7 +235,18 @@ export default function AllTickets() {
 
 
   const hasSearch    = !!filters.search
-  const hasAnyFilter = !!(filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || hasSearch)
+  const hasAnyFilter = !!(filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || filters.dashboardCard || filters.dashboardSla || hasSearch)
+  const dashboardCardLabel = {
+    open: 'Open Tickets',
+    unassigned: 'Unassigned Tickets',
+    'in-progress': 'In Progress Tickets',
+    'on-hold': 'On Hold Tickets',
+    resolved: 'Resolved Tickets',
+    reopened: 'Reopened Tickets',
+    critical: 'Critical Tickets',
+    'sla-overdue': 'SLA Overdue Tickets',
+    total: 'All Tickets',
+  }[dashboardCardFilter]
 
   // Detect unsaved staged changes
   const hasPending = (
@@ -318,7 +381,7 @@ export default function AllTickets() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">All Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
-            {filtered.length} ticket{filtered.length !== 1 ? 's' : ''}{hasAnyFilter ? ' (filtered)' : ''}
+            {filtered.length} ticket{filtered.length !== 1 ? 's' : ''}{dashboardCardLabel ? ` · ${dashboardCardLabel} from Dashboard` : hasAnyFilter ? ' (filtered)' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
