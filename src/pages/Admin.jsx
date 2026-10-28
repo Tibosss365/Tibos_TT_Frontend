@@ -1662,7 +1662,7 @@ const _PERIOD_LABEL = { daily: 'today', weekly: 'this week', monthly: 'this mont
 
 const getReportStatItems = (reportType = 'daily') => {
   const p = _PERIOD_LABEL[reportType] || 'today'
-  return [
+  const items = [
     { key: 'includeUnassigned',    label: 'Unassigned tickets',   emoji: '👤', color: 'amber' },
     { key: 'includeSla',           label: 'SLA breaches',         emoji: '⚠️',  color: 'rose' },
     { key: 'includeOnHold',        label: 'On-hold tickets',      emoji: '⏸',  color: 'violet' },
@@ -1674,10 +1674,28 @@ const getReportStatItems = (reportType = 'daily') => {
     { key: 'includeDailyAgentReport', label: 'Daily Report', color: 'indigo' },
     { key: 'includeCategorySpecialists', label: 'Category Specialists · Completed Tickets', emoji: '🏷️', color: 'teal' },
   ]
+  if (reportType === 'daily') items.push({ key: 'includeDailyMonthlyReport', label: 'Daily + Monthly report', emoji: '📊', color: 'indigo' })
+  return items
 }
 
 function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [], tickets = [] }) {
   const [activeReport, setActiveReport] = useState('daily')
+  const [combinedPreview, setCombinedPreview] = useState(null)
+  const [combinedPreviewError, setCombinedPreviewError] = useState('')
+  const [combinedPreviewLoading, setCombinedPreviewLoading] = useState(false)
+
+  const loadCombinedPreview = async () => {
+    setCombinedPreviewLoading(true)
+    setCombinedPreviewError('')
+    try {
+      const preview = await api.post('/admin/alerts/daily-monthly/preview', { reports: alertEdits.reports })
+      setCombinedPreview(preview)
+    } catch (error) {
+      setCombinedPreviewError(error?.message || 'Could not load the combined email preview')
+    } finally {
+      setCombinedPreviewLoading(false)
+    }
+  }
   const [dashboardVisibleAgentIds] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-visible-agent-ids')
@@ -1852,6 +1870,29 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [],
           </div>
         </div>
 
+        {activeReport === 'daily' && tmpl.includeDailyMonthlyReport !== false && <div className="mt-3 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold t-main">Daily + Monthly email preview</div>
+              <div className="mt-0.5 text-[10px] t-muted">Uses the current template options and live backend ticket data. Unsaved edits are included.</div>
+            </div>
+            <button type="button" onClick={loadCombinedPreview} disabled={combinedPreviewLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-500/15 disabled:opacity-50 dark:text-indigo-300">
+              {combinedPreviewLoading ? <Loader2 size={13} className="animate-spin" /> : <Eye size={13} />}
+              {combinedPreviewLoading ? 'Loading preview...' : 'Preview email'}
+            </button>
+          </div>
+          {combinedPreviewError && <div role="alert" className="mt-2 text-xs text-rose-500">{combinedPreviewError}</div>}
+          {combinedPreview && <div className="mt-3 overflow-hidden rounded-lg border border-glass bg-white">
+            <div className="border-b border-glass px-3 py-2 text-[10px] t-sub">
+              <span className="font-semibold t-main">Subject:</span> {combinedPreview.subject}
+              <span className="ml-3">Schedule: {combinedPreview.time} ({combinedPreview.timezone})</span>
+            </div>
+            <iframe title="Daily and monthly report email preview" srcDoc={combinedPreview.html} sandbox=""
+              className="h-[720px] w-full bg-white" />
+          </div>}
+        </div>}
+
         {/* Footer / Signature */}
         <div>
           <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
@@ -1930,23 +1971,6 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [],
 function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, saving, agents, tickets }) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState('')
-  const [combinedPreview, setCombinedPreview] = useState(null)
-  const [combinedPreviewError, setCombinedPreviewError] = useState('')
-  const [combinedPreviewLoading, setCombinedPreviewLoading] = useState(false)
-
-  const loadCombinedPreview = async () => {
-    setCombinedPreviewLoading(true)
-    setCombinedPreviewError('')
-    try {
-      const preview = await api.post('/admin/alerts/daily-monthly/preview', { reports: alertEdits.reports })
-      setCombinedPreview(preview)
-    } catch (error) {
-      setCombinedPreviewError(error?.message || 'Could not load the combined email preview')
-    } finally {
-      setCombinedPreviewLoading(false)
-    }
-  }
-
   const setCond = (key, patch) =>
     setAlertEdits(s => ({ ...s, conditions: { ...s.conditions, [key]: { ...s.conditions[key], ...patch } } }))
 
@@ -2120,29 +2144,6 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
               </div>
             )
           })}
-        </div>
-
-        <div className="mt-4 rounded-xl border border-indigo-500/20 bg-indigo-500/[0.03] p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-xs font-bold t-main">Combined email preview</div>
-              <div className="mt-0.5 text-[10px] t-muted">Renders the current daily and monthly settings with live backend data. Unsaved edits are included.</div>
-            </div>
-            <button type="button" onClick={loadCombinedPreview} disabled={combinedPreviewLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-500/15 disabled:opacity-50 dark:text-indigo-300">
-              {combinedPreviewLoading ? <Loader2 size={13} className="animate-spin" /> : <Eye size={13} />}
-              {combinedPreviewLoading ? 'Loading preview...' : 'Preview email'}
-            </button>
-          </div>
-          {combinedPreviewError && <div role="alert" className="mt-2 text-xs text-rose-500">{combinedPreviewError}</div>}
-          {combinedPreview && <div className="mt-3 overflow-hidden rounded-lg border border-glass bg-white">
-            <div className="border-b border-glass px-3 py-2 text-[10px] t-sub">
-              <span className="font-semibold t-main">Subject:</span> {combinedPreview.subject}
-              <span className="ml-3">Schedule: {combinedPreview.time} ({combinedPreview.timezone})</span>
-            </div>
-            <iframe title="Daily and monthly report email preview" srcDoc={combinedPreview.html} sandbox=""
-              className="h-[720px] w-full bg-white" />
-          </div>}
         </div>
 
         {/* Report timezone */}

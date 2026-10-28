@@ -629,6 +629,7 @@ const _DEFAULT_REPORT_TEMPLATE = (subject) => ({
   includeAgentStats:    true,
   includeAgentPerformance: true,
   includeDailyAgentReport: true,
+  includeDailyMonthlyReport: true,
   includeCategorySpecialists: true,
   footer: '',
 })
