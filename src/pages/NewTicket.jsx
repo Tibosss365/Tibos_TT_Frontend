@@ -210,7 +210,7 @@ export default function NewTicket() {
   useEffect(() => {
     const query = companySearchTerm.trim()
     const sequence = ++companyLookupSequence.current
-    if (isEndUser || query.length < 2) {
+    if (isEndUser || query.length < 1) {
       setTicketCompanySuggestions([])
       return
     }
