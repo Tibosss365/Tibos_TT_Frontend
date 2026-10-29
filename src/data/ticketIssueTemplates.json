@@ -1,0 +1,394 @@
+[
+  {
+    "id": "excel-1",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "incident",
+    "recommendedCategory": "mfa-conditional-access",
+    "subject": "MFA prompt or Authenticator notification not received",
+    "description": "User is unable to complete sign-in because the MFA prompt, approval notification, or verification code is not received. Please investigate the authentication method, registration status, and sign-in logs."
+  },
+  {
+    "id": "excel-2",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "request",
+    "recommendedCategory": "mfa-conditional-access",
+    "subject": "Request to reset and re-register MFA",
+    "description": "Please reset the existing MFA registration and require the user to register Microsoft Authenticator or another approved authentication method again."
+  },
+  {
+    "id": "excel-3",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "request",
+    "recommendedCategory": "mfa-conditional-access",
+    "subject": "Request to enable or enforce MFA",
+    "description": "Please enable or enforce multi-factor authentication for the specified user or scope according to the approved security requirement."
+  },
+  {
+    "id": "excel-4",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "incident",
+    "recommendedCategory": "mfa-conditional-access",
+    "subject": "MFA session or repeated sign-in prompt issue",
+    "description": "User is experiencing repeated MFA prompts or requires active sessions to be revoked. Please review session controls, trusted-device settings, and sign-in activity."
+  },
+  {
+    "id": "excel-5",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "incident",
+    "recommendedCategory": "mfa-conditional-access",
+    "subject": "User access blocked by Conditional Access",
+    "description": "User cannot access the requested Microsoft 365 service because a Conditional Access requirement is not satisfied. Please identify the applied policy and failed control."
+  },
+  {
+    "id": "excel-6",
+    "serviceArea": "Identity & Access",
+    "recommendedType": "request",
+    "recommendedCategory": "password-account-reset",
+    "subject": "Password reset or account unlock request",
+    "description": "Please reset the password or unlock the specified account after completing the required identity verification."
+  },
+  {
+    "id": "excel-7",
+    "serviceArea": "Microsoft 365 Admin",
+    "recommendedType": "request",
+    "recommendedCategory": "user-onboarding",
+    "subject": "New user account creation and onboarding",
+    "description": "Please create the new user account and configure the approved licence, mailbox, groups, and access required for onboarding."
+  },
+  {
+    "id": "excel-8",
+    "serviceArea": "Microsoft 365 Admin",
+    "recommendedType": "request",
+    "recommendedCategory": "user-offboarding",
+    "subject": "User offboarding and access removal",
+    "description": "Please disable the user account and complete the approved offboarding actions, including session revocation, licence handling, mailbox/data access, and group removal."
+  },
+  {
+    "id": "excel-9",
+    "serviceArea": "Microsoft 365 Admin",
+    "recommendedType": "request",
+    "recommendedCategory": "m365-admin-centre",
+    "subject": "User name, email address, or alias change request",
+    "description": "Please update the approved user profile, primary email address, or alias and verify the change across the required Microsoft 365 services."
+  },
+  {
+    "id": "excel-10",
+    "serviceArea": "Microsoft 365 Admin",
+    "recommendedType": "request",
+    "recommendedCategory": "m365-admin-centre",
+    "subject": "Microsoft 365 admin access or role request",
+    "description": "Please grant, modify, or review the requested Microsoft 365 administrative role using least-privilege access and the supplied approval."
+  },
+  {
+    "id": "excel-11",
+    "serviceArea": "Licensing",
+    "recommendedType": "request",
+    "recommendedCategory": "licensing-subscriptions",
+    "subject": "Microsoft 365 licence assignment or removal",
+    "description": "Please assign or remove the specified Microsoft 365 licence for the listed user and confirm service availability after the change."
+  },
+  {
+    "id": "excel-12",
+    "serviceArea": "Licensing",
+    "recommendedType": "request",
+    "recommendedCategory": "licensing-subscriptions",
+    "subject": "Microsoft 365 subscription renewal or expiry support",
+    "description": "Please review the subscription renewal or expiry concern and confirm the affected SKU, quantity, renewal status, and required action."
+  },
+  {
+    "id": "excel-13",
+    "serviceArea": "Licensing",
+    "recommendedType": "incident",
+    "recommendedCategory": "licensing-subscriptions",
+    "subject": "Microsoft 365 licence availability or count mismatch",
+    "description": "The expected licence quantity or availability is not reflected in the admin portal. Please validate the subscription status, purchased quantity, and assigned/available counts."
+  },
+  {
+    "id": "excel-14",
+    "serviceArea": "Licensing",
+    "recommendedType": "request",
+    "recommendedCategory": "licensing-subscriptions",
+    "subject": "Microsoft 365 licence plan clarification or comparison",
+    "description": "Please provide a feature and eligibility comparison for the requested Microsoft 365 plans based on the stated user and security requirements."
+  },
+  {
+    "id": "excel-15",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Email not received by recipient",
+    "description": "The recipient is not receiving expected email. Please investigate message trace, filtering, quarantine, transport rules, recipient configuration, and sender-domain authentication."
+  },
+  {
+    "id": "excel-16",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Unable to send email or message delivery failure",
+    "description": "The user cannot send email or receives a non-delivery report. Please review the error, message trace, connectors, restrictions, and recipient-domain response."
+  },
+  {
+    "id": "excel-17",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Email incorrectly delivered to spam or quarantine",
+    "description": "A legitimate message was filtered as spam or quarantined. Please analyse the message, detection reason, policy, sender authentication, and safe remediation."
+  },
+  {
+    "id": "excel-18",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "request",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Mail flow or transport rule configuration request",
+    "description": "Please create, modify, review, or troubleshoot the requested Exchange Online mail-flow rule according to the approved business condition and action."
+  },
+  {
+    "id": "excel-19",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "request",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Mailbox forwarding configuration request",
+    "description": "Please configure, remove, or investigate mailbox forwarding for the specified user and verify that it follows the organisation’s security policy."
+  },
+  {
+    "id": "excel-20",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Outlook sign-in or connectivity issue",
+    "description": "User cannot sign in to Outlook or Outlook cannot connect to the mailbox. Please investigate credentials, licence, service status, profile, and connectivity errors."
+  },
+  {
+    "id": "excel-21",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Outlook synchronisation or Send/Receive issue",
+    "description": "Outlook is not synchronising mailbox content or Send/Receive is delayed or failing. Please investigate profile health, cached mode, connectivity, and mailbox status."
+  },
+  {
+    "id": "excel-22",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "incident",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Mailbox storage or quota exceeded",
+    "description": "The mailbox is approaching or has exceeded its storage quota. Please review mailbox usage, licence limits, archive availability, and approved cleanup or expansion options."
+  },
+  {
+    "id": "excel-23",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "request",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Online Archive or retention configuration request",
+    "description": "Please enable, configure, or troubleshoot Online Archive and retention for the specified mailbox according to the approved retention requirement."
+  },
+  {
+    "id": "excel-24",
+    "serviceArea": "Exchange & Outlook",
+    "recommendedType": "request",
+    "recommendedCategory": "exchange-outlook",
+    "subject": "Shared mailbox access or permission request",
+    "description": "Please create or configure the shared mailbox and grant the approved Full Access, Send As, or Send on Behalf permissions."
+  },
+  {
+    "id": "excel-25",
+    "serviceArea": "Security & Defender",
+    "recommendedType": "incident",
+    "recommendedCategory": "security-incidents",
+    "subject": "Phishing or suspicious email investigation",
+    "description": "A suspected phishing or malicious message was reported. Please analyse message headers, URLs, attachments, sender authentication, delivery scope, and required containment actions."
+  },
+  {
+    "id": "excel-26",
+    "serviceArea": "Security & Defender",
+    "recommendedType": "incident",
+    "recommendedCategory": "security-incidents",
+    "subject": "Email spoofing or impersonation investigation",
+    "description": "A message appears to spoof or impersonate a trusted user or domain. Please analyse authentication results, impersonation detections, and affected recipients, then apply approved remediation."
+  },
+  {
+    "id": "excel-27",
+    "serviceArea": "Security & Defender",
+    "recommendedType": "incident",
+    "recommendedCategory": "security-incidents",
+    "subject": "Suspected compromised Microsoft 365 account",
+    "description": "Suspicious account activity has been identified. Please investigate sign-ins and mailbox activity, contain access, reset credentials, revoke sessions, and review persistence mechanisms."
+  },
+  {
+    "id": "excel-28",
+    "serviceArea": "Security & Defender",
+    "recommendedType": "incident",
+    "recommendedCategory": "microsoft-defender",
+    "subject": "Microsoft Defender alert or vulnerability remediation",
+    "description": "A Microsoft Defender alert or vulnerability requires investigation and remediation. Please review the affected asset, evidence, severity, exposure, and recommended security action."
+  },
+  {
+    "id": "excel-29",
+    "serviceArea": "Security & Defender",
+    "recommendedType": "request",
+    "recommendedCategory": "security-compliance",
+    "subject": "Email protection policy configuration request",
+    "description": "Please create, modify, or review the approved anti-spam, anti-phishing, Safe Links, Safe Attachments, or quarantine policy and verify the assigned scope."
+  },
+  {
+    "id": "excel-30",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "incident",
+    "recommendedCategory": "intune-device-management",
+    "subject": "Intune enrolment or Microsoft Entra join issue",
+    "description": "The device cannot enrol in Microsoft Intune or join Microsoft Entra ID. Please review the user licence, MDM scope, device state, enrolment restrictions, and reported error."
+  },
+  {
+    "id": "excel-31",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "incident",
+    "recommendedCategory": "intune-device-management",
+    "subject": "Device showing non-compliant in Microsoft Intune",
+    "description": "The managed device is marked non-compliant. Please identify the failed compliance setting, policy assignment, last check-in, and required remediation."
+  },
+  {
+    "id": "excel-32",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "incident",
+    "recommendedCategory": "intune-device-management",
+    "subject": "Intune configuration policy not applying or conflicting",
+    "description": "The assigned Intune configuration policy is not applying successfully or reports a conflict. Please review assignment, applicability, status details, and overlapping settings."
+  },
+  {
+    "id": "excel-33",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "request",
+    "recommendedCategory": "intune-device-management",
+    "subject": "Intune application deployment request",
+    "description": "Please package, assign, or troubleshoot the requested application deployment in Microsoft Intune for the approved user or device scope."
+  },
+  {
+    "id": "excel-34",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "incident",
+    "recommendedCategory": "intune-device-management",
+    "subject": "BitLocker encryption or recovery-key issue",
+    "description": "The device has a BitLocker encryption, policy, or recovery-key issue. Please review encryption status, policy assignment, TPM readiness, and recovery-key escrow."
+  },
+  {
+    "id": "excel-35",
+    "serviceArea": "Intune & Devices",
+    "recommendedType": "request",
+    "recommendedCategory": "intune-device-management",
+    "subject": "USB or removable storage restriction request",
+    "description": "Please configure or troubleshoot the approved Intune or Defender device-control policy for USB or removable storage access."
+  },
+  {
+    "id": "excel-36",
+    "serviceArea": "SharePoint & OneDrive",
+    "recommendedType": "incident",
+    "recommendedCategory": "sharepoint-onedrive",
+    "subject": "OneDrive synchronisation issue",
+    "description": "OneDrive files or folders are not synchronising correctly. Please investigate the sync client, account, storage, file restrictions, permissions, and reported error."
+  },
+  {
+    "id": "excel-37",
+    "serviceArea": "SharePoint & OneDrive",
+    "recommendedType": "incident",
+    "recommendedCategory": "sharepoint-onedrive",
+    "subject": "Missing or deleted OneDrive files or folders",
+    "description": "Files or folders are missing or were deleted from OneDrive. Please review recycle bins, version history, audit activity, retention, and available recovery options."
+  },
+  {
+    "id": "excel-38",
+    "serviceArea": "SharePoint & OneDrive",
+    "recommendedType": "request",
+    "recommendedCategory": "sharepoint-onedrive",
+    "subject": "OneDrive or SharePoint access and sharing request",
+    "description": "Please grant, remove, or troubleshoot access to the specified OneDrive or SharePoint resource according to the approved permission level and sharing policy."
+  },
+  {
+    "id": "excel-39",
+    "serviceArea": "SharePoint & OneDrive",
+    "recommendedType": "incident",
+    "recommendedCategory": "sharepoint-onedrive",
+    "subject": "SharePoint or OneDrive storage capacity issue",
+    "description": "The SharePoint site or OneDrive account has a storage capacity or quota concern. Please review current usage, allocation, retention impact, and approved remediation."
+  },
+  {
+    "id": "excel-40",
+    "serviceArea": "Teams",
+    "recommendedType": "request",
+    "recommendedCategory": "teams-collaboration",
+    "subject": "Microsoft Teams guest or external access request",
+    "description": "Please enable, configure, or troubleshoot Teams guest or external access for the specified users or domains according to the organisation’s collaboration policy."
+  },
+  {
+    "id": "excel-41",
+    "serviceArea": "Teams",
+    "recommendedType": "incident",
+    "recommendedCategory": "teams-collaboration",
+    "subject": "Microsoft Teams meeting or calling issue",
+    "description": "The user is experiencing a Teams meeting, audio, video, calling, or meeting-feature issue. Please investigate policy assignment, client version, device, network, and error details."
+  },
+  {
+    "id": "excel-42",
+    "serviceArea": "Teams",
+    "recommendedType": "request",
+    "recommendedCategory": "teams-collaboration",
+    "subject": "Microsoft Teams team, channel, or group access request",
+    "description": "Please create, grant, remove, or troubleshoot access to the specified Team, channel, or Microsoft 365 group based on the approved membership and role."
+  },
+  {
+    "id": "excel-43",
+    "serviceArea": "Domains & DNS",
+    "recommendedType": "request",
+    "recommendedCategory": "dns-domains",
+    "subject": "Microsoft 365 domain addition or verification request",
+    "description": "Please add or verify the specified domain in Microsoft 365 and provide or validate the required DNS verification record."
+  },
+  {
+    "id": "excel-44",
+    "serviceArea": "Domains & DNS",
+    "recommendedType": "request",
+    "recommendedCategory": "dns-domains",
+    "subject": "Email DNS record configuration or validation",
+    "description": "Please configure or validate the required MX, SPF, DKIM, DMARC, CNAME, or TXT records for Microsoft 365 email and report any conflicting values."
+  },
+  {
+    "id": "excel-45",
+    "serviceArea": "Migration",
+    "recommendedType": "request",
+    "recommendedCategory": "imap-email-migration",
+    "subject": "Email mailbox migration request",
+    "description": "Please assess and perform the approved mailbox migration from the source mail system or tenant to Microsoft 365, including prerequisites, user mapping, cutover, and validation."
+  },
+  {
+    "id": "excel-46",
+    "serviceArea": "Migration",
+    "recommendedType": "incident",
+    "recommendedCategory": "imap-email-migration",
+    "subject": "Mailbox migration failure or incremental migration issue",
+    "description": "The mailbox migration or incremental pass did not complete successfully. Please review the migration batch, failed items, error details, source connectivity, and target readiness."
+  },
+  {
+    "id": "excel-47",
+    "serviceArea": "Backup & Recovery",
+    "recommendedType": "request",
+    "recommendedCategory": "backup-restore",
+    "subject": "Microsoft 365 backup or restore request",
+    "description": "Please configure, run, validate, or restore the approved Microsoft 365 backup for the specified workload and recovery point."
+  },
+  {
+    "id": "excel-48",
+    "serviceArea": "Training",
+    "recommendedType": "request",
+    "recommendedCategory": "training",
+    "subject": "Microsoft 365 training or knowledge-transfer request",
+    "description": "Please arrange or provide a knowledge-transfer session for the requested Microsoft 365 feature, administration task, or end-user workflow."
+  },
+  {
+    "id": "excel-49",
+    "serviceArea": "Microsoft 365 Admin",
+    "recommendedType": "request",
+    "recommendedCategory": "m365-admin-centre",
+    "subject": "General Microsoft 365 support request",
+    "description": "Please review the reported Microsoft 365 request or issue, confirm the affected service and users, and provide the appropriate investigation or configuration support."
+  }
+]

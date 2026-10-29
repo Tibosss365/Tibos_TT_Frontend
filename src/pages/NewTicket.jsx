@@ -14,6 +14,7 @@ import TagsInput from '../components/tickets/TagsInput'
 import OwnersInput from '../components/tickets/OwnersInput'
 import DuplicateWarning from '../components/tickets/DuplicateWarning'
 import { RichDescription } from '../components/tickets/RichDescription'
+import ticketIssueTemplates from '../data/ticketIssueTemplates.json'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '', owners: [] }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -170,11 +171,49 @@ export default function NewTicket() {
   const fileInputRef = useRef()
   const [customFieldValues, setCustomFieldValues] = useState({})
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [selectedIssueCategory, setSelectedIssueCategory] = useState('')
+  const [selectedIssueTemplate, setSelectedIssueTemplate] = useState('')
+  const [showIssueSuggestions, setShowIssueSuggestions] = useState(false)
+  const [issueSearchTerm, setIssueSearchTerm] = useState('')
   const [tags, setTags] = useState([])
   const [duplicates, setDuplicates] = useState([])
   const [dupDismissed, setDupDismissed] = useState(false)
 
   const { checkDuplicate } = useFeatureStore()
+
+  const issueCategories = [...new Set(ticketIssueTemplates.map(item => item.serviceArea))]
+  const matchingIssueTemplates = ticketIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
+
+  const applyIssueTemplate = (issue) => {
+    setSelectedTemplate('')
+    setSelectedIssueTemplate(issue.id)
+    setIssueSearchTerm('')
+    setShowIssueSuggestions(false)
+    checkDuplicates(issue.subject)
+    setForm(f => ({
+      ...f,
+      subject: issue.subject,
+      description: issue.description,
+      type: issue.recommendedType || f.type,
+      category: issue.recommendedCategory || f.category,
+    }))
+  }
+
+  const handleIssueSubjectChange = (value) => {
+    const issue = matchingIssueTemplates.find(item => item.subject === value)
+    if (issue) {
+      applyIssueTemplate(issue)
+      return
+    }
+
+    const replacingTemplateSubject = Boolean(selectedIssueTemplate)
+    setSelectedIssueTemplate('')
+    setIssueSearchTerm(value)
+    setShowIssueSuggestions(true)
+    set('subject', value)
+    checkDuplicates(value)
+    if (replacingTemplateSubject) set('description', '')
+  }
 
   // ── Auto-fill account owners from the company registry ────────────────────
   // Load the registry once (agents only), then suggest owners as the email /
@@ -290,6 +329,8 @@ export default function NewTicket() {
                     const tpl = ticketTemplates.find(t => t.id === e.target.value)
                     setSelectedTemplate(e.target.value)
                     if (tpl) {
+                      setSelectedIssueCategory('')
+                      setSelectedIssueTemplate('')
                       setForm(f => ({
                         ...f,
                         subject:     tpl.subject || f.subject,
@@ -312,6 +353,27 @@ export default function NewTicket() {
               </div>
             </Card>
           )}
+
+          <Card>
+            <CardHeader title="Category" />
+            <select
+              className="glass-input w-full text-sm"
+              value={selectedIssueCategory}
+              onChange={e => {
+                setSelectedIssueCategory(e.target.value)
+                setSelectedTemplate('')
+                setSelectedIssueTemplate('')
+                setIssueSearchTerm('')
+                setShowIssueSuggestions(false)
+                setDuplicates([])
+                setDupDismissed(false)
+                setForm(f => ({ ...f, subject: '', description: '', category: '' }))
+              }}
+            >
+              <option value="">— Select Category —</option>
+              {issueCategories.map(category => <option key={category} value={category}>{category}</option>)}
+            </select>
+          </Card>
 
           {/* Ticket Type */}
           <Card>
@@ -381,12 +443,46 @@ export default function NewTicket() {
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Subject *</label>
-                <input
-                  className={inputCls('subject')}
-                  value={form.subject}
-                  onChange={e => { set('subject', e.target.value); checkDuplicates(e.target.value) }}
-                  placeholder="Brief description of the issue"
-                />
+                {selectedIssueCategory ? (
+                  <div className="relative">
+                    <input
+                      className={inputCls('subject')}
+                      value={form.subject}
+                      onFocus={() => setShowIssueSuggestions(true)}
+                      onBlur={() => window.setTimeout(() => setShowIssueSuggestions(false), 150)}
+                      onKeyDown={e => { if (e.key === 'Escape') setShowIssueSuggestions(false) }}
+                      onChange={e => handleIssueSubjectChange(e.target.value)}
+                      placeholder="Choose a suggested subject or type your own"
+                    />
+                    {showIssueSuggestions && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
+                        {matchingIssueTemplates
+                          .filter(issue => !issueSearchTerm || issue.subject.toLowerCase().includes(issueSearchTerm.toLowerCase()))
+                          .map(issue => (
+                            <button
+                              key={issue.id}
+                              type="button"
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => applyIssueTemplate(issue)}
+                              className="w-full px-3 py-2.5 text-left text-sm t-main leading-snug whitespace-normal break-words hover:bg-indigo-500/10 transition-colors"
+                            >
+                              {issue.subject}
+                            </button>
+                          ))}
+                        {matchingIssueTemplates.filter(issue => !issueSearchTerm || issue.subject.toLowerCase().includes(issueSearchTerm.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2.5 text-sm t-muted">No matching suggested subjects</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <input
+                    className={inputCls('subject')}
+                    value={form.subject}
+                    onChange={e => { set('subject', e.target.value); checkDuplicates(e.target.value) }}
+                    placeholder="Brief description of the issue"
+                  />
+                )}
                 {errors.subject && <p className="text-xs text-rose-500 mt-1">{errors.subject}</p>}
                 {duplicates.length > 0 && !dupDismissed && (
                   <div className="mt-2">
