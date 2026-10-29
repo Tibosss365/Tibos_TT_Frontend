@@ -219,8 +219,30 @@ export default function NewTicket() {
         const results = await api.get(`/tickets/company-suggestions?q=${encodeURIComponent(query)}`)
         if (companyLookupSequence.current === sequence) setTicketCompanySuggestions(Array.isArray(results) ? results : [])
       } catch (error) {
-        // Keep registry suggestions available if the deployed API has not been updated yet.
-        console.warn('Company suggestions lookup failed:', error)
+        // Older deployed APIs don't have the dedicated suggestions endpoint.
+        // Their ticket list search already returns company/contact/email fields.
+        try {
+          const result = await api.get(`/tickets?search=${encodeURIComponent(query)}&page=1&page_size=100&sort=newest`)
+          const items = Array.isArray(result) ? result : (result?.items || [])
+          const suggestions = new Map()
+          items.forEach(ticket => {
+            const companyName = ticket.company?.trim()
+            if (!companyName || !companyName.toLowerCase().startsWith(query.toLowerCase())) return
+            const key = companyName.toLowerCase()
+            const item = suggestions.get(key) || {
+              company_name: companyName,
+              contact_name: '',
+              contact_email: '',
+              contact_phone: '',
+            }
+            item.contact_name ||= ticket.contact_name || ''
+            item.contact_email ||= ticket.email || ''
+            suggestions.set(key, item)
+          })
+          if (companyLookupSequence.current === sequence) setTicketCompanySuggestions([...suggestions.values()])
+        } catch (fallbackError) {
+          console.warn('Company suggestions lookup failed:', fallbackError || error)
+        }
       }
     }, 250)
     return () => clearTimeout(timer)
