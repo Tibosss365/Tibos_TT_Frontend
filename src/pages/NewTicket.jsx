@@ -477,7 +477,7 @@ export default function NewTicket() {
           </Card>
 
           {/* Contact info — simplified for end users */}
-          <Card>
+          <Card className={showCompanySuggestions && matchingCompanies.length > 0 ? 'relative z-30' : ''}>
             <CardHeader title="Contact Information" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {!isEndUser && (
