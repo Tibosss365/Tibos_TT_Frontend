@@ -215,12 +215,17 @@ export default function NewTicket() {
       return
     }
     const timer = setTimeout(async () => {
+      let results = []
       try {
-        const results = await api.get(`/tickets/company-suggestions?q=${encodeURIComponent(query)}`)
-        if (companyLookupSequence.current === sequence) setTicketCompanySuggestions(Array.isArray(results) ? results : [])
+        const response = await api.get(`/tickets/company-suggestions?q=${encodeURIComponent(query)}`)
+        results = Array.isArray(response) ? response : []
       } catch (error) {
-        // Older deployed APIs don't have the dedicated suggestions endpoint.
-        // Their ticket list search already returns company/contact/email fields.
+        // Older deployed APIs may not have the dedicated suggestions endpoint.
+        console.warn('Direct company suggestions lookup failed:', error)
+      }
+
+      // Search ticket history too when the dedicated lookup is unavailable or empty.
+      if (!results.length) {
         try {
           const result = await api.get(`/tickets?search=${encodeURIComponent(query)}&page=1&page_size=100&sort=newest`)
           const items = Array.isArray(result) ? result : (result?.items || [])
@@ -237,13 +242,15 @@ export default function NewTicket() {
             }
             item.contact_name ||= ticket.contact_name || ''
             item.contact_email ||= ticket.email || ''
+            item.contact_phone ||= ticket.phone || ''
             suggestions.set(key, item)
           })
-          if (companyLookupSequence.current === sequence) setTicketCompanySuggestions([...suggestions.values()])
+          results = [...suggestions.values()]
         } catch (fallbackError) {
-          console.warn('Company suggestions lookup failed:', fallbackError || error)
+          console.warn('Company history lookup failed:', fallbackError)
         }
       }
+      if (companyLookupSequence.current === sequence) setTicketCompanySuggestions(results)
     }, 250)
     return () => clearTimeout(timer)
   }, [companySearchTerm, isEndUser])
