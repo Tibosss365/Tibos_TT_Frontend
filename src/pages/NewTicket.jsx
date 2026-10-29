@@ -15,6 +15,7 @@ import OwnersInput from '../components/tickets/OwnersInput'
 import DuplicateWarning from '../components/tickets/DuplicateWarning'
 import { RichDescription } from '../components/tickets/RichDescription'
 import ticketIssueTemplates from '../data/ticketIssueTemplates.json'
+import { api } from '../api/client'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '', owners: [] }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -177,6 +178,8 @@ export default function NewTicket() {
   const [issueSearchTerm, setIssueSearchTerm] = useState('')
   const [companySearchTerm, setCompanySearchTerm] = useState('')
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false)
+  const [ticketCompanySuggestions, setTicketCompanySuggestions] = useState([])
+  const companyLookupSequence = useRef(0)
   const [tags, setTags] = useState([])
   const [duplicates, setDuplicates] = useState([])
   const [dupDismissed, setDupDismissed] = useState(false)
@@ -185,9 +188,43 @@ export default function NewTicket() {
 
   const issueCategories = [...new Set(ticketIssueTemplates.map(item => item.serviceArea))]
   const matchingIssueTemplates = ticketIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
-  const matchingCompanies = (domainCompanies || []).filter(company =>
-    company.company_name?.toLowerCase().startsWith(companySearchTerm.trim().toLowerCase())
-  )
+  const matchingCompanies = (() => {
+    const query = companySearchTerm.trim().toLowerCase()
+    if (!query) return []
+    const matches = new Map()
+    ;[...(domainCompanies || []), ...ticketCompanySuggestions].forEach(company => {
+      if (!company.company_name?.toLowerCase().startsWith(query)) return
+      const key = company.company_name.trim().toLowerCase()
+      const prior = matches.get(key) || { company_name: company.company_name }
+      matches.set(key, {
+        ...prior,
+        ...company,
+        contact_name: prior.contact_name || company.contact_name || '',
+        contact_email: prior.contact_email || company.contact_email || '',
+        contact_phone: prior.contact_phone || company.contact_phone || '',
+      })
+    })
+    return [...matches.values()].slice(0, 50)
+  })()
+
+  useEffect(() => {
+    const query = companySearchTerm.trim()
+    const sequence = ++companyLookupSequence.current
+    if (isEndUser || query.length < 2) {
+      setTicketCompanySuggestions([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await api.get(`/tickets/company-suggestions?q=${encodeURIComponent(query)}`)
+        if (companyLookupSequence.current === sequence) setTicketCompanySuggestions(Array.isArray(results) ? results : [])
+      } catch (error) {
+        // Keep registry suggestions available if the deployed API has not been updated yet.
+        console.warn('Company suggestions lookup failed:', error)
+      }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [companySearchTerm, isEndUser])
 
   const selectCompany = (company) => {
     setForm(f => ({
