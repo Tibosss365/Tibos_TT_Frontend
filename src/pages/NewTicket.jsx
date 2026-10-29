@@ -175,6 +175,8 @@ export default function NewTicket() {
   const [selectedIssueTemplate, setSelectedIssueTemplate] = useState('')
   const [showIssueSuggestions, setShowIssueSuggestions] = useState(false)
   const [issueSearchTerm, setIssueSearchTerm] = useState('')
+  const [companySearchTerm, setCompanySearchTerm] = useState('')
+  const [showCompanySuggestions, setShowCompanySuggestions] = useState(false)
   const [tags, setTags] = useState([])
   const [duplicates, setDuplicates] = useState([])
   const [dupDismissed, setDupDismissed] = useState(false)
@@ -183,6 +185,21 @@ export default function NewTicket() {
 
   const issueCategories = [...new Set(ticketIssueTemplates.map(item => item.serviceArea))]
   const matchingIssueTemplates = ticketIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
+  const matchingCompanies = (domainCompanies || []).filter(company =>
+    company.company_name?.toLowerCase().startsWith(companySearchTerm.trim().toLowerCase())
+  )
+
+  const selectCompany = (company) => {
+    setForm(f => ({
+      ...f,
+      company: company.company_name || '',
+      contactName: company.contact_name || '',
+      email: company.contact_email || '',
+      phone: company.contact_phone || '',
+    }))
+    setCompanySearchTerm('')
+    setShowCompanySuggestions(false)
+  }
 
   const applyIssueTemplate = (issue) => {
     setSelectedTemplate('')
@@ -407,7 +424,41 @@ export default function NewTicket() {
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>Company *</label>
-                  <input className={inputCls('company')} value={form.company} onChange={e => set('company', e.target.value)} placeholder="Customer company name" />
+                  <div className="relative">
+                    <input
+                      className={inputCls('company')}
+                      value={form.company}
+                      onFocus={() => {
+                        setCompanySearchTerm(form.company)
+                        setShowCompanySuggestions(Boolean(form.company.trim()))
+                      }}
+                      onBlur={() => window.setTimeout(() => setShowCompanySuggestions(false), 150)}
+                      onChange={e => {
+                        const value = e.target.value
+                        setCompanySearchTerm(value)
+                        setShowCompanySuggestions(Boolean(value.trim()))
+                        setForm(f => ({ ...f, company: value, contactName: '', email: '', phone: '' }))
+                        if (errors.company) setErrors(err => ({ ...err, company: '' }))
+                      }}
+                      placeholder="Start typing a company name"
+                      autoComplete="off"
+                    />
+                    {showCompanySuggestions && companySearchTerm.trim() && matchingCompanies.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
+                        {matchingCompanies.map(company => (
+                          <button
+                            key={company.id}
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => selectCompany(company)}
+                            className="w-full px-3 py-2.5 text-left text-sm t-main whitespace-normal break-words hover:bg-indigo-500/10 transition-colors"
+                          >
+                            {company.company_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {errors.company && <p className="text-xs text-rose-500 mt-1">{errors.company}</p>}
                 </div>
               )}
