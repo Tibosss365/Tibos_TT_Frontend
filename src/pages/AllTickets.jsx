@@ -14,6 +14,7 @@ import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import SourceBadge from '../components/tickets/SourceBadge'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo } from '../utils/ticketUtils'
 import { useT } from '../utils/i18n'
+import { BASE } from '../api/client'
 
 // ── Column definitions ────────────────────────────────────────────────────────
 const ALL_COLUMNS = [
@@ -97,6 +98,7 @@ export default function AllTickets() {
   }))
   const [visibleCols, setVisibleCols]         = useState(DEFAULT_COLS)
   const [showColPicker, setShowColPicker]     = useState(false)
+  const [exportingResolved, setExportingResolved] = useState(false)
   const colPickerRef = useRef(null)
   const panelRef     = useRef(null)
 
@@ -231,6 +233,32 @@ export default function AllTickets() {
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = 'tickets.csv'; a.click()
+  }
+  const handleExportResolvedExcel = async () => {
+    setExportingResolved(true)
+    try {
+      const rawUser = localStorage.getItem('helpdesk-user')
+      const token = rawUser ? JSON.parse(rawUser)?.state?.token : null
+      const response = await fetch(`${BASE}/tickets/export/resolved.xlsx`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.detail || `Export failed (HTTP ${response.status})`)
+      }
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'resolved_tickets.xlsx'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      addToast(error.message || 'Could not export resolved tickets', 'error')
+    } finally {
+      setExportingResolved(false)
+    }
   }
 
 
@@ -416,6 +444,7 @@ export default function AllTickets() {
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={handleExportCSV}><Download size={14} /> <span className="hidden sm:inline">Export CSV</span></Button>
+          <Button variant="ghost" size="sm" onClick={handleExportResolvedExcel} disabled={exportingResolved}><Download size={14} /> <span>{exportingResolved ? 'Exporting...' : 'Resolved Excel'}</span></Button>
         </div>
       </div>
 
