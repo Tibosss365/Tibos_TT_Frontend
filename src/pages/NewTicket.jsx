@@ -180,6 +180,7 @@ export default function NewTicket() {
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false)
   const [ticketCompanySuggestions, setTicketCompanySuggestions] = useState([])
   const companyLookupSequence = useRef(0)
+  const companySuggestionCache = useRef(new Map())
   const [tags, setTags] = useState([])
   const [duplicates, setDuplicates] = useState([])
   const [dupDismissed, setDupDismissed] = useState(false)
@@ -214,6 +215,9 @@ export default function NewTicket() {
       setTicketCompanySuggestions([])
       return
     }
+    const cacheKey = query.toLowerCase()
+    const cached = companySuggestionCache.current.get(cacheKey)
+    if (cached) setTicketCompanySuggestions(cached)
     const timer = setTimeout(async () => {
       let results = []
       try {
@@ -250,8 +254,11 @@ export default function NewTicket() {
           console.warn('Company history lookup failed:', fallbackError)
         }
       }
-      if (companyLookupSequence.current === sequence) setTicketCompanySuggestions(results)
-    }, 250)
+      if (companyLookupSequence.current === sequence) {
+        companySuggestionCache.current.set(cacheKey, results)
+        setTicketCompanySuggestions(results)
+      }
+    }, 100)
     return () => clearTimeout(timer)
   }, [companySearchTerm, isEndUser])
 
