@@ -178,6 +178,7 @@ export default function NewTicket() {
   const [issueSearchTerm, setIssueSearchTerm] = useState('')
   const [companySearchTerm, setCompanySearchTerm] = useState('')
   const [showCompanySuggestions, setShowCompanySuggestions] = useState(false)
+  const [preloadedCompanySuggestions, setPreloadedCompanySuggestions] = useState([])
   const [ticketCompanySuggestions, setTicketCompanySuggestions] = useState([])
   const companyLookupSequence = useRef(0)
   const companySuggestionCache = useRef(new Map())
@@ -187,13 +188,29 @@ export default function NewTicket() {
 
   const { checkDuplicate } = useFeatureStore()
 
+  // Warm the company list once when support staff open the form. Typing can
+  // then filter the cached list locally without waiting for a request per key.
+  useEffect(() => {
+    if (isEndUser) return
+    let active = true
+    api.get('/tickets/company-suggestions')
+      .then(data => {
+        if (!active || !Array.isArray(data)) return
+        const companies = data.map(company => ({ ...company, id: company.id || company.company_name }))
+        companySuggestionCache.current.set('*', companies)
+        setPreloadedCompanySuggestions(companies)
+      })
+      .catch(error => console.warn('Company list preload failed; live lookup remains available:', error))
+    return () => { active = false }
+  }, [isEndUser])
+
   const issueCategories = [...new Set(ticketIssueTemplates.map(item => item.serviceArea))]
   const matchingIssueTemplates = ticketIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
   const matchingCompanies = (() => {
     const query = companySearchTerm.trim().toLowerCase()
     if (!query) return []
     const matches = new Map()
-    ;[...(domainCompanies || []), ...ticketCompanySuggestions].forEach(company => {
+    ;[...(domainCompanies || []), ...preloadedCompanySuggestions, ...ticketCompanySuggestions].forEach(company => {
       if (!company.company_name?.toLowerCase().startsWith(query)) return
       const key = company.company_name.trim().toLowerCase()
       const prior = matches.get(key) || { company_name: company.company_name }
@@ -217,7 +234,19 @@ export default function NewTicket() {
     }
     const cacheKey = query.toLowerCase()
     const cached = companySuggestionCache.current.get(cacheKey)
-    if (cached) setTicketCompanySuggestions(cached)
+    if (cached) {
+      setTicketCompanySuggestions(cached)
+      return
+    }
+    const preloaded = companySuggestionCache.current.get('*')
+    if (preloaded) {
+      const localMatches = preloaded.filter(company => company.company_name?.toLowerCase().startsWith(cacheKey))
+      if (localMatches.length) {
+        companySuggestionCache.current.set(cacheKey, localMatches)
+        setTicketCompanySuggestions(localMatches)
+        return
+      }
+    }
     const timer = setTimeout(async () => {
       let results = []
       try {
@@ -520,7 +549,7 @@ export default function NewTicket() {
                       <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
                         {matchingCompanies.map(company => (
                           <button
-                            key={company.id}
+                            key={company.id || company.company_name}
                             type="button"
                             onMouseDown={e => e.preventDefault()}
                             onClick={() => selectCompany(company)}
