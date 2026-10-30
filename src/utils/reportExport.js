@@ -35,6 +35,41 @@ function extractHoldReason(t) {
   return ''
 }
 
+function htmlToPlainText(value) {
+  const html = String(value || '')
+  if (!/<[a-z][\s\S]*>/i.test(html)) return html
+  if (typeof DOMParser === 'undefined') {
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, '\n')
+      .replace(/<\/(?:td|th)\s*>/gi, '\t')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+  }
+
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  doc.querySelectorAll('script, style, head').forEach(node => node.remove())
+  const blockTags = new Set(['ADDRESS', 'ARTICLE', 'BLOCKQUOTE', 'DIV', 'LI', 'P', 'SECTION', 'TR'])
+  const read = node => {
+    if (node.nodeType === 3) return node.nodeValue || ''
+    if (node.nodeType !== 1) return ''
+    if (node.tagName === 'BR') return '\n'
+    const content = [...node.childNodes].map(read).join('')
+    if (node.tagName === 'TD' || node.tagName === 'TH') return `${content}\t`
+    return blockTags.has(node.tagName) ? `${content}\n` : content
+  }
+  return read(doc.body)
+    .replace(/[\t ]+\n/g, '\n')
+    .replace(/\n[\t ]+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 /**
  * Compute the report dataset from a (already filtered) ticket list.
  */
@@ -80,7 +115,7 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     name: t.submitter || t.contactName || '',
     subject: t.subject || '',
     incident: t.type || '',
-    description: t.description || '',
+    description: htmlToPlainText(t.description),
     company: t.company || '',
     contactName: t.contactName || t.submitter || '',
     contactEmail: t.email || '',
@@ -190,12 +225,13 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
     const ticket = tickets[ticketIndex]
     return (ticket.timeline || []).map(event => ({ row, event }))
   })
-  const maxMessageParts = Math.max(1, ...timelineEntries.map(({ event }) => Math.ceil((event.text || '').length / maxCellCharacters)))
+  const messages = timelineEntries.map(({ event }) => htmlToPlainText(event.text))
+  const maxMessageParts = Math.max(1, ...messages.map(message => Math.ceil(message.length / maxCellCharacters)))
   if (maxMessageParts > 1) {
     messageRows[0].splice(9, 1, ...Array.from({ length: maxMessageParts }, (_, index) => `Message${index ? ` (continued ${index + 1})` : ''}`))
   }
-  timelineEntries.forEach(({ row, event }) => {
-    const message = event.text || ''
+  timelineEntries.forEach(({ row, event }, index) => {
+    const message = messages[index]
     const parts = Array.from({ length: maxMessageParts }, (_, index) => message.slice(index * maxCellCharacters, (index + 1) * maxCellCharacters))
     messageRows.push([
       row.id, row.subject, event.ts ? new Date(event.ts).toLocaleString() : '', event.author || '', event.type || '',
