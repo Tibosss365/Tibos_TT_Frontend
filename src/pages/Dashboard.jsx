@@ -258,6 +258,30 @@ export default function Dashboard() {
     }
   }
 
+  const handleMonthTicketsExcel = async () => {
+    setExporting('month-tickets-excel')
+    try {
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      const monthTickets = tickets.filter(ticket => {
+        if (!ticket.created) return false
+        const created = new Date(ticket.created)
+        return !Number.isNaN(created.getTime()) && created >= monthStart && created < nextMonthStart
+      })
+      const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+      await exportTicketsExcel(monthTickets, getAgentName, {
+        filterLabel: `Tickets created in ${monthLabel}`,
+        activeAgentIds,
+        getCategoryName,
+      })
+    } catch (e) {
+      console.error('Monthly ticket Excel export failed', e)
+    } finally {
+      setExporting(null)
+    }
+  }
+
   // ── SLA ignore state (persisted in localStorage) ──────────────────────────
   const [ignoredSlaIds, setIgnoredSlaIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('sla-ignored-ids') || '{}') } catch { return {} }
@@ -728,9 +752,14 @@ export default function Dashboard() {
           </div>
           <div className="mb-2 flex items-center justify-between gap-3">
             <h3 className="text-xs font-bold t-main">Daily Agent Metrics</h3>
-            <Button variant="outline" size="sm" onClick={handleAgentDailyExcel} disabled={exporting === 'agent-daily-excel'}>
-              <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'agent-daily-excel' ? 'Preparing Excel…' : 'Download Excel'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleMonthTicketsExcel} disabled={exporting === 'month-tickets-excel'}>
+                <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'month-tickets-excel' ? 'Preparing…' : 'This Month Tickets'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleAgentDailyExcel} disabled={exporting === 'agent-daily-excel'}>
+                <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'agent-daily-excel' ? 'Preparing Excel…' : 'Download Excel'}
+              </Button>
+            </div>
           </div>
           <div className="mb-6 overflow-x-auto rounded-xl border border-glass">
             <table className="w-full text-xs min-w-max">
