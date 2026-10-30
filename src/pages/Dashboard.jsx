@@ -237,24 +237,22 @@ export default function Dashboard() {
   const handleAgentDailyExcel = async () => {
     setExporting('agent-daily-excel')
     try {
-      const { BASE } = await import('../api/client')
-      const raw = localStorage.getItem('helpdesk-user')
-      const token = raw ? (JSON.parse(raw)?.state?.token ?? null) : null
-      const response = await fetch(`${BASE}/tickets/export/this-month.xlsx`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!response.ok) throw new Error(`Monthly ticket export failed (HTTP ${response.status})`)
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `tickets-${new Date().toISOString().slice(0, 7)}.xlsx`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
+      const XLSX = await import('xlsx')
+      const dateLabel = dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+      const rows = [
+        ['Daily Agent Report', dateLabel],
+        [],
+        ['Agent', 'Today created', 'Open < 1h', 'Open 1–2h', 'Open 2–24h', 'Resolved today', 'Resolved < 1h', 'Resolved 1–2h', 'Resolved 2–24h', 'This month'],
+        ...visibleAgentStats.map(agent => [agent.name, agent.today, agent.underOneHour, agent.oneToTwoHours, agent.twoToTwentyFourHours, agent.resolvedToday, agent.resolvedUnderOneHour, agent.resolvedOneToTwoHours, agent.resolvedTwoToTwentyFourHours, agent.month]),
+      ]
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.aoa_to_sheet(rows)
+      worksheet['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }]
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Agent Report')
+      const datePart = `${dashboardDay.getFullYear()}-${String(dashboardDay.getMonth() + 1).padStart(2, '0')}-${String(dashboardDay.getDate()).padStart(2, '0')}`
+      XLSX.writeFile(workbook, `daily-agent-report-${datePart}.xlsx`)
     } catch (e) {
-      console.error('Monthly ticket Excel export failed', e)
+      console.error('Daily agent Excel export failed', e)
     } finally {
       setExporting(null)
     }
