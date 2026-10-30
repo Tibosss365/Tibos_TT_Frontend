@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
+import { useUiStore } from '../stores/uiStore'
 import { StatsCard } from '../components/ui/StatsCard'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -168,6 +169,7 @@ function SlaIgnoreModal({ ticket, onClose, onConfirm }) {
 export default function Dashboard() {
   const { tickets, loading } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
+  const addToast = useUiStore(state => state.addToast)
   const navigate = useNavigate()
   const [dashboardDay, setDashboardDay] = useState(() => new Date())
   const [selectedAgentIds, setSelectedAgentIds] = useState(() => {
@@ -276,8 +278,10 @@ export default function Dashboard() {
         activeAgentIds,
         getCategoryName,
       })
+      addToast(`Downloaded ${monthTickets.length} ticket${monthTickets.length === 1 ? '' : 's'} for ${monthLabel}`, 'success')
     } catch (e) {
       console.error('Monthly ticket Excel export failed', e)
+      addToast(e?.message ? `Excel download failed: ${e.message}` : 'Excel download failed. Please try again.', 'error')
     } finally {
       setExporting(null)
     }
