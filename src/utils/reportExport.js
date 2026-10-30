@@ -91,6 +91,7 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     agent: t.assignee ? getAgentName(t.assignee) : 'Unassigned',
     holdReason: t.holdReason || extractHoldReason(t),
     resolution: t.resolution || '',
+    resolutionCode: t.resolutionCode || '',
     created: t.created ? new Date(t.created).toLocaleString() : '',
     updated: t.updated ? new Date(t.updated).toLocaleString() : '',
     dueDate: t.dueDate || '',
@@ -98,6 +99,16 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     source: t.source || '',
     tags: Array.isArray(t.tags) ? t.tags.join(', ') : (t.tags || ''),
     customFields: t.customFieldData && typeof t.customFieldData === 'object' ? JSON.stringify(t.customFieldData) : (t.customFieldData || ''),
+    attachments: JSON.stringify((t.attachments || []).map(({ filename, contentType, size }) => ({ filename, contentType, size }))),
+    owners: Array.isArray(t.owners) ? t.owners.join(', ') : (t.owners || ''),
+    tasks: JSON.stringify(t.tasks || []),
+    workLogs: JSON.stringify(t.workLog || []),
+    firstResponse: t.firstRespondedAt ? new Date(t.firstRespondedAt).toLocaleString() : '',
+    csatRating: t.csatRating || '',
+    csatComment: t.csatComment || '',
+    slaStatus: t.slaStatus || '',
+    slaStart: t.slaStartTime ? new Date(t.slaStartTime).toLocaleString() : '',
+    slaDue: t.slaDueTime ? new Date(t.slaDueTime).toLocaleString() : '',
   }))
 
   return { total: list.length, counts, agentRows, ticketRows, generatedAt: new Date() }
@@ -148,7 +159,7 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
 
   // ── Tickets sheet ──
-  const tRows = [['Ticket #', 'Name', 'Subject', 'Incident', 'Description', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created', 'Updated', 'Due Date', 'Asset', 'Source', 'Tags', 'Custom Fields']]
+  const tRows = [['Ticket #', 'Name', 'Subject', 'Incident', 'Description', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Resolution Code', 'Created', 'Updated', 'Due Date', 'Asset', 'Source', 'Tags', 'Custom Fields', 'Attachments', 'Owners', 'Tasks', 'Work Logs', 'First Responded', 'CSAT Rating', 'CSAT Comment', 'SLA Status', 'SLA Start', 'SLA Due']]
   // Excel limits a single cell to 32,767 characters. Split unusually long
   // descriptions over continuation columns so exports retain the full text.
   const maxCellCharacters = 32767
@@ -159,15 +170,45 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   d.ticketRows.forEach(t => {
     const description = t.description || ''
     const parts = Array.from({ length: descriptionParts }, (_, index) => description.slice(index * maxCellCharacters, (index + 1) * maxCellCharacters))
-    tRows.push([t.id, t.name, t.subject, t.incident, ...parts, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created, t.updated, t.dueDate, t.asset, t.source, t.tags, t.customFields])
+    tRows.push([t.id, t.name, t.subject, t.incident, ...parts, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.resolutionCode, t.created, t.updated, t.dueDate, t.asset, t.source, t.tags, t.customFields, t.attachments, t.owners, t.tasks, t.workLogs, t.firstResponse, t.csatRating, t.csatComment, t.slaStatus, t.slaStart, t.slaDue])
   })
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
   ws2['!cols'] = [
     { wch: 14 }, { wch: 24 }, { wch: 44 }, { wch: 18 },
     ...Array.from({ length: descriptionParts }, () => ({ wch: 60 })),
-    { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 24 }, { wch: 40 },
+    { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 },
+    { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 16 },
+    { wch: 20 }, { wch: 16 }, { wch: 24 }, { wch: 40 }, { wch: 30 }, { wch: 24 }, { wch: 40 },
+    { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
   ]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
+
+  // Keep each timeline entry as its own row so the complete conversation and
+  // ticket activity can be read alongside the ticket's summary details.
+  const messageRows = [['Ticket #', 'Ticket Subject', 'Date', 'Author', 'Type', 'Email Subject', 'From', 'To', 'CC', 'Message']]
+  const timelineEntries = d.ticketRows.flatMap((row, ticketIndex) => {
+    const ticket = tickets[ticketIndex]
+    return (ticket.timeline || []).map(event => ({ row, event }))
+  })
+  const maxMessageParts = Math.max(1, ...timelineEntries.map(({ event }) => Math.ceil((event.text || '').length / maxCellCharacters)))
+  if (maxMessageParts > 1) {
+    messageRows[0].splice(9, 1, ...Array.from({ length: maxMessageParts }, (_, index) => `Message${index ? ` (continued ${index + 1})` : ''}`))
+  }
+  timelineEntries.forEach(({ row, event }) => {
+    const message = event.text || ''
+    const parts = Array.from({ length: maxMessageParts }, (_, index) => message.slice(index * maxCellCharacters, (index + 1) * maxCellCharacters))
+    messageRows.push([
+      row.id, row.subject, event.ts ? new Date(event.ts).toLocaleString() : '', event.author || '', event.type || '',
+      event.subject || '', event.from || '', event.to || '', event.cc || '', ...parts,
+    ])
+  })
+  const ws3 = XLSX.utils.aoa_to_sheet(messageRows)
+  ws3['!cols'] = [
+    { wch: 14 }, { wch: 44 }, { wch: 22 }, { wch: 24 }, { wch: 18 },
+    { wch: 32 }, { wch: 28 }, { wch: 28 }, { wch: 28 },
+    ...Array.from({ length: maxMessageParts }, () => ({ wch: 60 })),
+  ]
+  XLSX.utils.book_append_sheet(wb, ws3, 'Ticket Messages')
 
   XLSX.writeFile(wb, meta.fileName || `helpdesk-report-${dateStamp()}.xlsx`)
 }
