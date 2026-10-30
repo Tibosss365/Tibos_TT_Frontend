@@ -149,9 +149,24 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
 
   // ── Tickets sheet ──
   const tRows = [['Ticket #', 'Name', 'Subject', 'Incident', 'Description', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created', 'Updated', 'Due Date', 'Asset', 'Source', 'Tags', 'Custom Fields']]
-  d.ticketRows.forEach(t => tRows.push([t.id, t.name, t.subject, t.incident, t.description, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created, t.updated, t.dueDate, t.asset, t.source, t.tags, t.customFields]))
+  // Excel limits a single cell to 32,767 characters. Split unusually long
+  // descriptions over continuation columns so exports retain the full text.
+  const maxCellCharacters = 32767
+  const descriptionParts = Math.max(1, ...d.ticketRows.map(t => Math.ceil((t.description || '').length / maxCellCharacters)))
+  if (descriptionParts > 1) {
+    tRows[0].splice(5, 1, ...Array.from({ length: descriptionParts }, (_, index) => `Description${index ? ` (continued ${index + 1})` : ''}`))
+  }
+  d.ticketRows.forEach(t => {
+    const description = t.description || ''
+    const parts = Array.from({ length: descriptionParts }, (_, index) => description.slice(index * maxCellCharacters, (index + 1) * maxCellCharacters))
+    tRows.push([t.id, t.name, t.subject, t.incident, ...parts, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created, t.updated, t.dueDate, t.asset, t.source, t.tags, t.customFields])
+  })
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
-  ws2['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 44 }, { wch: 18 }, { wch: 60 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 24 }, { wch: 40 }]
+  ws2['!cols'] = [
+    { wch: 14 }, { wch: 24 }, { wch: 44 }, { wch: 18 },
+    ...Array.from({ length: descriptionParts }, () => ({ wch: 60 })),
+    { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 24 }, { wch: 40 },
+  ]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
 
   XLSX.writeFile(wb, meta.fileName || `helpdesk-report-${dateStamp()}.xlsx`)
