@@ -272,6 +272,7 @@ export default function Dashboard() {
       const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
       await exportTicketsExcel(monthTickets, getAgentName, {
         filterLabel: `Tickets created in ${monthLabel}`,
+        fileName: `monthly-ticket-details-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.xlsx`,
         activeAgentIds,
         getCategoryName,
       })

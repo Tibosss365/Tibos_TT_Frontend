@@ -77,7 +77,10 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
   const getCategoryName = opts.getCategoryName || ((c) => c || '')
   const ticketRows = list.map(t => ({
     id: t.id,
+    name: t.submitter || t.contactName || '',
     subject: t.subject || '',
+    incident: t.type || '',
+    description: t.description || '',
     company: t.company || '',
     contactName: t.contactName || t.submitter || '',
     contactEmail: t.email || '',
@@ -89,6 +92,12 @@ export function buildReportData(tickets, getAgentName, opts = {}) {
     holdReason: t.holdReason || extractHoldReason(t),
     resolution: t.resolution || '',
     created: t.created ? new Date(t.created).toLocaleString() : '',
+    updated: t.updated ? new Date(t.updated).toLocaleString() : '',
+    dueDate: t.dueDate || '',
+    asset: t.asset || '',
+    source: t.source || '',
+    tags: Array.isArray(t.tags) ? t.tags.join(', ') : (t.tags || ''),
+    customFields: t.customFieldData && typeof t.customFieldData === 'object' ? JSON.stringify(t.customFieldData) : (t.customFieldData || ''),
   }))
 
   return { total: list.length, counts, agentRows, ticketRows, generatedAt: new Date() }
@@ -139,13 +148,13 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
 
   // ── Tickets sheet ──
-  const tRows = [['Ticket #', 'Subject', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created']]
-  d.ticketRows.forEach(t => tRows.push([t.id, t.subject, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created]))
+  const tRows = [['Ticket #', 'Name', 'Subject', 'Incident', 'Description', 'Company', 'Contact Person', 'Contact Email', 'Contact Phone', 'Category', 'Status', 'Priority', 'Agent', 'Hold Reason', 'Resolution', 'Created', 'Updated', 'Due Date', 'Asset', 'Source', 'Tags', 'Custom Fields']]
+  d.ticketRows.forEach(t => tRows.push([t.id, t.name, t.subject, t.incident, t.description, t.company, t.contactName, t.contactEmail, t.contactPhone, t.category, t.status, t.priority, t.agent, t.holdReason, t.resolution, t.created, t.updated, t.dueDate, t.asset, t.source, t.tags, t.customFields]))
   const ws2 = XLSX.utils.aoa_to_sheet(tRows)
-  ws2['!cols'] = [{ wch: 14 }, { wch: 44 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }]
+  ws2['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 44 }, { wch: 18 }, { wch: 60 }, { wch: 24 }, { wch: 20 }, { wch: 28 }, { wch: 16 }, { wch: 22 }, { wch: 13 }, { wch: 10 }, { wch: 22 }, { wch: 28 }, { wch: 34 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 16 }, { wch: 24 }, { wch: 40 }]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
 
-  XLSX.writeFile(wb, `helpdesk-report-${dateStamp()}.xlsx`)
+  XLSX.writeFile(wb, meta.fileName || `helpdesk-report-${dateStamp()}.xlsx`)
 }
 
 /**
