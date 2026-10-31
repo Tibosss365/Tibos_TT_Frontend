@@ -239,10 +239,6 @@ export default function NewTicket() {
   const allIssueTemplates = [...ticketIssueTemplates, ...workbookTicketIssues]
   const issueCategories = [...new Set(allIssueTemplates.map(item => item.serviceArea))]
   const matchingIssueTemplates = allIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
-  const issueCountByCategory = allIssueTemplates.reduce((counts, item) => {
-    counts[item.serviceArea] = (counts[item.serviceArea] || 0) + 1
-    return counts
-  }, {})
   const matchingCompanies = (() => {
     const query = companySearchTerm.trim().toLowerCase()
     const matches = new Map()
@@ -555,7 +551,7 @@ export default function NewTicket() {
               }}
             >
               <option value="">— Select Category —</option>
-              {issueCategories.map(category => <option key={category} value={category}>{category} ({issueCountByCategory[category]})</option>)}
+              {issueCategories.map(category => <option key={category} value={category}>{category}</option>)}
             </select>
           </Card>
 
