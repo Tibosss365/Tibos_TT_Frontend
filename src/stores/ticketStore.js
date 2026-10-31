@@ -48,6 +48,8 @@ export const useTicketStore = create(
       myRequests: [],
       deletedTickets: [],
       loading: false,
+      ticketsLoaded: false,
+      ticketsLoadError: null,
       filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' },
       selectedIds: [],
 
@@ -62,7 +64,7 @@ export const useTicketStore = create(
         const fetchAllPages = async () => {
           // Keep cached tickets visible during background refreshes. Only show
           // the global loading state when there is no data to render yet.
-          set({ loading: get().tickets.length === 0 })
+          set({ loading: get().tickets.length === 0, ticketsLoaded: false, ticketsLoadError: null })
           try {
             const firstPage = await api.get('/tickets?page=1&page_size=100')
             const pages = Math.max(1, Number(firstPage.pages) || 1)
@@ -97,10 +99,10 @@ export const useTicketStore = create(
                 .flatMap(data => (data.items || []).map(normalizeTicket))
                 .map(ticket => [ticket._uuid, ticket])
             ).values()]
-            set({ tickets: allTickets, loading: false })
+            set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
           } catch (e) {
             console.error('fetchTickets error', e)
-            set({ loading: false })
+            set({ loading: false, ticketsLoaded: true, ticketsLoadError: e?.message || 'Could not load ticket history.' })
           }
         }
 

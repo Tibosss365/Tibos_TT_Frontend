@@ -3,6 +3,26 @@ import { persist } from 'zustand/middleware'
 import { api } from '../api/client'
 import { DEFAULT_AGENTS, DEFAULT_SLA, DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TRIGGERS, DEFAULT_INBOUND_EMAIL, DEFAULT_EMAIL_LOG, DEFAULT_CATEGORIES, DEFAULT_TICKET_SETTINGS, DEFAULT_EMAIL_TEMPLATES, DEFAULT_GROUPS, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
 
+const EXCEL_DERIVED_M365_TEMPLATE = {
+  id: 'tpl-m365-standard-excel',
+  name: 'Microsoft 365 Support - Standard',
+  subject: 'Microsoft 365 support - [service / issue]',
+  description: [
+    'Microsoft 365 service: [Exchange / Entra ID / Intune / Teams / SharePoint or OneDrive / Licensing / Groups / Defender or Security / Purview / Admin Center / Apps / Migration / Other]',
+    'Issue or request:',
+    'Affected user(s), device(s), or service:',
+    'When did it start, and how often does it happen?',
+    'Exact error message or observed behavior:',
+    'Business impact and number of people affected:',
+    'Troubleshooting already attempted:',
+    'Requested outcome:',
+    'Relevant screenshot or attachment:',
+  ].join('\n\n'),
+  category: '',
+  priority: 'medium',
+  type: 'request',
+}
+
 export const useAdminStore = create(
   persist(
     (set, get) => ({
@@ -870,6 +890,12 @@ export const useAdminStore = create(
           systemSettings, companyProfile, ...rest
         } = state
         return rest
+      },
+      merge: (persistedState, currentState) => {
+        const merged = { ...currentState, ...(persistedState || {}) }
+        const templates = Array.isArray(merged.ticketTemplates) ? merged.ticketTemplates : currentState.ticketTemplates
+        if (templates.some(template => template.id === EXCEL_DERIVED_M365_TEMPLATE.id)) return merged
+        return { ...merged, ticketTemplates: [...templates, EXCEL_DERIVED_M365_TEMPLATE] }
       },
     }
   )

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate, Search, GitBranch } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
@@ -15,7 +15,9 @@ import OwnersInput from '../components/tickets/OwnersInput'
 import DuplicateWarning from '../components/tickets/DuplicateWarning'
 import { RichDescription } from '../components/tickets/RichDescription'
 import ticketIssueTemplates from '../data/ticketIssueTemplates.json'
+import workbookTicketIssues from '../data/workbookTicketIssues.json'
 import { api } from '../api/client'
+import { getHistorySubjectSuggestions } from '../utils/historyTicketTemplates'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '', owners: [] }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -138,7 +140,7 @@ function KbSuggestions({ subject, description }) {
 }
 
 export default function NewTicket() {
-  const { addTicket } = useTicketStore()
+  const { addTicket, tickets: allTickets } = useTicketStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
   const { slaSettings, categories, groups, agents, ticketSettings, ticketTemplates, customFields, domainCompanies, fetchDomainCompanies } = useAdminStore()
@@ -186,34 +188,77 @@ export default function NewTicket() {
   const [duplicates, setDuplicates] = useState([])
   const [dupDismissed, setDupDismissed] = useState(false)
 
-  const { checkDuplicate } = useFeatureStore()
+  const { checkDuplicate, ticketTemplates: sharedTemplates, fetchTicketTemplates } = useFeatureStore()
+  const [selectedHistoryTemplate, setSelectedHistoryTemplate] = useState(null)
+  const [historySubjectSuggestions, setHistorySubjectSuggestions] = useState([])
+  const [showHistorySubjectSuggestions, setShowHistorySubjectSuggestions] = useState(false)
+  const [historySubjectSearch, setHistorySubjectSearch] = useState('')
+  const availableTemplates = useMemo(() => {
+    const merged = new Map()
+    ;[...(ticketTemplates || []), ...(sharedTemplates || [])].forEach(template => {
+      merged.set(String(template.id), {
+        ...template,
+        description: template.description_template || template.description || '',
+      })
+    })
+    return [...merged.values()]
+  }, [ticketTemplates, sharedTemplates])
+
+  useEffect(() => { fetchTicketTemplates?.() }, [fetchTicketTemplates])
+
+  useEffect(() => {
+    if (selectedHistoryTemplate) {
+      setHistorySubjectSuggestions(getHistorySubjectSuggestions(allTickets, selectedHistoryTemplate))
+    }
+  }, [allTickets, selectedHistoryTemplate])
 
   // Warm the company list once when support staff open the form. Typing can
   // then filter the cached list locally without waiting for a request per key.
   useEffect(() => {
     if (isEndUser) return
     let active = true
+    // Load the same saved company directory used by the Admin company lookup.
+    // This keeps autocomplete available even if the ticket suggestion endpoint
+    // is not present on an older backend.
+    if (fetchDomainCompanies) {
+      fetchDomainCompanies().catch(error => console.warn('Company directory preload failed:', error))
+    }
     api.get('/tickets/company-suggestions')
       .then(data => {
-        if (!active || !Array.isArray(data)) return
-        const companies = data.map(company => ({ ...company, id: company.id || company.company_name }))
+        if (!active) return
+        const list = Array.isArray(data) ? data : (data?.items || data?.companies || data?.results || [])
+        if (!Array.isArray(list)) return
+        const companies = list.map(company => ({ ...company, id: company.id || company.company_name }))
         companySuggestionCache.current.set('*', companies)
         setPreloadedCompanySuggestions(companies)
       })
       .catch(error => console.warn('Company list preload failed; live lookup remains available:', error))
     return () => { active = false }
-  }, [isEndUser])
+  }, [isEndUser, fetchDomainCompanies])
 
-  const issueCategories = [...new Set(ticketIssueTemplates.map(item => item.serviceArea))]
-  const matchingIssueTemplates = ticketIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
+  const allIssueTemplates = [...ticketIssueTemplates, ...workbookTicketIssues]
+  const issueCategories = [...new Set(allIssueTemplates.map(item => item.serviceArea))]
+  const matchingIssueTemplates = allIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
+  const issueCountByCategory = allIssueTemplates.reduce((counts, item) => {
+    counts[item.serviceArea] = (counts[item.serviceArea] || 0) + 1
+    return counts
+  }, {})
   const matchingCompanies = (() => {
     const query = companySearchTerm.trim().toLowerCase()
-    if (!query) return []
     const matches = new Map()
-    ;[...(domainCompanies || []), ...preloadedCompanySuggestions, ...ticketCompanySuggestions].forEach(company => {
-      if (!company.company_name?.toLowerCase().startsWith(query)) return
-      const key = company.company_name.trim().toLowerCase()
-      const prior = matches.get(key) || { company_name: company.company_name }
+    const ticketCompanies = (allTickets || []).map(ticket => ({
+      company_name: typeof ticket.company === 'string'
+        ? ticket.company
+        : (ticket.company?.company_name || ticket.company_name || ''),
+      contact_name: ticket.contact_name || '',
+      contact_email: ticket.email || ticket.contact_email || '',
+      contact_phone: ticket.phone || ticket.contact_phone || '',
+    }))
+    ;[...(domainCompanies || []), ...ticketCompanies, ...preloadedCompanySuggestions, ...ticketCompanySuggestions].forEach(company => {
+      const name = company.company_name?.trim()
+      if (!name || (query && !name.toLowerCase().startsWith(query))) return
+      const key = name.toLowerCase()
+      const prior = matches.get(key) || { company_name: name }
       matches.set(key, {
         ...prior,
         ...company,
@@ -247,11 +292,12 @@ export default function NewTicket() {
         return
       }
     }
-    const timer = setTimeout(async () => {
+    const lookup = async () => {
       let results = []
       try {
         const response = await api.get(`/tickets/company-suggestions?q=${encodeURIComponent(query)}`)
-        results = Array.isArray(response) ? response : []
+        results = Array.isArray(response) ? response : (response?.items || response?.companies || response?.results || [])
+        if (!Array.isArray(results)) results = []
       } catch (error) {
         // Older deployed APIs may not have the dedicated suggestions endpoint.
         console.warn('Direct company suggestions lookup failed:', error)
@@ -287,8 +333,8 @@ export default function NewTicket() {
         companySuggestionCache.current.set(cacheKey, results)
         setTicketCompanySuggestions(results)
       }
-    }, 100)
-    return () => clearTimeout(timer)
+    }
+    lookup()
   }, [companySearchTerm, isEndUser])
 
   const selectCompany = (company) => {
@@ -305,6 +351,7 @@ export default function NewTicket() {
 
   const applyIssueTemplate = (issue) => {
     setSelectedTemplate('')
+    setSelectedHistoryTemplate(null)
     setSelectedIssueTemplate(issue.id)
     setIssueSearchTerm('')
     setShowIssueSuggestions(false)
@@ -332,6 +379,15 @@ export default function NewTicket() {
     set('subject', value)
     checkDuplicates(value)
     if (replacingTemplateSubject) set('description', '')
+  }
+
+  const applyHistorySubject = (suggestion) => {
+    const reusableDescription = selectedHistoryTemplate?.description_template || selectedHistoryTemplate?.description || ''
+    setForm(current => ({ ...current, subject: suggestion.subject, description: reusableDescription || current.description }))
+    setHistorySubjectSearch('')
+    setShowHistorySubjectSuggestions(false)
+    setDupDismissed(false)
+    checkDuplicate(suggestion.subject)
   }
 
   // ── Auto-fill account owners from the company registry ────────────────────
@@ -434,7 +490,7 @@ export default function NewTicket() {
         <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-3">
 
           {/* Template selector */}
-          {!isEndUser && ticketTemplates && ticketTemplates.length > 0 && (
+          {!isEndUser && availableTemplates.length > 0 && (
             <Card>
               <div className="flex items-center gap-2 mb-2">
                 <LayoutTemplate size={14} className="text-indigo-400" />
@@ -445,27 +501,35 @@ export default function NewTicket() {
                   className="glass-input flex-1 text-sm"
                   value={selectedTemplate}
                   onChange={e => {
-                    const tpl = ticketTemplates.find(t => t.id === e.target.value)
+                    const tpl = availableTemplates.find(t => String(t.id) === e.target.value)
                     setSelectedTemplate(e.target.value)
+                    setSelectedHistoryTemplate(tpl || null)
+                    const subjectOptions = getHistorySubjectSuggestions(allTickets, tpl)
+                    setHistorySubjectSuggestions(subjectOptions)
+                    setHistorySubjectSearch('')
+                    setShowHistorySubjectSuggestions(false)
                     if (tpl) {
                       setSelectedIssueCategory('')
                       setSelectedIssueTemplate('')
                       setForm(f => ({
                         ...f,
                         subject:     tpl.subject || f.subject,
-                        description: tpl.description || f.description,
+                        description: tpl.description_template || tpl.description || f.description,
                         priority:    tpl.priority || f.priority,
                         type:        tpl.type || f.type,
                         category:    tpl.category || f.category,
+                        group_id:    tpl.group_id || f.group_id,
                       }))
+                      if (tpl.custom_field_data && typeof tpl.custom_field_data === 'object') setCustomFieldValues(tpl.custom_field_data)
+                      if (Array.isArray(tpl.tags)) setTags(tpl.tags)
                     }
                   }}
                 >
                   <option value="">— Select a template —</option>
-                  {ticketTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {availableTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
                 {selectedTemplate && (
-                  <button type="button" onClick={() => setSelectedTemplate('')} className="text-[11px] t-muted hover:text-rose-400 transition-colors px-2 py-1 rounded-lg border border-glass">
+                  <button type="button" onClick={() => { setSelectedTemplate(''); setSelectedHistoryTemplate(null); setHistorySubjectSuggestions([]) }} className="text-[11px] t-muted hover:text-rose-400 transition-colors px-2 py-1 rounded-lg border border-glass">
                     Clear
                   </button>
                 )}
@@ -481,6 +545,7 @@ export default function NewTicket() {
               onChange={e => {
                 setSelectedIssueCategory(e.target.value)
                 setSelectedTemplate('')
+                setSelectedHistoryTemplate(null)
                 setSelectedIssueTemplate('')
                 setIssueSearchTerm('')
                 setShowIssueSuggestions(false)
@@ -490,7 +555,7 @@ export default function NewTicket() {
               }}
             >
               <option value="">— Select Category —</option>
-              {issueCategories.map(category => <option key={category} value={category}>{category}</option>)}
+              {issueCategories.map(category => <option key={category} value={category}>{category} ({issueCountByCategory[category]})</option>)}
             </select>
           </Card>
 
@@ -532,20 +597,20 @@ export default function NewTicket() {
                       value={form.company}
                       onFocus={() => {
                         setCompanySearchTerm(form.company)
-                        setShowCompanySuggestions(Boolean(form.company.trim()))
+                        setShowCompanySuggestions(true)
                       }}
                       onBlur={() => window.setTimeout(() => setShowCompanySuggestions(false), 150)}
                       onChange={e => {
                         const value = e.target.value
                         setCompanySearchTerm(value)
-                        setShowCompanySuggestions(Boolean(value.trim()))
+                        setShowCompanySuggestions(true)
                         setForm(f => ({ ...f, company: value, contactName: '', email: '', phone: '' }))
                         if (errors.company) setErrors(err => ({ ...err, company: '' }))
                       }}
                       placeholder="Start typing a company name"
                       autoComplete="off"
                     />
-                    {showCompanySuggestions && companySearchTerm.trim() && matchingCompanies.length > 0 && (
+                    {showCompanySuggestions && matchingCompanies.length > 0 && (
                       <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
                         {matchingCompanies.map(company => (
                           <button
@@ -609,6 +674,9 @@ export default function NewTicket() {
                     />
                     {showIssueSuggestions && (
                       <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
+                        <div className="sticky top-0 border-b border-glass bg-white px-3 py-2 text-xs t-muted dark:bg-slate-900">
+                          {matchingIssueTemplates.filter(issue => !issueSearchTerm || issue.subject.toLowerCase().includes(issueSearchTerm.toLowerCase())).length} issue suggestions
+                        </div>
                         {matchingIssueTemplates
                           .filter(issue => !issueSearchTerm || issue.subject.toLowerCase().includes(issueSearchTerm.toLowerCase()))
                           .map(issue => (
@@ -629,12 +697,43 @@ export default function NewTicket() {
                     )}
                   </div>
                 ) : (
-                  <input
-                    className={inputCls('subject')}
-                    value={form.subject}
-                    onChange={e => { set('subject', e.target.value); checkDuplicates(e.target.value) }}
-                    placeholder="Brief description of the issue"
-                  />
+                  <div className="relative">
+                    <input
+                      className={inputCls('subject')}
+                      value={form.subject}
+                      onFocus={() => { if (selectedHistoryTemplate) setShowHistorySubjectSuggestions(true) }}
+                      onBlur={() => window.setTimeout(() => setShowHistorySubjectSuggestions(false), 150)}
+                      onKeyDown={e => { if (e.key === 'Escape') setShowHistorySubjectSuggestions(false) }}
+                      onChange={e => {
+                        const value = e.target.value
+                        set('subject', value)
+                        checkDuplicates(value)
+                        if (selectedHistoryTemplate) {
+                          setHistorySubjectSearch(value)
+                          setShowHistorySubjectSuggestions(true)
+                        }
+                      }}
+                      placeholder="Brief description of the issue"
+                    />
+                    {selectedHistoryTemplate && showHistorySubjectSuggestions && (
+                      <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-xl border border-glass bg-white dark:bg-slate-900 shadow-xl">
+                        <div className="px-3 py-2 border-b border-glass text-[10px] font-bold uppercase tracking-wider t-sub">
+                          Similar resolved issues · {historySubjectSuggestions.length} suggestion{historySubjectSuggestions.length === 1 ? '' : 's'}
+                        </div>
+                        {historySubjectSuggestions
+                          .filter(item => !historySubjectSearch || item.subject.toLowerCase().includes(historySubjectSearch.toLowerCase()))
+                          .map(item => (
+                            <button key={item.subject} type="button" onMouseDown={e => e.preventDefault()} onClick={() => applyHistorySubject(item)} className="w-full px-3 py-2.5 text-left text-sm t-main hover:bg-indigo-500/10 transition-colors">
+                              <span>{item.subject}</span><span className="ml-2 text-[10px] t-muted">{item.count} tickets</span>
+                            </button>
+                          ))}
+                        {historySubjectSuggestions.filter(item => !historySubjectSearch || item.subject.toLowerCase().includes(historySubjectSearch.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2.5 text-xs t-muted">No matching history subjects. Keep typing to use a manual subject.</div>
+                        )}
+                        <div className="px-3 py-2 border-t border-glass text-[10px] t-muted">Selecting a subject reuses the template’s description outline. You can edit it.</div>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {errors.subject && <p className="text-xs text-rose-500 mt-1">{errors.subject}</p>}
                 {duplicates.length > 0 && !dupDismissed && (

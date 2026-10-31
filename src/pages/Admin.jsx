@@ -6,6 +6,7 @@ import { useAdminStore } from '../stores/adminStore'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUiStore } from '../stores/uiStore'
 import { useUserStore } from '../stores/userStore'
+import { useFeatureStore } from '../stores/featureStore'
 import { useT } from '../utils/i18n'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -15,6 +16,7 @@ import OwnersInput from '../components/tickets/OwnersInput'
 import { PRIORITIES } from '../utils/ticketUtils'
 import { api, BASE } from '../api/client'
 import { DEFAULT_EMAIL_TEMPLATES, DEFAULT_ALERT_SETTINGS } from '../data/seedData'
+import { buildHistoryTemplateSuggestions, normalizeTicketSubject } from '../utils/historyTicketTemplates'
 
 const TABS = [
   { id: 'overview',             icon: LayoutGrid,        labelKey: 'overview' },
@@ -2457,7 +2459,7 @@ function TicketTemplatesPanel({ items, categories, onAdd, onUpdate, onDelete, in
       <input className={inputCls} value={data.subject} onChange={e => f('subject',e.target.value,setData)} placeholder="Ticket subject" />
       <div className="grid grid-cols-3 gap-2">
         <select className={inputCls} value={data.type} onChange={e => f('type',e.target.value,setData)}>
-          <option value="request">Request</option><option value="incident">Incident</option>
+          <option value="request">Request</option><option value="incident">Incident</option><option value="problem">Problem</option><option value="change">Change</option>
         </select>
         <select className={inputCls} value={data.priority} onChange={e => f('priority',e.target.value,setData)}>
           <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
@@ -2522,7 +2524,112 @@ function TicketTemplatesPanel({ items, categories, onAdd, onUpdate, onDelete, in
   )
 }
 
-// ── Custom Fields Panel ───────────────────────────────────────────────────────
+// ── History-based ticket templates ──────────────────────────────────────────
+function HistoryBasedTemplatesPanel({ tickets, ticketsLoaded, ticketsLoadError, categories, savedTemplates, onSave, onDelete, inputCls }) {
+  const [draft, setDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const suggestions = useMemo(() => {
+    if (!ticketsLoaded || ticketsLoadError) return null
+    const savedKeys = new Set((savedTemplates || []).map(template =>
+      `${template.category || 'other'}|${template.type || 'request'}|${normalizeTicketSubject(template.subject)}`,
+    ))
+    return buildHistoryTemplateSuggestions(tickets).filter(item =>
+      !savedKeys.has(`${item.category || 'other'}|${item.type || 'request'}|${normalizeTicketSubject(item.subject)}`),
+    )
+  }, [tickets, ticketsLoaded, ticketsLoadError, savedTemplates])
+  const updateDraft = (key, value) => setDraft(current => ({ ...current, [key]: value }))
+  const saveDraft = async () => {
+    if (!draft?.name?.trim() || !draft?.subject?.trim()) return
+    setSaving(true)
+    try {
+      await onSave(draft)
+      setDraft(null)
+    } catch {
+      // The parent reports the save failure; keep the editable draft in place.
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-glass pt-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-bold t-main">History-based suggestions</div>
+          <div className="text-[11px] t-muted mt-0.5">Analyzes all loaded tickets and refreshes suggestions when ticket history changes. Drafts use a generic checklist; customer details and old messages are not copied.</div>
+        </div>
+        <span className="rounded-full border border-sky-500/20 bg-sky-500/5 px-2.5 py-1 text-[11px] t-muted">
+          {ticketsLoaded ? `${tickets.length} tickets analyzed` : 'Loading all tickets…'}
+        </span>
+      </div>
+
+      {!ticketsLoaded && <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-xs t-muted">Fetching every ticket page from the backend. Suggestions will appear when the full history finishes loading.</div>}
+      {ticketsLoadError && <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-600 dark:text-rose-400">Could not load ticket history from the backend: {ticketsLoadError}</div>}
+
+      {suggestions && suggestions.length === 0 && <div className="rounded-lg border border-glass px-3 py-3 text-xs t-muted">No new recurring patterns found across these tickets. A pattern needs at least three similar tickets.</div>}
+
+      {draft && (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 space-y-2">
+          <div className="text-xs font-bold t-main">Review suggestion{draft.matchCount ? ` · ${draft.matchCount} matching tickets` : ''}</div>
+          <input className={inputCls} value={draft.name} onChange={e => updateDraft('name', e.target.value)} placeholder="Template name" />
+          <input className={inputCls} value={draft.subject} onChange={e => updateDraft('subject', e.target.value)} placeholder="Suggested subject" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <select className={inputCls} value={draft.type} onChange={e => updateDraft('type', e.target.value)}>
+              <option value="request">Request</option><option value="incident">Incident</option><option value="problem">Problem</option><option value="change">Change</option>
+            </select>
+            <select className={inputCls} value={draft.priority} onChange={e => updateDraft('priority', e.target.value)}>
+              {PRIORITIES.map(priority => <option key={priority} value={priority}>{priority}</option>)}
+            </select>
+            <select className={inputCls} value={draft.category} onChange={e => updateDraft('category', e.target.value)}>
+              <option value="other">Select category</option>
+              {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </div>
+          <textarea className={`${inputCls} resize-y`} rows={5} value={draft.description} onChange={e => updateDraft('description', e.target.value)} placeholder="Reusable description outline" />
+          {draft.exampleSubjects?.length > 0 && <div className="text-[11px] t-muted"><strong>Examples:</strong> {draft.exampleSubjects.join(' · ')}</div>}
+          <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={saveDraft} disabled={saving || !draft.name.trim() || !draft.subject.trim()}>
+              <Save size={13} /> {saving ? 'Saving…' : draft.templateId ? 'Update approved template' : 'Approve and save'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDraft(null)} disabled={saving}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {(suggestions || []).map(item => (
+        <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-glass px-3 py-2.5">
+          <div className="min-w-0">
+            <div className="text-xs font-semibold t-main">{item.name}</div>
+            <div className="text-[11px] t-muted mt-0.5">{item.matchCount} matching tickets · {item.type} · {categories.find(category => category.id === item.category)?.name || item.category || 'Uncategorized'}</div>
+            <div className="text-[11px] t-sub mt-0.5 truncate">{item.exampleSubjects.join(' · ')}</div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setDraft(item)}>Review</Button>
+        </div>
+      ))}
+
+      {savedTemplates?.length > 0 && (
+        <div className="pt-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider t-sub mb-2">Approved shared templates</div>
+          {savedTemplates.map(template => (
+            <div key={template.id} className="flex items-center justify-between gap-3 border-t border-glass py-2">
+              <div className="min-w-0"><div className="text-xs font-medium t-main truncate">{template.name}</div><div className="text-[11px] t-muted truncate">{template.subject}</div></div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setDraft({
+                  id: `saved-${template.id}`, templateId: template.id, name: template.name, subject: template.subject,
+                  description: template.description_template || '', category: template.category || 'other',
+                  priority: template.priority || 'medium', type: template.type || 'request', matchCount: 0,
+                })}><Pencil size={12} /> Edit</Button>
+                <Button variant="ghost" size="sm" onClick={() => onDelete(template.id)}><Trash2 size={12} /> Delete</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Custom Fields Panel ──────────────────────────────────────────────────────
 function CustomFieldsPanel({ categories, customFields, onAdd, onUpdate, onDelete, inputCls }) {
   const [selectedCat, setSelectedCat] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -2766,9 +2873,46 @@ export default function Admin() {
     setAddCatGroupId(null)
     addToast(`Category "${newCatForm.name}" added`, 'success')
   }
-  const { tickets, fetchTickets } = useTicketStore()
+  const { tickets, ticketsLoaded, ticketsLoadError, fetchTickets } = useTicketStore()
   const { addToast } = useUiStore()
   const { currentUser } = useUserStore()
+  const {
+    ticketTemplates: sharedTicketTemplates,
+    fetchTicketTemplates,
+    createTicketTemplate,
+    updateTicketTemplate: updateSharedTicketTemplate,
+    deleteTicketTemplate: deleteSharedTicketTemplate,
+  } = useFeatureStore()
+
+  useEffect(() => {
+    fetchTicketTemplates()
+    if (!tickets.length) fetchTickets()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveHistoryTemplate = async draft => {
+    const payload = {
+      name: draft.name.trim(), subject: draft.subject.trim(), type: draft.type,
+      category: draft.category || 'other', priority: draft.priority || 'medium',
+      description_template: draft.description || '',
+    }
+    try {
+      if (draft.templateId) await updateSharedTicketTemplate(draft.templateId, payload)
+      else await createTicketTemplate(payload)
+      addToast(draft.templateId ? 'Shared ticket template updated' : 'History-based template approved and saved', 'success')
+    } catch (error) {
+      addToast(error?.message || 'Could not save the shared ticket template', 'error')
+      throw error
+    }
+  }
+
+  const removeSharedTemplate = async id => {
+    try {
+      await deleteSharedTicketTemplate(id)
+      addToast('Shared ticket template deleted', 'success')
+    } catch (error) {
+      addToast(error?.message || 'Could not delete the shared ticket template', 'error')
+    }
+  }
 
   const handleRefresh = () => {
     fetchAgents()
@@ -3762,6 +3906,16 @@ export default function Admin() {
               onAdd={addTicketTemplate}
               onUpdate={updateTicketTemplate}
               onDelete={deleteTicketTemplate}
+              inputCls={inputCls}
+            />
+            <HistoryBasedTemplatesPanel
+              tickets={tickets}
+              ticketsLoaded={ticketsLoaded}
+              ticketsLoadError={ticketsLoadError}
+              categories={categories}
+              savedTemplates={sharedTicketTemplates}
+              onSave={saveHistoryTemplate}
+              onDelete={removeSharedTemplate}
               inputCls={inputCls}
             />
           </Card>

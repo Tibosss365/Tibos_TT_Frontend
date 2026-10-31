@@ -1,0 +1,2750 @@
+[
+  {
+    "id": "workbook-issue-001",
+    "serviceArea": "Exchange",
+    "subject": "Mail attachment removed",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-002",
+    "serviceArea": "License",
+    "subject": "Link acceptence",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-003",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "List of Email IDs Configured on Mobile Devices.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-004",
+    "serviceArea": "Teams",
+    "subject": "Microsoft Meeting licence",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-005",
+    "serviceArea": "Sharepoint & Onedrive",
+    "subject": "external user uanble to acces sharepoint site getting error",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-006",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Security Issues",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-007",
+    "serviceArea": "Exchange",
+    "subject": "Request for Guidance on Configuring an Email ALIAS",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-008",
+    "serviceArea": "License",
+    "subject": "Link acceptance and domain screenshot.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-009",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Steps to Entra Join a New Windows Device",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-010",
+    "serviceArea": "Teams",
+    "subject": "Teams problem",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-011",
+    "serviceArea": "Sharepoint & Onedrive",
+    "subject": "External User Unable to Access SharePoint Folder",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-012",
+    "serviceArea": "Exchange",
+    "subject": "Unblock the mail ID",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-013",
+    "serviceArea": "License",
+    "subject": "Microsoft 365 Business Basic License Availability",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-014",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "M365 Authenticator Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-015",
+    "serviceArea": "Teams",
+    "subject": "Teams Sign-in Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-016",
+    "serviceArea": "Sharepoint & Onedrive",
+    "subject": "OneDrive Synchronization Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-017",
+    "serviceArea": "Exchange",
+    "subject": "Outgoing Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-018",
+    "serviceArea": "License",
+    "subject": "Power Automate Attended and Unattended Licenses - Confirmation to activate",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-019",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "User Account Unlock Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-020",
+    "serviceArea": "Teams",
+    "subject": "Teams Meeting Scheduling Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-021",
+    "serviceArea": "Sharepoint & Onedrive",
+    "subject": "OneDrive File Recovery Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-022",
+    "serviceArea": "Exchange",
+    "subject": "Message Trace",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-023",
+    "serviceArea": "License",
+    "subject": "License Activation Confirmation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-024",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Entra ID Device Registration Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-025",
+    "serviceArea": "Teams",
+    "subject": "Teams Application Performance Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-026",
+    "serviceArea": "Exchange",
+    "subject": "Spam Email Investigation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-027",
+    "serviceArea": "License",
+    "subject": "License Availability Verification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-028",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Device Join to Entra ID",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-029",
+    "serviceArea": "Exchange",
+    "subject": "Email Alias Configuration Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-030",
+    "serviceArea": "License",
+    "subject": "Microsoft 365 License Renewal",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-031",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Revoke and reregister MFA",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-032",
+    "serviceArea": "Exchange",
+    "subject": "Mailbox Access Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-033",
+    "serviceArea": "Exchange",
+    "subject": "Incoming Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-034",
+    "serviceArea": "Exchange",
+    "subject": "Outgoing Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-035",
+    "serviceArea": "Exchange",
+    "subject": "Outgoing Email Delivery Issue to External Domains",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-036",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA Login",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-037",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Intune Device Enrollment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-038",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-039",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Microsoft Teams Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-040",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive File Sharing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-041",
+    "serviceArea": "Groups",
+    "subject": "Create Distribution,M365 ,Security Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-042",
+    "serviceArea": "Microsoft Defender",
+    "subject": "User Account Compromised",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-043",
+    "serviceArea": "Microsoft Purview",
+    "subject": "eDiscovery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-044",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "M365 Admin Center Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-045",
+    "serviceArea": "Migration",
+    "subject": "Imap",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-046",
+    "serviceArea": "Exchange",
+    "subject": "Email Delivery Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-047",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA Authentication Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-048",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Not Showing in Intune",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-049",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License Available but Unable to Assign to User",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-050",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Sign-in",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-051",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive Shared Link Not Created",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-052",
+    "serviceArea": "Groups",
+    "subject": "Microsoft 365 Group Email Delivery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-053",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Unauthorized Bulk Email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-054",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Audit Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-055",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "M365 Admin Center Login Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-056",
+    "serviceArea": "Migration",
+    "subject": "Ave Ponit",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-057",
+    "serviceArea": "Exchange",
+    "subject": "Email Delivery Failure Due to Message Size Limit",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-058",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Microsoft Authenticator Registration Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-059",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Intune Policy",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-060",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Apps Activation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-061",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Application Installation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-062",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive Sync Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-063",
+    "serviceArea": "Groups",
+    "subject": "Unable to Send Email to Distribution",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-064",
+    "serviceArea": "Microsoft Defender",
+    "subject": "User Account Blocked Due to Suspicious Activity",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-065",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Retention Tag",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-066",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Admin Center Service Health",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-067",
+    "serviceArea": "Exchange",
+    "subject": "Transport Rule",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-068",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Conditional Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-069",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Compliance Policy",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-070",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 License Renewal",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-071",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Meeting Join",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-072",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive Storage Full",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-073",
+    "serviceArea": "Groups",
+    "subject": "Unable to add user in Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-074",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Email Quarantine",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-075",
+    "serviceArea": "Microsoft Purview",
+    "subject": "DLP",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-076",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "User Creation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-077",
+    "serviceArea": "Exchange",
+    "subject": "Emails Not Visible in outlook",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-078",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Guest / External User Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-079",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Showing as Noncompliant",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-080",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License Expired",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-081",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Calendar Not Syncing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-082",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive External Sharing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-083",
+    "serviceArea": "Groups",
+    "subject": "External Sender Unable to Send to Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-084",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Web Content Filtering",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-085",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Sensitive Data Sharing Restriction",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-086",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Password Reset",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-087",
+    "serviceArea": "Exchange",
+    "subject": "Emails Automatically Moving to Junk",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-088",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Password Reset",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-089",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Enrollment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-090",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License Not Reflecting After Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-091",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive Privision",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-092",
+    "serviceArea": "Groups",
+    "subject": "Group Permission Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-093",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Endpoint",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-094",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Information Protection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-095",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Modifyed Contact Detail",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-096",
+    "serviceArea": "Exchange",
+    "subject": "Email Attachment Blocked",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-097",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Microsoft Graph Connection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-098",
+    "serviceArea": "Microsoft Intune",
+    "subject": "App Protection Policy",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-099",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Apps Not Showing After License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-100",
+    "serviceArea": "SharePoint /OneDrive",
+    "subject": "OneDrive Permission",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-101",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Safe Link",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-102",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Permission Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-103",
+    "serviceArea": "Exchange",
+    "subject": "Exchange Admin Center Not Working",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-104",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Cross-Tenant",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-105",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Add-on License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-106",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Safe Attachment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-107",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "License Assigning",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-108",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-109",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Audit Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-110",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Product Activation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-111",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Export User",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-112",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Search Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-113",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Sign-in Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-114",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Create Alias",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-115",
+    "serviceArea": "Exchange",
+    "subject": "Auto-Expanding Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-116",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Mail Forwarding",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-117",
+    "serviceArea": "Exchange",
+    "subject": "Mailbox Storage Ful",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-118",
+    "serviceArea": "Exchange",
+    "subject": "Auto-Expanding Archive Storage",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-119",
+    "serviceArea": "Exchange",
+    "subject": "Domain Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-120",
+    "serviceArea": "Exchange",
+    "subject": "Convert into SharedMail Box",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-121",
+    "serviceArea": "Exchange",
+    "subject": "Delegation Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-122",
+    "serviceArea": "Exchange",
+    "subject": "Message Trace",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-123",
+    "serviceArea": "Exchange",
+    "subject": "Litigation Hold",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-124",
+    "serviceArea": "Exchange",
+    "subject": "Outgoing Email Delivery Issue to External Domains",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-125",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA Login Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-126",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Not Showing in Intune",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-127",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-128",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Microsoft Teams Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-129",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive File Sharing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-130",
+    "serviceArea": "Groups",
+    "subject": "Create Distribution / Microsoft 365 / Security Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-131",
+    "serviceArea": "Microsoft Defender",
+    "subject": "User Account Compromised",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-132",
+    "serviceArea": "Microsoft Purview",
+    "subject": "eDiscovery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-133",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Microsoft 365 Admin Center Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-134",
+    "serviceArea": "Migration",
+    "subject": "IMAP Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-135",
+    "serviceArea": "Exchange",
+    "subject": "Email Delivery Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-136",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA Reset Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-137",
+    "serviceArea": "Microsoft Intune",
+    "subject": "Device Enrollment Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-138",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License Available but Unable to Assign to User",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-139",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Sign-in Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-140",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Shared Link Not Accessible",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-141",
+    "serviceArea": "Groups",
+    "subject": "Microsoft 365 Group Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-142",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Unauthorized Bulk Email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-143",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Audit Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-144",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Microsoft 365 Admin Center Login Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-145",
+    "serviceArea": "Migration",
+    "subject": "AvePoint Tenant-to-Tenant Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-146",
+    "serviceArea": "Exchange",
+    "subject": "External Mail Not Received / DMARC Rejection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-147",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA Authentication Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-148",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Apps Activation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-149",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Application Installation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-150",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Shared Link Not Created",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-151",
+    "serviceArea": "Groups",
+    "subject": "Unable to Send Email to Distribution Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-152",
+    "serviceArea": "Microsoft Defender",
+    "subject": "User Account Blocked Due to Suspicious Activity",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-153",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Retention Tag",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-154",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Admin Center Service Health",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-155",
+    "serviceArea": "Migration",
+    "subject": "Google Workspace to Microsoft 365 Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-156",
+    "serviceArea": "Exchange",
+    "subject": "Recipient Not Found NDR for Valid Address",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-157",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Microsoft Authenticator Registration Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-158",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 License Renewal",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-159",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Calendar Not Syncing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-160",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Sync Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-161",
+    "serviceArea": "Groups",
+    "subject": "Unable to Add User in Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-162",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Email Quarantine",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-163",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Sensitive Data Sharing Restrictions",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-164",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "User Creation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-165",
+    "serviceArea": "Migration",
+    "subject": "cPanel to Microsoft 365 Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-166",
+    "serviceArea": "Exchange",
+    "subject": "Daily Recipient Limit Exceeded",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-167",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Guest / External User Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-168",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License Not Reflecting After Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-169",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Meeting Creation Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-170",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Storage Full",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-171",
+    "serviceArea": "Groups",
+    "subject": "External Sender Unable to Send to Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-172",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Web Content Filtering",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-173",
+    "serviceArea": "Microsoft Purview",
+    "subject": "Information Protection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-174",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Password Reset",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-175",
+    "serviceArea": "Migration",
+    "subject": "GoDaddy IMAP Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-176",
+    "serviceArea": "Exchange",
+    "subject": "Emails Automatically Moving to Junk",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-177",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Password Reset",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-178",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Apps Not Showing After License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-179",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive External Sharing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-180",
+    "serviceArea": "Groups",
+    "subject": "Group Permission Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-181",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Domain Whitelisting",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-182",
+    "serviceArea": "Microsoft Purview",
+    "subject": "PST Export / Mailbox Recovery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-183",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Modify Contact Details",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-184",
+    "serviceArea": "Migration",
+    "subject": "Rediffmail IMAP Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-185",
+    "serviceArea": "Exchange",
+    "subject": "Email Attachment Blocked",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-186",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Microsoft Graph Connection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-187",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 Add-on License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-188",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Provisioning",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-189",
+    "serviceArea": "Groups",
+    "subject": "Microsoft 365 Group Reply / Reply-All Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-190",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Mail ID Whitelisting",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-191",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Permission Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-192",
+    "serviceArea": "Migration",
+    "subject": "Mailbox Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-193",
+    "serviceArea": "Exchange",
+    "subject": "Exchange Admin Center Not Working",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-194",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Audit Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-195",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Product Activation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-196",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Permission Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-197",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Block Personal Domains",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-198",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "License Assignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-199",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Not Opening",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-200",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Sign-in Log Search",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-201",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Teams License Not Assigned",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-202",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "OneDrive Access Restriction",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-203",
+    "serviceArea": "Microsoft Defender",
+    "subject": "Spam Email Increase",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-204",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Export Users List",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-205",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Cached Mode / OST Synchronization Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-206",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "SharePoint Links Not Accessible",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-207",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Create Alias",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-208",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Search Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-209",
+    "serviceArea": "SharePoint / OneDrive",
+    "subject": "Delete Old File Versions in OneDrive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-210",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Mail Forwarding",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-211",
+    "serviceArea": "Exchange",
+    "subject": "Auto-Expanding Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-212",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Exchange Admin Center Access Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-213",
+    "serviceArea": "Exchange",
+    "subject": "Mailbox Storage Full",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-214",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Service Health Incident Monitoring",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-215",
+    "serviceArea": "Exchange",
+    "subject": "Mailbox Data Missing / Retention Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-216",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Microsoft 365 Admin Center HTTP 400 Request Too Long",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-217",
+    "serviceArea": "Exchange",
+    "subject": "Domain Configuration (MX/CNAME)",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-218",
+    "serviceArea": "Exchange",
+    "subject": "Convert User Mailbox to Shared Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-219",
+    "serviceArea": "Exchange",
+    "subject": "Delegation Access",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-220",
+    "serviceArea": "Exchange",
+    "subject": "Message Trace",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-221",
+    "serviceArea": "Exchange",
+    "subject": "Intermittent Email Delivery Failure – Daily Recipient Limit Exceeded",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-222",
+    "serviceArea": "Exchange",
+    "subject": "Email Rejected by Yahoo Due to Message Size Limit",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-223",
+    "serviceArea": "Exchange",
+    "subject": "Incoming Mail Failure Due to Full Forwarding Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-224",
+    "serviceArea": "Exchange",
+    "subject": "External Emails Not Received",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-225",
+    "serviceArea": "Exchange",
+    "subject": "Recipient Not Found NDR for Valid Address",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-226",
+    "serviceArea": "Exchange",
+    "subject": "Incoming Emails Deleted by Mail Flow Rule",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-227",
+    "serviceArea": "Exchange",
+    "subject": "Microsoft 365 to Zoho Mail Flow Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-228",
+    "serviceArea": "Exchange",
+    "subject": "Emails Delivered to Junk Instead of Inbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-229",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Cached Exchange Mode / OST Synchronization Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-230",
+    "serviceArea": "Exchange",
+    "subject": "Outlook OST Corruption and Profile Recreation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-231",
+    "serviceArea": "Exchange",
+    "subject": "Outlook OST Maximum Size Error 0x8004060C",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-232",
+    "serviceArea": "Exchange",
+    "subject": "Outlook Old Emails Not Syncing Due to Full Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-233",
+    "serviceArea": "Exchange",
+    "subject": "Exchange Online Archive Processing Backend Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-234",
+    "serviceArea": "Exchange",
+    "subject": "Mailbox Restricted from Sending Emails",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-235",
+    "serviceArea": "Exchange",
+    "subject": "Missing Emails After License Removal and Reassignment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-236",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "External email not received due to SPF/DKIM/DMARC failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-237",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA authentication/access issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-238",
+    "serviceArea": "Microsoft Teams",
+    "subject": "External Teams communication blocked or enabled",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-239",
+    "serviceArea": "OneDrive & SharePoint",
+    "subject": "OneDrive login/access issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-240",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "License not assigned to the user",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-241",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "Suspected mailbox compromise remediation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-242",
+    "serviceArea": "Microsoft 365 Apps",
+    "subject": "Excel copy and paste functionality issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-243",
+    "serviceArea": "Migration & Configuration",
+    "subject": "Zoho Mail to Microsoft 365 IMAP migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-244",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email delivery blocked by Restricted Entities",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-245",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "MFA revoked and reconfigured",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-246",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Cross-tenant Teams chat not working",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-247",
+    "serviceArea": "OneDrive & SharePoint",
+    "subject": "OneDrive folder sharing issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-248",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Expired license affecting mail service",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-249",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "MFA enforcement and password reset",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-250",
+    "serviceArea": "Microsoft 365 Apps",
+    "subject": "Office applications updated to resolve application issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-251",
+    "serviceArea": "Migration & Configuration",
+    "subject": "Microsoft 365 tenant/user setup",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-252",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Daily recipient limit exceeded (10,000 recipients)",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-253",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Active sign-in sessions revoked",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-254",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams access remains after license deactivation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-255",
+    "serviceArea": "OneDrive & SharePoint",
+    "subject": "OneDrive synchronization issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-256",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Subscription overdue or purchased through another vendor",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-257",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "Malicious mailbox rules and forwarding review",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-258",
+    "serviceArea": "Microsoft 365 Apps",
+    "subject": "Microsoft Office and Outlook configured on macOS",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-259",
+    "serviceArea": "Migration & Configuration",
+    "subject": "Room resource and room list configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-260",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail forwarding configuration causing NDR",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-261",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Password reset and account secured",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-262",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams meeting creation issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-263",
+    "serviceArea": "OneDrive & SharePoint",
+    "subject": "OneDrive access affected by account or license configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-264",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Purchased license not visible in Microsoft 365 Admin Center",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-265",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "Defender Standard and Strict preset security policies",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-266",
+    "serviceArea": "Migration & Configuration",
+    "subject": "Mail connector configuration with Netcore CleanMail",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-267",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Distribution list owner not added as member",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-268",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Cross-tenant sign-in error (AADSTS50020)",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-269",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Meeting room mailbox and Room Finder configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-270",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 license renewal assistance",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-271",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "Phishing domain blocked tenant-wide",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-272",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook profile synchronization issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-273",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Guest/external user access configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-274",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Office apps and Outlook license configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-275",
+    "serviceArea": "Microsoft Defender & Security",
+    "subject": "Bulk-email restriction removed and sender allow-listed",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-276",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook login issue due to missing/expired license",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-277",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Sign-in log retention clarification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-278",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Attachment preview or download not available",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-279",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail flow verification and test delivery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-280",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Phishing sender/domain blocked using mail flow rule",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-281",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email service interruption due to expired Exchange license",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-282",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "External emails quarantined by third-party connector/SPF issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-283",
+    "serviceArea": "MFA & Conditional Access",
+    "subject": "MFA Login/Access Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-284",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Who created.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-285",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "support",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-286",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "Request for SharePoint Access and Site Creation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-287",
+    "serviceArea": "Google Workspace to Microsoft 365 Migration",
+    "subject": "Google Workspace to Microsoft 365 Migration Inquiry",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-288",
+    "serviceArea": "Microsoft Purview, Audit & Compliance",
+    "subject": "O365 Logs retention for 180 Days",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-289",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue While Creating Transport Rule – Recipient Limit Exceeded",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-290",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "One Drive Sync Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-291",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Assistance Required – Archive Mailbox Full Alert",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-292",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft Team license expire in November",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-293",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Archive Mail Box is almost full warning",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-294",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "Please check unable to save files",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-295",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft License Renewal",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-296",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Re: Outlook Login Issue – User Unable to Access Email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-297",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for Support – Password Reset Permission for Specific Administrators",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-298",
+    "serviceArea": "Security Incident Response",
+    "subject": "Phishing Mail: Search and delete from User Mailboxes",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-299",
+    "serviceArea": "Microsoft 365 Apps & Software Installation",
+    "subject": "Request for Support – Microsoft Project Standard 2024 Installation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-300",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email received issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-301",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Send Emails to Distribution Groups",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-302",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Suspected Compromised Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-303",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail quarantined",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-304",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "User OneDrive File and Foldes are Missing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-305",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Forwarding Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-306",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Investigation of Email Delivery Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-307",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue with Automatic Email Forwarding to an External Recipient",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-308",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Emails Automatically Moving to Deleted Items",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-309",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email automatically disappeared without delivery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-310",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Add Guest User from External Domain as Delegate for Distribution List",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-311",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Request for Investigation and Blocking of Suspicious External Teams Chat",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-312",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Support Required for Email ID Merge",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-313",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "unable to access the admin Exchange in Microsoft 365",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-314",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-315",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Copilot chat not reflected in outlook apps",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-316",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Approval to Move Older Emails to Online Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-317",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Forward Emails to Elsevier Domain Recipients",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-318",
+    "serviceArea": "Permissions & Delegated Access",
+    "subject": "Access to Director’s Calendar in Microsoft Teams",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-319",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request to Recall email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-320",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Performance Issue – Slow Opening and Email Sending",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-321",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Investigation and Resolution – Outlook Attachment Upload Failure",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-322",
+    "serviceArea": "Microsoft 365 Apps & Software Installation",
+    "subject": "Request for Microsoft 365 Office Installation and Configuration Support.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-323",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "CP1474143: Microsoft Copilot (Microsoft 365) Service Health Incident (Service Restored)",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-324",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Issue Investigation Request – Teams Message Not Visible in Teams but Notification Received in Outlook",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-325",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Investigation and Assistance – Archive Mailbox Storage Nearing Capacity",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-326",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "User: sterwin@digistart.in | Mails are not getting delivered",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-327",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Mail quarantined",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-328",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request to Enable and Expand Archive Mailbox Capacity",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-329",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request to Enable 3-Month Archive Retention Policy for User Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-330",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "EMRI Support request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-331",
+    "serviceArea": "MFA & Conditional Access",
+    "subject": "Unable to Configure MFA on User Mobile",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-332",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for Renewal Quotation – Power BI Premium & Power Automate Premium",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-333",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Email Delivery Issue Update",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-334",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Request to Enable Policy in Admin Portal",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-335",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Delivery Issue – Emails Going to Junk Folder",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-336",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Need help on email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-337",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "M365 license assignment discussion",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-338",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Synchronization Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-339",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "PUREZZA KIDS PRIVATE LIMITED - M365 license Renewal Notification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-340",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Suspicious Email Received",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-341",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Reg: Guidance Required – Google Workspace User Creation Limit - KRR Engineering Pvt Ltd",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-342",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue with Group emails",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-343",
+    "serviceArea": "Domain & DNS",
+    "subject": "Support Required For New Domain Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-344",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue in email configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-345",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail Flow Rule Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-346",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "OneDrive License Assigned but Web Portal Not Accessible",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-347",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Emails Not Receiving in Outlook",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-348",
+    "serviceArea": "Microsoft 365 Apps & Software Installation",
+    "subject": "Microsoft 365 Installation Error",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-349",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to install outlook or MS office",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-350",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Quick support for Microsoft account",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-351",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email notification - Outside domain",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-352",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "M365 license",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-353",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Investigation on eDiscovery Export Status Showing as Expired\"\"",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-354",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Request for Investigation of Quarantined Emails",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-355",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Quarantine Email Query",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-356",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "chandrakanta@pharmarack.com Ex employee backup many folder are Empty",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-357",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Download Email Attachments in Outlook Web",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-358",
+    "serviceArea": "Microsoft 365 Mobile Apps",
+    "subject": "Request for New User Account Configuration and MFA Setup Assistance",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-359",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Your archive mailbox is almost full.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-360",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request to Move Emails to Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-361",
+    "serviceArea": "Microsoft Intune & Device Management",
+    "subject": "Intune Device Onboarding and M365 Setup for New Employee",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-362",
+    "serviceArea": "SharePoint & OneDrive",
+    "subject": "External domain add for onedrive sharing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-363",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Calendar Event Creation Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-364",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Teams Access - Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-365",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Assistance Required – Email Delay Notifications for External Senders",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-366",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Facing an issue while downloading the attachment",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-367",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Regarding block domain notification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-368",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Emails Receiving in Deleted Items Instead of Inbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-369",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail Issue – Error Message",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-370",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Not able send mail -Undeliverable: Details",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-371",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Outlook Login Issue – User Unable to Access Email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-372",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Restricting Email Sending to Specific Domains",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-373",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Access Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-374",
+    "serviceArea": "Password & Account Access",
+    "subject": "New User Login Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-375",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Error message",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-376",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-377",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for PST Backup",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-378",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for New User Setup and Microsoft 365 Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-379",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Issue – Request for Immediate Assistance",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-380",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "PST Migration Request – Import PST File to User Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-381",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Spoofing Email Received Using Internal User Display Name",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-382",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Emails Being Delivered to Junk Folder",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-383",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Suspicious Calendar Invitation",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-384",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "DNS Health Unhealthy– Investigation Required",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-385",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Chats Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-386",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Sync Issue – Support Required",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-387",
+    "serviceArea": "MFA & Conditional Access",
+    "subject": "Request for Investigation and Resolution of Unauthorized Emails",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-388",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Assistance – Unable to Open Outlook",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-389",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable Permanently delete unwanted Online archive mails / transfer Mails from one folder to another folder / save or download files (pdf and excel etc enclosures) from online archive mails.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-390",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request to Change Username",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-391",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Microsoft 365 web login page",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-392",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Assistance – Email Delivery Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-393",
+    "serviceArea": "File & Data Migration",
+    "subject": "Reg: Request for Support – Google Workspace Business Starter License's Data Transfer Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-394",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Unable to Enable Transcription During Teams Meeting",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-395",
+    "serviceArea": "Microsoft Entra ID",
+    "subject": "Profile Picture Editing Restriction Implemented",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-396",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Ms Team Problem",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-397",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request to Restore Original Email Addresses for User Accounts",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-398",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft 365 License Not Showing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-399",
+    "serviceArea": "Microsoft 365 Apps & Software Installation",
+    "subject": "Unable to Access Outlook and Excel Applications",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-400",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Microsoft Teams Access Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-401",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Request to Enable Quarantine Notifications",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-402",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Mail Forwarding Issue.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-403",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "issue is with Microsoft 365/Exchange Online,",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-404",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for Creation of Distribution Group",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-405",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Purchased Microsoft 365 Licenses Not Showing",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-406",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Request to Block Spam Sender Domain",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-407",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Share point & one drive file sharing with protection",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-408",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Teams Meeting Policy Configuration Completed",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-409",
+    "serviceArea": "Password & Account Access",
+    "subject": "CACPL - Support",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-410",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Request to Remove Microsoft Teams Exploratory Trial License",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-411",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Creation of 3-Year Archive Retention Policy",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-412",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Clarification Required on Microsoft Notification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-413",
+    "serviceArea": "Permissions & Delegated Access",
+    "subject": "Permissions to access latest features",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-414",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Informational-severity alert: Creation of forwarding/redirect rule",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-415",
+    "serviceArea": "Password & Account Access",
+    "subject": "Technical support required",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-416",
+    "serviceArea": "Microsoft Teams",
+    "subject": "Required the support to enable Teams to call recording and transcription.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-417",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Mail Flow Not Working",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-418",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "External Recipient MailTip",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-419",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Remote Support - Outlook Auto-Complete Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-420",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Issue with files not opening in folder",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-421",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for New Email Creation – Meridian",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-422",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request to Restrict External Email Communication for User Mailbox",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-423",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "EMS E3 vs Defender for Office 365 – Feature Comparison",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-424",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Open Microsoft Excel and Outlook Applications",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-425",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Data Recovery Request – Missing Outlook Mailbox and OneDrive Data",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-426",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Compromised Mailbox – Email Deletion Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-427",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request to Share Domain DNS Records Screenshots",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-428",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "SAAMSHA TECHNOLOGIES PRIVATE LIMITED - M365 license Renewal Notification",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-429",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Request for Review of Mailbox Retention and Archive Configuration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-430",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Calendar sync Request",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-431",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for Mailbox Usage Report and License Visibility Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-432",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Synchronization & Mail Flow Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-433",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Delivery issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-434",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to Send Emails",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-435",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Required urgent support for the email storage issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-436",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "Request to Block Spam Emails.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-437",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Spam Email Received.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-438",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "PST Backup.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-439",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "User is not able to send email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-440",
+    "serviceArea": "Tenant-to-Tenant Migration",
+    "subject": "Request for Mailbox Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-441",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Reg: Request for Microsoft Support",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-442",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Outlook Login Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-443",
+    "serviceArea": "Microsoft 365 Licensing",
+    "subject": "Microsoft Entra License Activation Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-444",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "Request for User Activity, License, and Last Activity Details Report.",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-445",
+    "serviceArea": "Microsoft Defender & Email Security",
+    "subject": "High-severity alert: User restricted from sending email",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-446",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Display Name Update Not Reflecting for Email Account",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-447",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Display Name Update Not Reflecting for Email Account",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-448",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Unable to add Shared Mail box",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-449",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Update on Email Delivery",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-450",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Email Not Move in Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-451",
+    "serviceArea": "Tenant-to-Tenant Migration",
+    "subject": "Missing Emails Issue",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-452",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Update on Email Delivery – Quarantine Status",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-453",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue with Exchange Online Archive",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-454",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue with Exchange Online Archive Retention Policy – insurancedesk@simshospitals.com",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-455",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Office 365:Map profile of renamed user",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-456",
+    "serviceArea": "Microsoft 365 Admin Center",
+    "subject": "User Email ID Change Request – Maintain Existing Mail Flow",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-457",
+    "serviceArea": "Exchange & Outlook",
+    "subject": "Issue: Outlook not opening – connection to server error",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  },
+  {
+    "id": "workbook-issue-458",
+    "serviceArea": "Tenant-to-Tenant Migration",
+    "subject": "Outlook & OneDrive Sync Issue After Migration",
+    "description": "Please include the affected user or service, the error message, when the issue started, its impact, and any troubleshooting already tried."
+  }
+]
