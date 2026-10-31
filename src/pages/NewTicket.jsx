@@ -60,6 +60,45 @@ const PRIORITY_UI = {
   low:      { border: 'border-slate-500/40',  text: 't-muted',  bg: 'bg-slate-500/10',  ring: 'ring-slate-500/50' },
 }
 
+const ISSUE_CATEGORY_ALIASES = {
+  'identity & access': 'Identity & Access',
+  'microsoft entra id': 'Identity & Access',
+  'mfa & conditional access': 'Identity & Access',
+  'password & account access': 'Identity & Access',
+  'microsoft 365 admin center': 'Microsoft 365 Admin',
+  'microsoft 365 admin': 'Microsoft 365 Admin',
+  licensing: 'Microsoft 365 Licensing',
+  license: 'Microsoft 365 Licensing',
+  'microsoft 365 licensing': 'Microsoft 365 Licensing',
+  exchange: 'Exchange & Outlook',
+  'exchange & outlook': 'Exchange & Outlook',
+  'security & defender': 'Security & Defender',
+  'microsoft defender': 'Security & Defender',
+  'microsoft defender & security': 'Security & Defender',
+  'microsoft defender & email security': 'Security & Defender',
+  'security incident response': 'Security & Defender',
+  'microsoft intune': 'Intune & Devices',
+  'microsoft intune & device management': 'Intune & Devices',
+  'intune & devices': 'Intune & Devices',
+  teams: 'Microsoft Teams',
+  'microsoft teams': 'Microsoft Teams',
+  'sharepoint & onedrive': 'SharePoint & OneDrive',
+  'sharepoint /onedrive': 'SharePoint & OneDrive',
+  'sharepoint / onedrive': 'SharePoint & OneDrive',
+  'onedrive & sharepoint': 'SharePoint & OneDrive',
+  migration: 'Migration',
+  'migration & configuration': 'Migration',
+  'file & data migration': 'Migration',
+  'tenant-to-tenant migration': 'Migration',
+  'google workspace to microsoft 365 migration': 'Migration',
+  'microsoft 365 apps': 'Microsoft 365 Apps',
+  'microsoft 365 apps & software installation': 'Microsoft 365 Apps',
+  'microsoft purview': 'Microsoft Purview',
+  'microsoft purview, audit & compliance': 'Microsoft Purview',
+  'domain & dns': 'Domains & DNS',
+  'domains & dns': 'Domains & DNS',
+}
+
 // ── Smart KB suggestions sidebar ─────────────────────────────────────────────
 function KbSuggestions({ subject, description }) {
   const { fetchArticles } = useKnowledgeStore()
@@ -236,7 +275,17 @@ export default function NewTicket() {
     return () => { active = false }
   }, [isEndUser, fetchDomainCompanies])
 
-  const allIssueTemplates = [...ticketIssueTemplates, ...workbookTicketIssues]
+  const allIssueTemplates = (() => {
+    const uniqueIssues = new Map()
+    ;[...ticketIssueTemplates, ...workbookTicketIssues].forEach(issue => {
+      const originalCategory = issue.serviceArea.trim()
+      const serviceArea = ISSUE_CATEGORY_ALIASES[originalCategory.toLowerCase()] || originalCategory
+      const subject = issue.subject.trim()
+      const key = `${serviceArea.toLowerCase()}\u0000${subject.toLowerCase().replace(/\s+/g, ' ')}`
+      if (!uniqueIssues.has(key)) uniqueIssues.set(key, { ...issue, serviceArea, subject })
+    })
+    return [...uniqueIssues.values()]
+  })()
   const issueCategories = [...new Set(allIssueTemplates.map(item => item.serviceArea))]
   const matchingIssueTemplates = allIssueTemplates.filter(item => item.serviceArea === selectedIssueCategory)
   const matchingCompanies = (() => {
