@@ -189,6 +189,55 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   )
 
   const wb = XLSX.utils.book_new()
+  const recurringTicketOccurrences = new Map()
+  if (meta.includeCategorySummary) {
+    const categoryName = meta.getCategoryName || (category => category || 'Uncategorized')
+    const categoryTickets = Array.isArray(tickets) ? tickets : []
+    const categoryCounts = new Map()
+    const issueGroups = new Map()
+    categoryTickets.forEach((ticket, ticketIndex) => {
+      const category = ticket.category ? categoryName(ticket.category) : 'Uncategorized'
+      categoryCounts.set(category || 'Uncategorized', (categoryCounts.get(category || 'Uncategorized') || 0) + 1)
+      const subject = String(ticket.subject || '').trim()
+      if (!subject) return
+      const issueKey = `${String(category || 'Uncategorized').toLowerCase()}\u0000${subject.toLowerCase().replace(/\s+/g, ' ')}`
+      const group = issueGroups.get(issueKey) || { category: category || 'Uncategorized', subject, tickets: [], ticketIndexes: [] }
+      group.tickets.push(ticket)
+      group.ticketIndexes.push(ticketIndex)
+      issueGroups.set(issueKey, group)
+    })
+    const categoryRows = [
+      ['Category Tickets Report'],
+      ['Generated', d.generatedAt.toLocaleString()],
+      ['Scope', 'All tickets currently loaded in the dashboard'],
+      ['Total Categories', categoryCounts.size],
+      ['Total Tickets', categoryTickets.length],
+      [],
+      ['Category', 'Times Occurred', 'Share of Total'],
+      ...[...categoryCounts]
+        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+        .map(([category, count]) => [category, count, categoryTickets.length ? `${((count / categoryTickets.length) * 100).toFixed(1)}%` : '0%']),
+      ['Total', categoryTickets.length, categoryTickets.length ? '100%' : '0%'],
+    ]
+    const categorySheet = XLSX.utils.aoa_to_sheet(categoryRows)
+    categorySheet['!cols'] = [{ wch: 36 }, { wch: 18 }, { wch: 18 }]
+    XLSX.utils.book_append_sheet(wb, categorySheet, 'Category Summary')
+
+    const recurringGroups = [...issueGroups.values()]
+      .filter(group => group.tickets.length > 1)
+      .sort((a, b) => b.tickets.length - a.tickets.length || a.category.localeCompare(b.category) || a.subject.localeCompare(b.subject))
+    const recurringRows = [
+      ['Category', 'Recurring Subject', 'Times Occurred', 'Ticket IDs'],
+      ...recurringGroups.map(group => [group.category, group.subject, group.tickets.length, group.tickets.map(ticket => ticket.id).join(', ')]),
+    ]
+    if (recurringGroups.length === 0) recurringRows.push(['No repeated category and subject pairs', '', 0, ''])
+    const recurringSheet = XLSX.utils.aoa_to_sheet(recurringRows)
+    recurringSheet['!cols'] = [{ wch: 34 }, { wch: 56 }, { wch: 18 }, { wch: 64 }]
+    XLSX.utils.book_append_sheet(wb, recurringSheet, 'Recurring Issues')
+
+    recurringGroups.forEach(group => group.ticketIndexes.forEach(ticketIndex => recurringTicketOccurrences.set(ticketIndex, group.tickets.length)))
+  }
+
   const ws1 = XLSX.utils.aoa_to_sheet(aoa)
   ws1['!cols'] = [{ wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 8 }]
   XLSX.utils.book_append_sheet(wb, ws1, 'Summary')
@@ -217,6 +266,19 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
     { wch: 40 }, { wch: 20 }, { wch: 12 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
   ]
   XLSX.utils.book_append_sheet(wb, ws2, 'Tickets')
+
+  if (meta.includeCategorySummary) {
+    const recurringDetailRows = [
+      ['Times Occurred', ...tRows[0]],
+      ...[...recurringTicketOccurrences]
+        .sort((a, b) => a[0] - b[0])
+        .map(([ticketIndex, occurrenceCount]) => [occurrenceCount, ...tRows[ticketIndex + 1]]),
+    ]
+    if (recurringDetailRows.length === 1) recurringDetailRows.push(['No recurring tickets'])
+    const recurringDetailsSheet = XLSX.utils.aoa_to_sheet(recurringDetailRows)
+    recurringDetailsSheet['!cols'] = [{ wch: 18 }, ...(ws2['!cols'] || [])]
+    XLSX.utils.book_append_sheet(wb, recurringDetailsSheet, 'Recurring Details')
+  }
 
   // Keep each timeline entry as its own row so the complete conversation and
   // ticket activity can be read alongside the ticket's summary details.
@@ -247,6 +309,102 @@ export async function exportTicketsExcel(tickets, getAgentName, meta = {}) {
   XLSX.utils.book_append_sheet(wb, ws3, 'Ticket Messages')
 
   XLSX.writeFile(wb, meta.fileName || `helpdesk-report-${dateStamp()}.xlsx`)
+}
+
+/** Download resolution-time metrics grouped by the ticket's assigned agent. */
+export async function exportAgentsResultExcel(tickets, getAgentName, meta = {}) {
+  const XLSX = await import('xlsx')
+  const list = Array.isArray(tickets) ? tickets : []
+  const completedTickets = list.filter(ticket => ticket.status === 'resolved' || ticket.status === 'closed')
+  const parseDate = value => {
+    if (!value) return null
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const resolutionFor = ticket => {
+    const explicit = parseDate(ticket.resolvedAt)
+    if (explicit) return { date: explicit, source: 'Resolution timestamp' }
+    const timeline = Array.isArray(ticket.timeline) ? ticket.timeline : []
+    for (let index = timeline.length - 1; index >= 0; index--) {
+      const event = timeline[index]
+      const text = String(event.text || '').replace(/<[^>]*>/g, '')
+      const isResolution = event.type === 'resolved' || event.type === 'closed' ||
+        (event.type === 'status' && /\b(?:resolved|closed)\b/i.test(text))
+      const date = isResolution ? parseDate(event.ts) : null
+      if (date) return { date, source: 'Status history' }
+    }
+    const updated = parseDate(ticket.updated)
+    return updated ? { date: updated, source: 'Last updated (fallback)' } : { date: null, source: 'Unavailable' }
+  }
+  const agentGroups = new Map()
+  const detailRows = completedTickets.map(ticket => {
+    const agent = ticket.assignee ? getAgentName(ticket.assignee) : 'Unassigned'
+    const created = parseDate(ticket.created)
+    const resolution = resolutionFor(ticket)
+    const hours = created && resolution.date ? (resolution.date.getTime() - created.getTime()) / 3600000 : null
+    const validHours = hours !== null && Number.isFinite(hours) && hours >= 0 ? hours : null
+    const key = ticket.assignee ? String(ticket.assignee) : 'unassigned'
+    if (!agentGroups.has(key)) agentGroups.set(key, { agent, total: 0, measured: [] })
+    const group = agentGroups.get(key)
+    group.total++
+    if (validHours !== null) group.measured.push(validHours)
+    return {
+      agent,
+      ticketId: ticket.id || '',
+      subject: ticket.subject || '',
+      category: ticket.category || '',
+      status: STATUS_LABEL[ticket.status] || ticket.status || '',
+      created,
+      resolved: resolution.date,
+      resolutionHours: validHours,
+      timestampSource: resolution.source,
+    }
+  })
+  const summaryRows = [...agentGroups.values()]
+    .map(group => {
+      const values = group.measured
+      return [
+        group.agent,
+        group.total,
+        values.length,
+        values.length ? values.reduce((sum, value) => sum + value, 0) : '',
+        values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : '',
+        values.length ? Math.min(...values) : '',
+        values.length ? Math.max(...values) : '',
+      ]
+    })
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+
+  const workbook = XLSX.utils.book_new()
+  const summary = XLSX.utils.aoa_to_sheet([
+    ['Agents Result'],
+    ['Generated', new Date().toLocaleString()],
+    ['Scope', 'All resolved and closed tickets currently loaded in the dashboard'],
+    ['Hours', 'Elapsed time from ticket creation to resolution'],
+    [],
+    ['Agent', 'Resolved / Closed Tickets', 'Tickets With Measured Time', 'Total Resolution Hours', 'Average Resolution Hours', 'Fastest (Hours)', 'Longest (Hours)'],
+    ...summaryRows,
+  ])
+  summary['!cols'] = [{ wch: 28 }, { wch: 24 }, { wch: 27 }, { wch: 24 }, { wch: 27 }, { wch: 18 }, { wch: 18 }]
+  XLSX.utils.book_append_sheet(workbook, summary, 'Agent Summary')
+
+  const details = XLSX.utils.json_to_sheet(detailRows.map(row => ({
+    Agent: row.agent,
+    'Ticket ID': row.ticketId,
+    Subject: row.subject,
+    Category: row.category,
+    Status: row.status,
+    Created: row.created ? row.created.toLocaleString() : '',
+    Resolved: row.resolved ? row.resolved.toLocaleString() : '',
+    'Resolution Hours': row.resolutionHours === null ? '' : Number(row.resolutionHours.toFixed(2)),
+    'Resolution Time Source': row.timestampSource,
+  })))
+  details['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 48 }, { wch: 28 }, { wch: 14 }, { wch: 23 }, { wch: 23 }, { wch: 20 }, { wch: 28 }]
+  XLSX.utils.book_append_sheet(workbook, details, 'Resolved Ticket Details')
+
+  const now = new Date()
+  const fileName = meta.fileName || `agents-result-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}.xlsx`
+  XLSX.writeFile(workbook, fileName)
 }
 
 /**

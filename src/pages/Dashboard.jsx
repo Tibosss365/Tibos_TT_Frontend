@@ -13,7 +13,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
-import { exportTicketsExcel, exportTicketsPdf } from '../utils/reportExport'
+import { exportAgentsResultExcel, exportTicketsExcel, exportTicketsPdf } from '../utils/reportExport'
 
 const DashboardCharts = lazy(() => import('../components/dashboard/DashboardCharts'))
 
@@ -230,6 +230,36 @@ export default function Dashboard() {
     try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
+  }
+  const handleCategoryTicketsExcel = async () => {
+    setExporting('category-tickets')
+    try {
+      const today = new Date()
+      await exportTicketsExcel(tickets, getAgentName, {
+        includeCategorySummary: true,
+        filterLabel: 'All categories · live dashboard tickets',
+        fileName: `category-tickets-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`,
+        getCategoryName,
+      })
+      addToast('Downloaded Category Tickets report', 'success')
+    } catch (e) {
+      console.error('Category tickets Excel export failed', e)
+      addToast(e?.message ? `Category Tickets download failed: ${e.message}` : 'Category Tickets download failed. Please try again.', 'error')
+    } finally {
+      setExporting(null)
+    }
+  }
+  const handleAgentsResultExcel = async () => {
+    setExporting('agents-result')
+    try {
+      await exportAgentsResultExcel(tickets, getAgentName)
+      addToast('Downloaded Agents Result report', 'success')
+    } catch (e) {
+      console.error('Agents Result Excel export failed', e)
+      addToast(e?.message ? `Agents Result download failed: ${e.message}` : 'Agents Result download failed. Please try again.', 'error')
+    } finally {
+      setExporting(null)
+    }
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
@@ -547,6 +577,12 @@ export default function Dashboard() {
           )}
           <Button variant="ghost" size="sm" onClick={handleExportExcel} disabled={exporting === 'excel'}>
             <FileSpreadsheet size={14} className="text-emerald-500" /> <span className="hidden sm:inline">{exporting === 'excel' ? 'Exporting…' : 'Excel'}</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleCategoryTicketsExcel} disabled={exporting === 'category-tickets'}>
+            <FileSpreadsheet size={14} className="text-emerald-500" /> <span>{exporting === 'category-tickets' ? 'Preparing…' : 'Category Tickets'}</span>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleAgentsResultExcel} disabled={exporting === 'agents-result'}>
+            <FileSpreadsheet size={14} className="text-emerald-500" /> <span>{exporting === 'agents-result' ? 'Preparing...' : 'Agents Result'}</span>
           </Button>
           <Button variant="ghost" size="sm" onClick={handleExportPdf} disabled={exporting === 'pdf'}>
             <FileText size={14} className="text-rose-500" /> <span className="hidden sm:inline">{exporting === 'pdf' ? 'Exporting…' : 'PDF'}</span>
