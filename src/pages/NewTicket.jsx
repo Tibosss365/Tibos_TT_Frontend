@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate, Search, GitBranch } from 'lucide-react'
+import { Send, AlertTriangle, Info, ClipboardList, AlertOctagon, Paperclip, X, FileText, Image as ImageIcon, BookOpen, ExternalLink, Lightbulb, LayoutTemplate, Search, GitBranch, Activity } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
 import { useUserStore } from '../stores/userStore'
 import { useUiStore } from '../stores/uiStore'
@@ -51,7 +51,21 @@ const TICKET_TYPE_CONFIG = {
     active: 'bg-cyan-500/15 border-cyan-500/50 text-cyan-600 dark:text-cyan-400 ring-1 ring-cyan-500/40',
     inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
   },
+  'internal-activity': {
+    icon: Activity,
+    label: 'Internal Activities',
+    desc: 'Record work carried out by the internal team',
+    active: 'bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/40',
+    inactive: 'bg-black/5 dark:bg-white/3 border-glass t-muted hover:bg-black/10 dark:hover:bg-white/8',
+  },
 }
+
+const INTERNAL_ACTIVITY_CONTACTS = [
+  { name: 'Venkat', email: 'venkat@tibos.in' },
+  { name: 'Teenson', email: 'teenson@tibos.in' },
+  { name: 'JaiSathish', email: 'jaisathish@tibos.in' },
+  { name: 'Ramesh', email: 'ramesh@tibos.in' },
+]
 
 const PRIORITY_UI = {
   critical: { border: 'border-rose-500/40',   text: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-500/10',   ring: 'ring-rose-500/50' },
@@ -447,6 +461,11 @@ export default function NewTicket() {
 
   useEffect(() => {
     if (isEndUser || ownersTouched.current || !domainCompanies?.length) return
+    if (form.type === 'internal-activity') {
+      const internalOwner = [{ user_id: null, name: 'Venkat', email: 'venkat@tibos.in' }]
+      setForm(f => (JSON.stringify(f.owners) === JSON.stringify(internalOwner) ? f : { ...f, owners: internalOwner }))
+      return
+    }
     const domain = (form.email.split('@')[1] || '').toLowerCase().trim()
     const companyName = form.company.trim().toLowerCase()
     const match = domainCompanies.find(d =>
@@ -456,7 +475,7 @@ export default function NewTicket() {
     const owners = match?.owners || []
     // Only overwrite while the agent hasn't touched the field
     setForm(f => (JSON.stringify(f.owners) === JSON.stringify(owners) ? f : { ...f, owners }))
-  }, [form.email, form.company, domainCompanies, isEndUser])
+  }, [form.email, form.company, form.type, domainCompanies, isEndUser])
 
   // Debounce duplicate check on subject change
   const dupTimer = useRef(null)
@@ -496,7 +515,7 @@ export default function NewTicket() {
     if (!form.subject.trim())     errs.subject     = 'Required'
     if (!form.description.trim()) errs.description = 'Required'
     // Agents must set at least one account owner (CC'd on status emails)
-    if (!isEndUser && (!form.owners || form.owners.length === 0))
+    if (!isEndUser && form.type !== 'internal-activity' && (!form.owners || form.owners.length === 0))
       errs.owners = 'Add at least one account owner'
     return errs
   }
@@ -608,14 +627,40 @@ export default function NewTicket() {
           <Card>
             <CardHeader title="Ticket Type" />
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(TICKET_TYPE_CONFIG).map(([key, cfg]) => {
+              {Object.entries(TICKET_TYPE_CONFIG).filter(([key]) => key !== 'internal-activity' || !isEndUser).map(([key, cfg]) => {
                 const Icon = cfg.icon
                 const active = form.type === key
                 return (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => set('type', key)}
+                    onClick={() => {
+                      setForm(current => {
+                        if (key === 'internal-activity') {
+                          ownersTouched.current = false
+                          return {
+                            ...current,
+                            type: key,
+                            company: 'TIBOS Solutions and Services Pvt Ltd',
+                            contactName: '',
+                            email: '',
+                            phone: '',
+                            category: current.category || 'other',
+                            owners: [{ user_id: null, name: 'Venkat', email: 'venkat@tibos.in' }],
+                          }
+                        }
+                        if (current.type === 'internal-activity') {
+                          const owners = current.owners.filter(owner => owner.email?.toLowerCase() !== 'venkat@tibos.in')
+                          return { ...current, type: key, company: '', contactName: '', email: '', phone: '', owners }
+                        }
+                        return { ...current, type: key }
+                      })
+                      if (key === 'internal-activity') {
+                        setCompanySearchTerm('')
+                        setShowCompanySuggestions(false)
+                        setTicketCompanySuggestions([])
+                      }
+                    }}
                     className={`flex items-start gap-2.5 px-3 py-2 rounded-xl border text-left transition-all ${active ? cfg.active : cfg.inactive}`}
                   >
                     <Icon size={18} className={`mt-0.5 flex-shrink-0 ${active ? '' : 't-sub'}`} />
@@ -640,7 +685,9 @@ export default function NewTicket() {
                     <input
                       className={inputCls('company')}
                       value={form.company}
+                      readOnly={form.type === 'internal-activity'}
                       onFocus={() => {
+                        if (form.type === 'internal-activity') return
                         setCompanySearchTerm(form.company)
                         setShowCompanySuggestions(true)
                       }}
@@ -679,16 +726,58 @@ export default function NewTicket() {
                 <input
                   className={inputCls('contactName')}
                   value={form.contactName}
-                  onChange={e => set('contactName', e.target.value)}
+                  list={form.type === 'internal-activity' ? 'internal-activity-contacts' : undefined}
+                  onChange={e => {
+                    const value = e.target.value
+                    if (form.type !== 'internal-activity') {
+                      set('contactName', value)
+                      return
+                    }
+                    const contact = INTERNAL_ACTIVITY_CONTACTS.find(person => person.name.toLowerCase() === value.trim().toLowerCase())
+                    setForm(current => ({
+                      ...current,
+                      contactName: value,
+                      email: contact?.email || (INTERNAL_ACTIVITY_CONTACTS.some(person => person.email === current.email) ? '' : current.email),
+                    }))
+                  }}
                   placeholder="Contact person name"
                   readOnly={isEndUser}
                 />
+                {form.type === 'internal-activity' && <datalist id="internal-activity-contacts">{INTERNAL_ACTIVITY_CONTACTS.map(person => <option key={person.email} value={person.name} />)}</datalist>}
+                {form.type === 'internal-activity' && <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Internal contact suggestions">
+                  {INTERNAL_ACTIVITY_CONTACTS.map(person => <button key={person.email} type="button" onClick={() => {
+                    setForm(current => ({ ...current, contactName: person.name, email: person.email }))
+                    setErrors(current => ({ ...current, contactName: '', email: '' }))
+                  }} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-xs t-main hover:bg-emerald-500/10">{person.name}</button>)}
+                </div>}
                 {errors.contactName && <p className="text-xs text-rose-500 mt-1">{errors.contactName}</p>}
               </div>
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>Email *</label>
-                  <input type="email" className={inputCls('email')} value={form.email} onChange={e => set('email', e.target.value)} placeholder="user@company.com" />
+                  <input
+                    type="email"
+                    className={inputCls('email')}
+                    value={form.email}
+                    list={form.type === 'internal-activity' ? 'internal-activity-emails' : undefined}
+                    onChange={e => {
+                      const value = e.target.value
+                      if (form.type !== 'internal-activity') {
+                        set('email', value)
+                        return
+                      }
+                      const contact = INTERNAL_ACTIVITY_CONTACTS.find(person => person.email.toLowerCase() === value.trim().toLowerCase())
+                      setForm(current => ({ ...current, email: value, ...(contact ? { contactName: contact.name } : {}) }))
+                    }}
+                    placeholder="user@company.com"
+                  />
+                  {form.type === 'internal-activity' && <datalist id="internal-activity-emails">{INTERNAL_ACTIVITY_CONTACTS.map(person => <option key={person.email} value={person.email} />)}</datalist>}
+                  {form.type === 'internal-activity' && <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Internal email suggestions">
+                    {INTERNAL_ACTIVITY_CONTACTS.map(person => <button key={person.email} type="button" onClick={() => {
+                      setForm(current => ({ ...current, contactName: person.name, email: person.email }))
+                      setErrors(current => ({ ...current, contactName: '', email: '' }))
+                    }} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px] t-main hover:bg-emerald-500/10">{person.email}</button>)}
+                  </div>}
                   {errors.email && <p className="text-xs text-rose-400 mt-1">{errors.email}</p>}
                 </div>
               )}
@@ -833,9 +922,9 @@ export default function NewTicket() {
               {!isEndUser && (
                 <div>
                   <label className={labelCls}>
-                    Account Owners <span className="text-rose-500">*</span>
+                    Account Owners {form.type !== 'internal-activity' && <span className="text-rose-500">*</span>}
                     <span className="t-sub font-normal normal-case tracking-normal ml-1.5">
-                      (CC'd on every status email — auto-filled from company)
+                      {form.type === 'internal-activity' ? '(Default: venkat@tibos.in)' : "(CC'd on every status email; auto-filled from company)"}
                     </span>
                   </label>
                   <OwnersInput

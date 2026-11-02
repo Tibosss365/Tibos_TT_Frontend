@@ -500,7 +500,7 @@ export default function MyTickets() {
 
               <select value={staged.type} onChange={e => setSF('type', e.target.value)} className={selectCls}>
                 <option value="">All Types</option>
-                {TICKET_TYPES.map(t => <option key={t} value={t}>{cap(t)}</option>)}
+                {TICKET_TYPES.map(t => <option key={t} value={t}>{TICKET_TYPE_META[t]?.label || cap(t)}</option>)}
               </select>
 
               <select value={staged.assignee} onChange={e => setSF('assignee', e.target.value)} className={selectCls}>

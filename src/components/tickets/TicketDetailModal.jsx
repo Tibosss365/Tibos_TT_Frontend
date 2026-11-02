@@ -1020,7 +1020,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
           <div className="h-4 w-px bg-black/10 dark:bg-white/10" />
           {isEditing && !isEndUser ? (
             <select className="glass-input text-xs py-1 w-28" value={edits.type} onChange={e => set('type', e.target.value)}>
-              {TICKET_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
+              {TICKET_TYPES.map(t => <option key={t} value={t}>{TICKET_TYPE_META[t]?.label || t.charAt(0).toUpperCase()+t.slice(1)}</option>)}
             </select>
           ) : (() => {
             const m = TICKET_TYPE_META[edits.type] || TICKET_TYPE_META.request
