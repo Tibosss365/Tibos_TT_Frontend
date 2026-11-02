@@ -62,9 +62,10 @@ export const useTicketStore = create(
         }
 
         const fetchAllPages = async () => {
-          // Keep cached tickets visible during background refreshes. Only show
-          // the global loading state when there is no data to render yet.
-          set({ loading: get().tickets.length === 0, ticketsLoaded: false, ticketsLoadError: null })
+          // Keep existing tickets on screen during background refreshes. Only
+          // progressively publish pages during the initial empty-state load.
+          const hasExistingTickets = get().tickets.length > 0
+          set({ loading: !hasExistingTickets, ticketsLoaded: false, ticketsLoadError: null })
           try {
             const firstPage = await api.get('/tickets?page=1&page_size=100')
             const pages = Math.max(1, Number(firstPage.pages) || 1)
@@ -73,9 +74,12 @@ export const useTicketStore = create(
               const ticket = normalizeTicket(item)
               return [ticket._uuid, ticket]
             }))
-            // Publish the first page immediately so dashboards can render while
-            // the remaining pages are fetched in the background.
-            set({ tickets: [...loadedTickets.values()], loading: false })
+            // Publish the first page immediately only on initial load. During a
+            // refresh, keep the complete old list visible until the new snapshot
+            // has finished loading to prevent the dashboard from flashing/resetting.
+            if (!hasExistingTickets) {
+              set({ tickets: [...loadedTickets.values()], loading: false })
+            }
 
             // Fetch at most four pages concurrently to reduce latency without
             // flooding the API when an account has a large ticket history.
@@ -91,7 +95,7 @@ export const useTicketStore = create(
                 const ticket = normalizeTicket(item)
                 loadedTickets.set(ticket._uuid, ticket)
               })
-              set({ tickets: [...loadedTickets.values()] })
+              if (!hasExistingTickets) set({ tickets: [...loadedTickets.values()] })
             }
 
             const allTickets = [...new Map(

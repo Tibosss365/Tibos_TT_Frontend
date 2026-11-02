@@ -57,18 +57,23 @@ export function Layout() {
     const es = new EventSource(`${BASE}/events?token=${encodeURIComponent(token)}`)
     sseRef.current = es
 
-    const handleTicketEvent = () => {
-      fetchTickets()
-      fetchNotifications()
-      fetchPendingApprovals()
+    let refreshTimer = null
+    let refreshDeletedTickets = false
+    const scheduleLiveRefresh = (includeDeleted = false) => {
+      refreshDeletedTickets = refreshDeletedTickets || includeDeleted
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null
+        fetchTickets()
+        fetchNotifications()
+        fetchPendingApprovals()
+        if (refreshDeletedTickets) fetchDeletedTickets()
+        refreshDeletedTickets = false
+      }, 400)
     }
 
-    const handleDeleteEvent = () => {
-      fetchTickets()
-      fetchDeletedTickets()
-      fetchNotifications()
-      fetchPendingApprovals()
-    }
+    const handleTicketEvent = () => scheduleLiveRefresh()
+    const handleDeleteEvent = () => scheduleLiveRefresh(true)
 
     es.addEventListener('ticket_created',      handleTicketEvent)
     es.addEventListener('ticket_updated',      handleTicketEvent)
@@ -91,6 +96,7 @@ export function Layout() {
     }
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer)
       es.close()
       sseRef.current = null
     }
