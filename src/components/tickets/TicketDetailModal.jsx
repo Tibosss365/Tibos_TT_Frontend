@@ -541,7 +541,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const linkedTickets = useTicketStore(s => s.linkedTickets[ticket._uuid] || [])
   const allTickets    = useTicketStore(s => s.tickets)
   const { agents, getAgentName, getCategoryName, categories, groups, slaSettings,
-          cannedResponses, resolutionCodes, onHoldReasons } = useAdminStore()
+          cannedResponses, resolutionCodes, onHoldReasons, fetchResolutionCodes } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
   const { signatures, fetchSignatures } = useEmailStore()
@@ -549,6 +549,9 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const isEndUser = currentUser?.role === 'user'
 
   useEffect(() => { if (!isEndUser) fetchSignatures() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isEndUser) fetchResolutionCodes()
+  }, [isEndUser, fetchResolutionCodes])
 
 
   const [activeTab, setActiveTab] = useState(conversationOnly || isEndUser ? 'conversations' : 'details')
@@ -685,7 +688,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   // Load the saved resolution code once it exists on the ticket (never wipe a
   // selection the user is making before resolving).
   useEffect(() => {
-    if (liveTicket.resolutionCode) setResolutionCode(liveTicket.resolutionCode)
+    setResolutionCode(liveTicket.resolutionCode || '')
   }, [liveTicket.resolutionCode])
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
@@ -1727,12 +1730,12 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                       </div>
                     </div>
                   )}
-                  {resolutionCodes.length > 0 && (
+                  {(resolutionCodes.length > 0 || resolutionCode) && (
                     <div>
                       <div className={labelCls}>Resolution Code {!isResolvedLocked && <span className="text-rose-500">*</span>}</div>
                       {isResolvedLocked ? (
                         <div className="glass-input w-full text-sm t-main">
-                          {resolutionCodes.find(rc => rc.id === resolutionCode)?.label || '—'}
+                          {resolutionCodes.find(rc => rc.id === resolutionCode)?.label || resolutionCode || '—'}
                         </div>
                       ) : (
                         <select
