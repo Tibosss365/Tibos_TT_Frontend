@@ -828,10 +828,6 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
     if (Object.keys(changes).length > 0) {
       try {
         await updateTicket(ticket._uuid, changes)
-        // Re-fetch the ticket so SLA status, group, and all backend-computed
-        // fields are refreshed immediately (e.g. sla_status becomes 'active'
-        // after the first agent assignment).
-        await fetchTicket(ticket._uuid)
       } catch (err) {
         addToast(`Save failed: ${err.message}`, 'error')
         return
