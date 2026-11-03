@@ -2738,7 +2738,7 @@ export default function Admin() {
     fetchInboundLogs, clearInboundLogs,
     alertSettings, fetchAlertSettings, saveAlertSettings, sendTestAlert,
     cannedResponses, addCannedResponse, updateCannedResponse, deleteCannedResponse,
-    ticketTemplates, addTicketTemplate, updateTicketTemplate, deleteTicketTemplate,
+    ticketTemplates,
     customFields, addCustomField, updateCustomField, deleteCustomField,
     resolutionCodes, addResolutionCode, updateResolutionCode, deleteResolutionCode,
     onHoldReasons, addOnHoldReason, updateOnHoldReason, deleteOnHoldReason,
@@ -2885,7 +2885,43 @@ export default function Admin() {
   } = useFeatureStore()
 
   useEffect(() => {
-    fetchTicketTemplates()
+    const subjectKey = subject => String(subject || '')
+      .replace(/^(?:(?:re|fw|fwd)\s*:\s*)+/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+
+    const syncSharedTemplates = async () => {
+      await fetchTicketTemplates()
+      const existing = useFeatureStore.getState().ticketTemplates || []
+      const keys = new Set(existing.map(template =>
+        `${template.category || 'other'}|${template.type || 'request'}|${subjectKey(template.subject)}`,
+      ))
+      for (const template of ticketTemplates || []) {
+        const subject = subjectKey(template.subject)
+        if (!template.name?.trim() || !subject) continue
+        const key = `${template.category || 'other'}|${template.type || 'request'}|${subject}`
+        if (keys.has(key)) continue
+        try {
+          await createTicketTemplate({
+            name: template.name.trim(),
+            subject: template.subject.trim(),
+            type: template.type || 'request',
+            category: template.category || 'other',
+            priority: template.priority || 'medium',
+            group_id: template.group_id || null,
+            description_template: template.description_template || template.description || '',
+            custom_field_data: template.custom_field_data || {},
+            tags: template.tags || [],
+          })
+          keys.add(key)
+        } catch (error) {
+          console.error('Could not migrate a saved ticket template', error)
+        }
+      }
+    }
+
+    syncSharedTemplates().catch(error => console.error('Could not load shared ticket templates', error))
     if (!tickets.length) fetchTickets()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2911,6 +2947,27 @@ export default function Admin() {
       addToast('Shared ticket template deleted', 'success')
     } catch (error) {
       addToast(error?.message || 'Could not delete the shared ticket template', 'error')
+    }
+  }
+
+  const saveSharedTicketTemplate = async (template, id = null) => {
+    const payload = {
+      name: template.name.trim(),
+      subject: template.subject.trim(),
+      type: template.type || 'request',
+      category: template.category || 'other',
+      priority: template.priority || 'medium',
+      group_id: template.group_id || null,
+      description_template: template.description_template || template.description || '',
+      custom_field_data: template.custom_field_data || {},
+      tags: template.tags || [],
+    }
+    try {
+      if (id) await updateSharedTicketTemplate(id, payload)
+      else await createTicketTemplate(payload)
+      addToast(id ? 'Shared ticket template updated' : 'Shared ticket template saved', 'success')
+    } catch (error) {
+      addToast(error?.message || 'Could not save the shared ticket template', 'error')
     }
   }
 
@@ -3899,13 +3956,13 @@ export default function Admin() {
 
           {/* ── Ticket Templates ──────────────────────────────────────────────── */}
           <Card>
-            <CardHeader title="Ticket Templates" subtitle="Pre-filled templates agents can use when creating tickets" />
+            <CardHeader title="Ticket Templates" subtitle="Shared templates available on the submit ticket form" />
             <TicketTemplatesPanel
-              items={ticketTemplates || []}
+              items={(sharedTicketTemplates || []).map(template => ({ ...template, description: template.description_template || template.description || '' }))}
               categories={categories}
-              onAdd={addTicketTemplate}
-              onUpdate={updateTicketTemplate}
-              onDelete={deleteTicketTemplate}
+              onAdd={template => saveSharedTicketTemplate(template)}
+              onUpdate={(id, changes) => saveSharedTicketTemplate(changes, id)}
+              onDelete={removeSharedTemplate}
               inputCls={inputCls}
             />
             <HistoryBasedTemplatesPanel

@@ -17,7 +17,7 @@ import { RichDescription } from '../components/tickets/RichDescription'
 import ticketIssueTemplates from '../data/ticketIssueTemplates.json'
 import workbookTicketIssues from '../data/workbookTicketIssues.json'
 import { api } from '../api/client'
-import { getHistorySubjectSuggestions } from '../utils/historyTicketTemplates'
+import { getHistorySubjectSuggestions, normalizeTicketSubject } from '../utils/historyTicketTemplates'
 
 const EMPTY = { company: '', contactName: '', email: '', phone: '', subject: '', category: '', priority: 'medium', description: '', asset: '', group_id: '', type: 'request', assignee: '', owners: [] }
 // priority is overridden by ticketSettings.defaultPriority on mount (see useState below)
@@ -249,7 +249,8 @@ export default function NewTicket() {
   const availableTemplates = useMemo(() => {
     const merged = new Map()
     ;[...(ticketTemplates || []), ...(sharedTemplates || [])].forEach(template => {
-      merged.set(String(template.id), {
+      const key = `${template.category || 'other'}|${template.type || 'request'}|${normalizeTicketSubject(template.subject)}`
+      merged.set(key, {
         ...template,
         description: template.description_template || template.description || '',
       })
