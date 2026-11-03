@@ -178,7 +178,10 @@ export const useTicketStore = create(
           body.assignee_id = changes.assignee || null
         }
         if (changes.company      !== undefined) body.company      = changes.company
-        if (changes.submitter    !== undefined) body.contact_name = changes.submitter
+        if (changes.submitter    !== undefined) {
+          body.contact_name = changes.submitter
+          body.submitter_name = changes.submitter
+        }
         if (changes.email        !== undefined) body.email        = changes.email
         if (changes.asset        !== undefined) body.asset        = changes.asset
         if (changes.description  !== undefined) body.description  = changes.description

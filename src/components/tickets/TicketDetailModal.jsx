@@ -212,26 +212,53 @@ function RequesterPanel({ ticket, isEditing, edits, set, agents, groups, categor
 
   return (
     <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-glass flex-shrink-0 flex flex-col lg:overflow-y-auto">
-      {/* Requester — always locked (read-only), even in edit mode */}
+      {/* Requester details */}
       <div className="p-4 border-b border-glass">
         <div className="flex items-center gap-1.5 mb-3">
           <span className="text-[10px] font-bold t-sub uppercase tracking-wider">{t('requester')}</span>
-          <Lock size={10} className="t-sub opacity-60" />
+          {isEditing && <span className="text-[10px] t-sub">Editable</span>}
         </div>
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-md">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold t-main truncate">{edits.submitter || '—'}</div>
-            <div className="text-xs t-muted truncate mt-0.5">{edits.email || '—'}</div>
+          {!isEditing && (
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold t-main truncate">{edits.submitter || '—'}</div>
+              <div className="text-xs t-muted truncate mt-0.5">{edits.email || '—'}</div>
+            </div>
+          )}
           </div>
-        </div>
-        <div className="mt-3 space-y-1.5">
-          <div className="flex items-center gap-2 text-xs t-muted">
-            <Briefcase size={11} className="flex-shrink-0" />
-            <span className="truncate">{edits.company || '—'}</span>
-          </div>
+        <div className="mt-3 space-y-2.5">
+          <label className="block">
+            <span className="text-[10px] font-semibold t-sub">Contact Person</span>
+            {isEditing ? (
+              <input value={edits.submitter} onChange={e => set('submitter', e.target.value)}
+                className="mt-1 w-full rounded-md border border-glass bg-transparent px-2 py-1.5 text-xs t-main outline-none focus:border-blue-400" />
+            ) : (
+              <span className="block text-xs t-muted truncate mt-0.5">{edits.submitter || '—'}</span>
+            )}
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold t-sub">Email Address</span>
+            {isEditing ? (
+              <input type="email" value={edits.email} onChange={e => set('email', e.target.value)}
+                className="mt-1 w-full rounded-md border border-glass bg-transparent px-2 py-1.5 text-xs t-main outline-none focus:border-blue-400" />
+            ) : (
+              <span className="block text-xs t-muted truncate mt-0.5">{edits.email || '—'}</span>
+            )}
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold t-sub">Company Name</span>
+            {isEditing ? (
+              <input value={edits.company} onChange={e => set('company', e.target.value)}
+                className="mt-1 w-full rounded-md border border-glass bg-transparent px-2 py-1.5 text-xs t-main outline-none focus:border-blue-400" />
+            ) : (
+              <span className="flex items-center gap-2 text-xs t-muted truncate mt-0.5">
+                <Briefcase size={11} className="flex-shrink-0" />{edits.company || '—'}
+              </span>
+            )}
+          </label>
         </div>
       </div>
 

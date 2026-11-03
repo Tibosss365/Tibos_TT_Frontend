@@ -10,10 +10,11 @@ import { useAdminStore } from '../../stores/adminStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useUiStore } from '../../stores/uiStore'
 const TicketDetailModal = lazy(() => import('../tickets/TicketDetailModal').then(module => ({ default: module.TicketDetailModal })))
+const TICKET_DATA_PATHS = new Set(['/dashboard', '/tickets', '/tickets/mine', '/companies'])
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
-  const { fetchTickets, fetchDeletedTickets } = useTicketStore()
+  const { fetchTickets, fetchDeletedTickets, ticketsLoaded } = useTicketStore()
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
@@ -24,6 +25,8 @@ export function Layout() {
   const { activeModal, closeModal, sidebarOpen, toggleSidebar } = useUiStore()
   const sseRef = useRef(null)
   const location = useLocation()
+  const pathRef = useRef(location.pathname)
+  pathRef.current = location.pathname
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -35,20 +38,8 @@ export function Layout() {
   useEffect(() => {
     if (!isLoggedIn || !token) return
 
-    // Load all data on mount
-    fetchTickets()
-    fetchDeletedTickets()
-    fetchAgents()
-    fetchSla()
-    fetchEmailConfig()
-    fetchInboundConfig()
-    fetchInboundLogs()
-    fetchCategories()
-    fetchGroups()
-    fetchTicketSettings()
-    fetchOnHoldReasons()
-    fetchResolutionCodes()
-    fetchCannedResponses()
+    // Keep only small shell-wide data here. Page data is loaded on demand below
+    // so email/admin/trash requests don't delay unrelated pages.
     fetchNotifications()
     fetchPendingApprovals()
     fetchCompanySettings()
@@ -64,10 +55,10 @@ export function Layout() {
       if (refreshTimer) clearTimeout(refreshTimer)
       refreshTimer = setTimeout(() => {
         refreshTimer = null
-        fetchTickets()
+        if (TICKET_DATA_PATHS.has(pathRef.current)) fetchTickets()
         fetchNotifications()
         fetchPendingApprovals()
-        if (refreshDeletedTickets) fetchDeletedTickets()
+        if (refreshDeletedTickets && pathRef.current === '/deleted') fetchDeletedTickets()
         refreshDeletedTickets = false
       }, 400)
     }
@@ -101,6 +92,39 @@ export function Layout() {
       sseRef.current = null
     }
   }, [isLoggedIn, token]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load data only for the route that consumes it. This avoids opening a dozen
+  // database requests plus a full ticket-history download on every page visit.
+  useEffect(() => {
+    if (!isLoggedIn || !token) return
+
+    const path = location.pathname
+    const needsTicketData = TICKET_DATA_PATHS.has(path)
+    const needsReferenceData = ['/dashboard', '/tickets', '/tickets/mine', '/tickets/new'].includes(path)
+    if (needsTicketData && !ticketsLoaded) fetchTickets()
+    if (needsReferenceData) {
+      fetchAgents()
+      fetchCategories()
+      fetchGroups()
+    }
+    if (path === '/tickets/new') {
+      fetchSla()
+      fetchTicketSettings()
+    }
+    if (path === '/admin') {
+      fetchAgents()
+      fetchSla()
+      fetchEmailConfig()
+      fetchInboundConfig()
+      fetchInboundLogs()
+      fetchCategories()
+      fetchGroups()
+      fetchTicketSettings()
+      fetchOnHoldReasons()
+      fetchResolutionCodes()
+      fetchCannedResponses()
+    }
+  }, [location.pathname, isLoggedIn, token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!isLoggedIn) return <Navigate to="/login" replace />
 
