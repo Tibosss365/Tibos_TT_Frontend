@@ -43,6 +43,15 @@ const MODAL_TABS = [
   { id: 'resolution',   icon: CheckCircle2,  label: 'Resolution' },
 ]
 
+const DEFAULT_ON_HOLD_REASONS = [
+  'Waiting for Customer Response',
+  'Waiting for Third Party / Vendor',
+  'Waiting for Parts / Hardware',
+  'Scheduled Maintenance Window',
+  'Pending Internal Approval',
+  'Customer Requested Delay',
+]
+
 const LINK_TYPES = [
   { id: 'related',   label: 'Related',   color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' },
   { id: 'duplicate', label: 'Duplicate', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
@@ -566,6 +575,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const [onHoldModalOpen, setOnHoldModalOpen]   = useState(false)
   const [pendingOnHoldReason, setPendingOnHoldReason] = useState('')
   const [onHoldNote, setOnHoldNote]             = useState('')
+  const [savingOnHold, setSavingOnHold] = useState(false)
+  const availableOnHoldReasons = onHoldReasons.length
+    ? onHoldReasons
+    : DEFAULT_ON_HOLD_REASONS.map((label, index) => ({ id: `default-hold-reason-${index}`, label }))
 
   // Merge modal
   const [mergeModalOpen, setMergeModalOpen]     = useState(false)
@@ -728,19 +741,33 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   // ── Confirm on-hold with reason ───────────────────────────────────────────
   const handleConfirmOnHold = async () => {
     if (!pendingOnHoldReason) { addToast('Please select a reason', 'error'); return }
-    const noteText = onHoldNote.trim() ? ` — ${onHoldNote}` : ''
-    addTimelineEvent(ticket._uuid, {
-      type: 'status',
-      text: `Status changed to <strong>On Hold</strong>: ${pendingOnHoldReason}${noteText}`,
-    })
-    await updateTicket(ticket._uuid, { status: 'on-hold', holdReason: pendingOnHoldReason })
-    await fetchTicket(ticket._uuid)
-    set('status', 'on-hold')
-    addToast('Ticket placed on hold', 'success')
-    setOnHoldModalOpen(false)
-    setPendingOnHoldReason('')
-    setOnHoldNote('')
-    setIsEditing(false)
+    if (savingOnHold) return
+    setSavingOnHold(true)
+    try {
+      await updateTicket(ticket._uuid, { status: 'on-hold', holdReason: pendingOnHoldReason })
+      if (onHoldNote.trim()) {
+        try {
+          await addTimelineEvent(ticket._uuid, {
+            type: 'comment',
+            text: `Additional note while placing ticket on hold: ${onHoldNote.trim()}`,
+          })
+        } catch (error) {
+          console.error('Could not save on-hold note', error)
+          addToast('Ticket was placed on hold, but the additional note could not be saved.', 'error')
+        }
+      }
+      await fetchTicket(ticket._uuid)
+      set('status', 'on-hold')
+      addToast('Ticket placed on hold', 'success')
+      setOnHoldModalOpen(false)
+      setPendingOnHoldReason('')
+      setOnHoldNote('')
+      setIsEditing(false)
+    } catch (error) {
+      addToast(error?.message ? `Could not place ticket on hold: ${error.message}` : 'Could not place ticket on hold. Please try again.', 'error')
+    } finally {
+      setSavingOnHold(false)
+    }
   }
 
   // ── Merge handler ─────────────────────────────────────────────────────────
@@ -2113,7 +2140,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
               <div className={labelCls}>Reason *</div>
               <select className={inputCls} value={pendingOnHoldReason} onChange={e => setPendingOnHoldReason(e.target.value)}>
                 <option value="">— Select a reason —</option>
-                {onHoldReasons.map(r => <option key={r.id} value={r.label}>{r.label}</option>)}
+                {availableOnHoldReasons.map(r => <option key={r.id} value={r.label}>{r.label}</option>)}
               </select>
             </div>
             <div>
@@ -2122,8 +2149,8 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
             </div>
           </div>
           <div className="flex gap-2 mt-5">
-            <Button variant="primary" size="sm" onClick={handleConfirmOnHold} disabled={!pendingOnHoldReason} className="flex-1">
-              <Clock size={13} /> Confirm On Hold
+            <Button variant="primary" size="sm" onClick={handleConfirmOnHold} disabled={!pendingOnHoldReason || savingOnHold} className="flex-1">
+              {savingOnHold ? <SpinIcon size={13} className="animate-spin" /> : <Clock size={13} />} {savingOnHold ? 'Placing on Hold...' : 'Confirm On Hold'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => { setOnHoldModalOpen(false); setPendingOnHoldReason(''); setOnHoldNote('') }}>
               Cancel
