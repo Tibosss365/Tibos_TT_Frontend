@@ -5,6 +5,7 @@ import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
+import { Modal } from '../components/ui/Modal'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import SourceBadge from '../components/tickets/SourceBadge'
 import { timeAgo, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META } from '../utils/ticketUtils'
@@ -25,6 +26,9 @@ const ALL_COLUMNS = [
   { key: 'updated',    label: 'Updated' },
 ]
 const DEFAULT_COLS = ['id','subject','assignedTo','priority','status','category','updated']
+const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[char]))
 
 // ── Staged filter defaults ────────────────────────────────────────────────────
 const STAGED_DEFAULTS = {
@@ -61,7 +65,7 @@ const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
 
 export default function MyTickets() {
-  const { tickets, loading, updateTicket, softDelete } = useTicketStore()
+  const { tickets, loading, updateTicket, softDelete, addTimelineEvent } = useTicketStore()
   const { currentUser }                    = useUserStore()
   const { addToast }                       = useUiStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
@@ -70,6 +74,8 @@ export default function MyTickets() {
   const [selectedTicket, setSelectedTicket]   = useState(null)
   const [claiming, setClaiming]               = useState({})   // { _uuid: true }
   const [deleting, setDeleting]               = useState({})   // { _uuid: true }
+  const [ticketToDelete, setTicketToDelete]   = useState(null)
+  const [deleteReason, setDeleteReason]       = useState('')
   const [poolCollapsed, setPoolCollapsed]     = useState(false)
   const [visibleCols, setVisibleCols]       = useState(DEFAULT_COLS)
   const [showColPicker, setShowColPicker]   = useState(false)
@@ -156,9 +162,26 @@ export default function MyTickets() {
 
   // ── Delete (from pool) handler ─────────────────────────────────────────
   const handleDelete = (ticket) => {
-    if (!window.confirm(`Move ticket ${ticket.id} to trash?`)) return
-    softDelete(ticket._uuid)
-    addToast(`${ticket.id} moved to trash`, 'info')
+    setTicketToDelete(ticket)
+    setDeleteReason('')
+  }
+
+  const confirmDelete = async () => {
+    const reason = deleteReason.trim()
+    if (!ticketToDelete || !reason || deleting[ticketToDelete._uuid]) return
+    const uuid = ticketToDelete._uuid
+    setDeleting(prev => ({ ...prev, [uuid]: true }))
+    try {
+      await addTimelineEvent(uuid, { type: 'comment', text: `Ticket deletion reason: ${escapeHtml(reason)}` })
+      await softDelete(uuid)
+      addToast(`${ticketToDelete.id} moved to Deleted Items`, 'success')
+      setTicketToDelete(null)
+      setDeleteReason('')
+    } catch (error) {
+      addToast(error?.message ? `Could not delete ticket: ${error.message}` : 'Could not delete ticket. Please try again.', 'error')
+    } finally {
+      setDeleting(prev => ({ ...prev, [uuid]: false }))
+    }
   }
 
   // ── Unassigned pool (visible to all agents) ───────────────────────────────
@@ -608,6 +631,34 @@ export default function MyTickets() {
           </div>
         )}
       </Card>
+
+      <Modal isOpen={!!ticketToDelete} onClose={() => { if (!deleting[ticketToDelete?._uuid]) setTicketToDelete(null) }} title="Delete Ticket" size="sm">
+        {ticketToDelete && (
+          <div className="p-5 space-y-4">
+            <div>
+              <p className="text-sm t-main font-medium">Why are you deleting ticket {ticketToDelete.id}?</p>
+              <p className="text-xs t-muted mt-1">The ticket will be moved to Deleted Items and can be restored for 30 days.</p>
+            </div>
+            <textarea
+              autoFocus
+              rows={4}
+              value={deleteReason}
+              onChange={event => setDeleteReason(event.target.value)}
+              placeholder="Enter the reason for deleting this ticket..."
+              className="glass-input w-full text-sm py-2 resize-y"
+              disabled={!!deleting[ticketToDelete._uuid]}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setTicketToDelete(null)} disabled={!!deleting[ticketToDelete._uuid]}>
+                Cancel
+              </Button>
+              <Button variant="danger" size="sm" onClick={confirmDelete} disabled={!deleteReason.trim() || !!deleting[ticketToDelete._uuid]}>
+                {deleting[ticketToDelete._uuid] ? <><Loader2 size={13} className="animate-spin" /> Deleting...</> : <><Trash2 size={13} /> Delete Ticket</>}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
     </div>
