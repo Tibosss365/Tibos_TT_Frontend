@@ -541,7 +541,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const linkedTickets = useTicketStore(s => s.linkedTickets[ticket._uuid] || [])
   const allTickets    = useTicketStore(s => s.tickets)
   const { agents, getAgentName, getCategoryName, categories, groups, slaSettings,
-          cannedResponses, resolutionCodes, onHoldReasons, fetchResolutionCodes } = useAdminStore()
+          cannedResponses, resolutionCodes, onHoldReasons, fetchResolutionCodes, fetchOnHoldReasons } = useAdminStore()
   const { currentUser } = useUserStore()
   const { addToast } = useUiStore()
   const { signatures, fetchSignatures } = useEmailStore()
@@ -550,8 +550,11 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
 
   useEffect(() => { if (!isEndUser) fetchSignatures() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!isEndUser) fetchResolutionCodes()
-  }, [isEndUser, fetchResolutionCodes])
+    if (!isEndUser) {
+      fetchResolutionCodes()
+      fetchOnHoldReasons()
+    }
+  }, [isEndUser, fetchResolutionCodes, fetchOnHoldReasons])
 
 
   const [activeTab, setActiveTab] = useState(conversationOnly || isEndUser ? 'conversations' : 'details')
