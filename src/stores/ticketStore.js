@@ -222,8 +222,15 @@ export const useTicketStore = create(
       },
 
       softDelete: async (uuid) => {
+        const ticket = get().tickets.find(t => t._uuid === uuid)
         await api.delete(`/tickets/${uuid}`)
-        set(s => ({ tickets: s.tickets.filter(t => t._uuid !== uuid) }))
+        const deletedAt = new Date().toISOString()
+        set(s => ({
+          tickets: s.tickets.filter(t => t._uuid !== uuid),
+          deletedTickets: ticket
+            ? [{ ...ticket, isDeleted: true, deletedAt }, ...s.deletedTickets.filter(t => t._uuid !== uuid)]
+            : s.deletedTickets,
+        }))
       },
 
       softBulkDelete: async (uuids) => {
