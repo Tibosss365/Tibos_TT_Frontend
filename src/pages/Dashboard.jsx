@@ -6,6 +6,7 @@ import {
   FileSpreadsheet, FileText, Inbox, RotateCcw,
 } from 'lucide-react'
 import { useTicketStore } from '../stores/ticketStore'
+import { api } from '../api/client'
 import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
 import { StatsCard } from '../components/ui/StatsCard'
@@ -13,7 +14,6 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
-import { exportAgentsResultExcel, exportTicketsExcel, exportTicketsPdf } from '../utils/reportExport'
 
 const DashboardCharts = lazy(() => import('../components/dashboard/DashboardCharts'))
 
@@ -227,7 +227,7 @@ export default function Dashboard() {
   )
   const handleExportExcel = async () => {
     setExporting('excel')
-    try { await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
+    try { const { exportTicketsExcel } = await import('../utils/reportExport'); await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
   }
@@ -235,6 +235,7 @@ export default function Dashboard() {
     setExporting('category-tickets')
     try {
       const today = new Date()
+      const { exportTicketsExcel } = await import('../utils/reportExport')
       await exportTicketsExcel(tickets, getAgentName, {
         includeCategorySummary: true,
         filterLabel: 'All categories · live dashboard tickets',
@@ -252,6 +253,7 @@ export default function Dashboard() {
   const handleAgentsResultExcel = async () => {
     setExporting('agents-result')
     try {
+      const { exportAgentsResultExcel } = await import('../utils/reportExport')
       await exportAgentsResultExcel(tickets, getAgentName)
       addToast('Downloaded Agents Result report', 'success')
     } catch (e) {
@@ -263,7 +265,7 @@ export default function Dashboard() {
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
-    try { await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
+    try { const { exportTicketsPdf } = await import('../utils/reportExport'); await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }
@@ -303,6 +305,7 @@ export default function Dashboard() {
         return !Number.isNaN(created.getTime()) && created >= monthStart && created < nextMonthStart
       })
       const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+      const { exportTicketsExcel } = await import('../utils/reportExport')
       await exportTicketsExcel(monthTickets, getAgentName, {
         filterLabel: `Tickets created in ${monthLabel}`,
         fileName: `monthly-ticket-details-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.xlsx`,
@@ -333,6 +336,42 @@ export default function Dashboard() {
   // ── Filter state (staged → applied on click) ────────────────────────────────
   const [dashFilters, setDashFilters] = useState(EMPTY_FILTERS)  // applied
   const [staged, setStaged]           = useState(EMPTY_FILTERS)  // in-progress
+  const [apiStats, setApiStats] = useState(null)
+  const apiStatsCanRepresentFilters = !dashFilters.group && !dashFilters.type && !dashFilters.sla
+
+  // Load headline totals independently from the full ticket history. The
+  // dashboard can show accurate counts while detailed tables/charts refresh.
+  useEffect(() => {
+    let active = true
+    setApiStats(null)
+    if (!apiStatsCanRepresentFilters) return () => { active = false }
+
+    const params = new URLSearchParams()
+    const now = new Date()
+    let from = null
+    let to = null
+    if (dashFilters.dateRange === 'today') {
+      from = new Date(now); from.setHours(0, 0, 0, 0)
+      to = new Date(now); to.setHours(23, 59, 59, 999)
+    } else if (dashFilters.dateRange === 'week') {
+      from = new Date(now); from.setDate(now.getDate() - now.getDay()); from.setHours(0, 0, 0, 0)
+    } else if (dashFilters.dateRange === 'month') {
+      from = new Date(now.getFullYear(), now.getMonth(), 1)
+    } else if (dashFilters.dateRange === 'custom') {
+      if (dashFilters.dateFrom) from = new Date(dashFilters.dateFrom)
+      if (dashFilters.dateTo) { to = new Date(dashFilters.dateTo); to.setHours(23, 59, 59, 999) }
+    }
+    if (from) params.set('date_from', from.toISOString())
+    if (to) params.set('date_to', to.toISOString())
+    if (dashFilters.status) params.set('status', dashFilters.status)
+    if (dashFilters.priority) params.set('priority', dashFilters.priority)
+    if (dashFilters.category) params.set('category', dashFilters.category)
+
+    api.get(`/dashboard/stats${params.size ? `?${params}` : ''}`)
+      .then(data => { if (active) setApiStats(data) })
+      .catch(error => console.error('Dashboard stats error', error))
+    return () => { active = false }
+  }, [dashFilters, apiStatsCanRepresentFilters])
 
   const setSF     = (key, val) => setStaged(f => ({ ...f, [key]: val }))
   const applyFilters = () => setDashFilters({ ...staged })
@@ -460,8 +499,16 @@ export default function Dashboard() {
       const topDomain = [...row.domains].sort((a, b) => b[1] - a[1])[0]?.[0]
       return { name: topDomain ? `${company} (@${topDomain})` : company, count: row.count }
     }).sort((a, b) => b.count - a.count).slice(0, 10).map((row, index) => ({ ...row, fill: DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length] }))
+    if (apiStats && apiStatsCanRepresentFilters) {
+      stats.open = apiStats.open
+      stats.inProgress = apiStats.in_progress
+      stats.onHold = apiStats.on_hold
+      stats.resolved = apiStats.resolved
+      stats.critical = apiStats.critical
+      stats.total = apiStats.total
+    }
     return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, recent: recent.map(row => row.item), activityFeed: activityEvents.map(row => row.item), agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
-  }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName])
+  }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName, apiStats, apiStatsCanRepresentFilters])
   const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, recent, activityFeed, agentData } = dashboardData
   const internalActivityTickets = useMemo(() => tickets
     .filter(ticket => ticket.type === 'internal-activity')
