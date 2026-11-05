@@ -172,7 +172,13 @@ export default function MyTickets() {
     const uuid = ticketToDelete._uuid
     setDeleting(prev => ({ ...prev, [uuid]: true }))
     try {
-      await addTimelineEvent(uuid, { type: 'comment', text: `Ticket deletion reason: ${escapeHtml(reason)}` })
+      // Don't let the comment/automation request block the soft-delete request.
+      // Start recording the reason, then move the ticket to Deleted Items right away.
+      void addTimelineEvent(uuid, { type: 'comment', text: `Ticket deletion reason: ${escapeHtml(reason)}` })
+        .catch(error => {
+          console.error('Could not save ticket deletion reason', error)
+          addToast('Ticket was deleted, but its reason could not be recorded in the ticket history.', 'error')
+        })
       await softDelete(uuid)
       addToast(`${ticketToDelete.id} moved to Deleted Items`, 'success')
       setTicketToDelete(null)
