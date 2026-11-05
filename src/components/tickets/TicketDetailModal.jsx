@@ -571,6 +571,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const [resolutionCode, setResolutionCode] = useState('')
   const [editingResolution, setEditingResolution] = useState(false)
 
+  useEffect(() => {
+    if (!isEndUser && activeTab === 'resolution') fetchResolutionCodes()
+  }, [activeTab, isEndUser, fetchResolutionCodes])
+
   // On-hold reason modal
   const [onHoldModalOpen, setOnHoldModalOpen]   = useState(false)
   const [pendingOnHoldReason, setPendingOnHoldReason] = useState('')

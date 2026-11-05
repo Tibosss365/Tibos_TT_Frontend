@@ -2293,13 +2293,31 @@ function SimpleListPanel({ items, onAdd, onUpdate, onDelete, inputCls, placehold
   const [newLabel, setNewLabel] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editLabel, setEditLabel] = useState('')
+  const [adding, setAdding] = useState(false)
+  const { addToast } = useUiStore()
+
+  const handleAdd = async () => {
+    const label = newLabel.trim()
+    if (!label || adding) return
+    setAdding(true)
+    try {
+      await onAdd(label)
+      setNewLabel('')
+      addToast('Added successfully', 'success')
+    } catch (err) {
+      addToast(err?.message || 'Could not add this option', 'error')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
         <input className={inputCls + ' flex-1'} value={newLabel} onChange={e => setNewLabel(e.target.value)}
-          placeholder={placeholder} onKeyDown={e => { if (e.key === 'Enter' && newLabel.trim()) { onAdd(newLabel.trim()); setNewLabel('') } }} />
-        <Button variant="primary" size="sm" onClick={() => { if (newLabel.trim()) { onAdd(newLabel.trim()); setNewLabel('') } }}>
-          <Plus size={13} /> Add
+          placeholder={placeholder} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }} />
+        <Button type="button" variant="primary" size="sm" onClick={handleAdd} disabled={adding || !newLabel.trim()}>
+          <Plus size={13} /> {adding ? 'Adding…' : 'Add'}
         </Button>
       </div>
       <div className="space-y-1.5">
