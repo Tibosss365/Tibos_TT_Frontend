@@ -113,7 +113,7 @@ export const useTicketStore = create(
           const initialTicketIds = new Set(get().tickets.map(ticket => String(ticket._uuid)))
           set({ loading: !hasExistingTickets, ticketsLoaded: false, ticketsLoadError: null })
           try {
-            const firstPage = await api.get('/tickets?page=1&page_size=100')
+            const firstPage = await api.get('/tickets?page=1&page_size=500')
             const pages = Math.max(1, Number(firstPage.pages) || 1)
             const pageData = [firstPage]
             const loadedTickets = new Map((firstPage.items || []).map(item => {
@@ -150,7 +150,7 @@ export const useTicketStore = create(
               const end = Math.min(start + 3, pages)
               const batch = await Promise.all(
                 Array.from({ length: end - start + 1 }, (_, index) =>
-                  api.get(`/tickets?page=${start + index}&page_size=100`)
+                  api.get(`/tickets?page=${start + index}&page_size=500`)
                 )
               )
               pageData.push(...batch)
