@@ -167,7 +167,11 @@ function SlaIgnoreModal({ ticket, onClose, onConfirm }) {
 }
 
 export default function Dashboard() {
-  const { tickets, loading } = useTicketStore()
+  const { tickets, loading, ticketsLoaded } = useTicketStore()
+  // Charts are the heaviest thing on the page and would otherwise redraw on every
+  // page of tickets that arrives, so they wait for the first complete load.
+  const [chartsReady, setChartsReady] = useState(false)
+  useEffect(() => { if (ticketsLoaded) setChartsReady(true) }, [ticketsLoaded])
   const { getAgentName, getCategoryName, categories, groups, agents } = useAdminStore()
   const addToast = useUiStore(state => state.addToast)
   const navigate = useNavigate()
@@ -503,7 +507,11 @@ export default function Dashboard() {
     }
     overdueTickets.sort((a, b) => (b.slaDueTime ? now - new Date(b.slaDueTime).getTime() : 0) - (a.slaDueTime ? now - new Date(a.slaDueTime).getTime() : 0))
     const categoryColors = new Map(categories.map((category, index) => [category.id, category.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]]))
-    const categoryData = [...categoryCounts].map(([category, count]) => ({ name: getCategoryName(category), count, fill: categoryColors.get(category) || '#0ea5e9' })).sort((a, b) => b.count - a.count)
+    const allCategoryData = [...categoryCounts].map(([category, count]) => ({ name: getCategoryName(category), count, fill: categoryColors.get(category) || '#0ea5e9' })).sort((a, b) => b.count - a.count)
+    const otherCategories = allCategoryData.slice(10)
+    const categoryData = otherCategories.length
+      ? [...allCategoryData.slice(0, 10), { name: `Others (${otherCategories.length})`, count: otherCategories.reduce((sum, row) => sum + row.count, 0), fill: '#94a3b8' }]
+      : allCategoryData
     const statusData = Object.entries(chartStatusCounts).map(([status, count]) => ({ name: status.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '), count, fill: { open: '#3b82f6', 'in-progress': '#0ea5e9', 'on-hold': '#f59e0b', resolved: '#10b981', closed: '#64748b' }[status] || '#0ea5e9' }))
     const companyData = [...companyCounts].map(([company, row]) => {
       const topDomain = [...row.domains].sort((a, b) => b[1] - a[1])[0]?.[0]
@@ -1029,7 +1037,9 @@ export default function Dashboard() {
       )}
 
       {/* ── Charts row ─────────────────────────────────────────────────────── */}
-      <Suspense fallback={<div className="rounded-xl border border-glass p-8 text-center text-sm t-sub">Loading charts…</div>}><DashboardCharts categoryData={categoryData} statusData={statusData} companyData={companyData} /></Suspense>
+      {chartsReady
+        ? <Suspense fallback={<div className="rounded-xl border border-glass p-8 text-center text-sm t-sub">Loading charts…</div>}><DashboardCharts categoryData={categoryData} statusData={statusData} companyData={companyData} /></Suspense>
+        : <div className="rounded-xl border border-glass p-8 text-center text-sm t-sub">Loading charts…</div>}
 
       <Card>
         <CardHeader
