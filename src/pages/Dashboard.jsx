@@ -831,13 +831,10 @@ export default function Dashboard() {
           </div>}
         />
         {loading && tickets.length === 0 ? <div className="py-8 text-center text-sm t-sub">Loading live ticket data…</div> : <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-2 mb-3">
-            {visibleAgentStats.map(agent => <div key={agent.id} className="relative overflow-hidden rounded-lg border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] p-3">
-              <div className="absolute right-0 top-0 h-14 w-14 rounded-full bg-indigo-500/[0.06] blur-2xl" />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="min-w-0"><div className="text-[9px] font-bold uppercase tracking-wider t-sub">Resolved score</div><div className="mt-0.5 text-sm font-bold t-main truncate">{agent.name}</div></div>
-                <div className="shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-right"><div className="text-lg leading-5 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div><div className="text-[8px] font-bold uppercase tracking-wide text-emerald-500/80">completed</div></div>
-              </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-1.5 mb-3">
+            {visibleAgentStats.map(agent => <div key={agent.id} title={`${agent.name} — ${agent.allTimeResolved} resolved`} className="flex items-center justify-between gap-2 rounded-md border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] px-2 py-1.5">
+              <div className="min-w-0 truncate text-xs font-semibold t-main">{agent.name}</div>
+              <div className="shrink-0 rounded bg-emerald-500/10 px-1.5 py-0.5 text-sm leading-4 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div>
             </div>)}
             {visibleAgentStats.length === 0 && <div className="col-span-full py-5 text-center text-xs t-sub">No agents selected.</div>}
           </div>
