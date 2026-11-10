@@ -451,6 +451,7 @@ export const useAdminStore = create(
               markSeen:            data.mark_seen          ?? true,
               moveToFolder:        data.move_to_folder     || '',
               filterRules:         data.filter_rules       || [],
+              smartFilter:         data.smart_filter       || null,
               lastPolledAt:        data.last_polled_at     || null,
               lastPollAttemptAt:   data.last_poll_attempt_at || null,
               lastPollError:       data.last_poll_error || null,
@@ -483,6 +484,7 @@ export const useAdminStore = create(
           mark_seen:            inboundState.markSeen            ?? true,
           move_to_folder:       inboundState.moveToFolder        || null,
           filter_rules:         inboundState.filterRules         || [],
+          smart_filter:         inboundState.smartFilter         ?? null,
         }
         // Only include password if the user actually typed one
         if (inboundState.imapPass) body.imap_pass = inboundState.imapPass
@@ -495,6 +497,7 @@ export const useAdminStore = create(
             enabled:             data.enabled,
             auth_type:           data.auth_type,
             filterRules:         data.filter_rules    || [],
+            smartFilter:         data.smart_filter    || null,
             lastPolledAt:        data.last_polled_at  || null,
             lastPollAttemptAt:   data.last_poll_attempt_at || null,
             lastPollError:       data.last_poll_error || null,

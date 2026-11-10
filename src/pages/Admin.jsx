@@ -261,6 +261,8 @@ const RULE_FIELDS = [
   { value: 'subject',     label: 'Subject' },
   { value: 'from_email',  label: 'From Email' },
   { value: 'from_domain', label: 'From Domain' },
+  { value: 'to_email',    label: 'To Address (new tickets only)' },
+  { value: 'cc_email',    label: 'CC Address (new tickets only)' },
 ]
 const RULE_OPERATORS = [
   { value: 'contains',     label: 'contains' },
@@ -271,6 +273,13 @@ const RULE_OPERATORS = [
 ]
 const RULE_FIELD_LABEL    = Object.fromEntries(RULE_FIELDS.map(f => [f.value, f.label]))
 const RULE_OPERATOR_LABEL = Object.fromEntries(RULE_OPERATORS.map(o => [o.value, o.label]))
+const SMART_DEFAULT_COMMERCIAL = ['quote', 'quotation', 'purchase', 'purchase order', 'po number', 'proposal', 'rfp', 'request for proposal', 'pricing', 'price list', 'price', 'cost estimate', 'estimate', 'invoice', 'payment', 'renewal', 'discount', 'offer', 'tender', 'procurement', 'negotiation', 'commercial', 'business opportunity', 'partnership', 'buy', 'buying', 'order confirmation', 'rate card', 'demo', 'webinar', 'unsubscribe', 'newsletter']
+const SMART_DEFAULT_TECHNICAL = ['error', 'issue', 'problem', 'incorrect', 'not working', 'unable', 'cannot', "can't", 'failed', 'failure', 'login', 'log in', 'sign in', 'password', 'reset', 'locked', 'access', 'permission', 'mfa', 'outage', 'down', 'slow', 'sync', 'mailbox', 'outlook', 'teams', 'sharepoint', 'onedrive', 'intune', 'defender', 'disabled', 'not showing', 'showing', 'configure', 'configuration', 'setup', 'install', 'connect', 'connection', 'vpn', 'firewall', 'dns', 'backup', 'restore', 'bug', 'crash', 'migration', 'migrate']
+const SMART_MODES = [
+  { value: 'off',    label: 'Off' },
+  { value: 'shadow', label: 'Test mode' },
+  { value: 'on',     label: 'On' },
+]
 const FILTER_PRESETS = [
   { label: '🚫 No-Reply',    field: 'from_email',  operator: 'contains',    value: 'noreply' },
   { label: '📢 Promotions',  field: 'subject',     operator: 'contains',    value: 'unsubscribe' },
@@ -282,6 +291,9 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
   const [showPass, setShowPass] = useState(false)
   const [polling, setPolling] = useState(false)
   const [newRule, setNewRule] = useState({ field: 'subject', operator: 'contains', value: '' })
+  const smart = inboundEdits.smartFilter || { mode: 'off', commercial: SMART_DEFAULT_COMMERCIAL, technical: SMART_DEFAULT_TECHNICAL }
+  const setSmart = patch => set('smartFilter', { ...smart, ...patch })
+  const parseWords = text => text.split(',').map(w => w.trim().toLowerCase()).filter(Boolean)
   const set = (k, v) => setInboundEdits(p => ({ ...p, [k]: v }))
 
   // Keep the displayed poll status current while this admin panel is open.
@@ -627,6 +639,42 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
         </div>
         <p className="text-[10px] t-muted mt-2">
           Rules are checked against every incoming email before a ticket is created. Matched emails are logged as <span className="font-semibold text-slate-400">Filtered</span> and skipped.
+        </p>
+      </Card>
+
+      {/* ── Smart Filter (keywords) ──────────────────────────────────────── */}
+      <Card>
+        <CardHeader title="Smart Filter" subtitle="Keep sales / commercial emails from becoming tickets (keyword based, free)" />
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[11px] font-semibold t-sub">Mode</span>
+          <div className="inline-flex rounded-lg border border-glass p-0.5" role="group" aria-label="Smart filter mode">
+            {SMART_MODES.map(m => (
+              <button key={m.value} type="button" onClick={() => setSmart({ mode: m.value })} aria-pressed={smart.mode === m.value}
+                className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${smart.mode === m.value ? 'bg-indigo-500 text-white' : 't-sub hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] font-bold t-sub uppercase tracking-wider">Commercial words (comma separated)</label>
+            <textarea rows={5} className={inputCls + ' mt-1 text-xs'} value={(smart.commercial || SMART_DEFAULT_COMMERCIAL).join(', ')}
+              onChange={e => setSmart({ commercial: parseWords(e.target.value) })} />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold t-sub uppercase tracking-wider">Technical words (comma separated)</label>
+            <textarea rows={5} className={inputCls + ' mt-1 text-xs'} value={(smart.technical || SMART_DEFAULT_TECHNICAL).join(', ')}
+              onChange={e => setSmart({ technical: parseWords(e.target.value) })} />
+          </div>
+        </div>
+        <button type="button" onClick={() => setSmart({ commercial: SMART_DEFAULT_COMMERCIAL, technical: SMART_DEFAULT_TECHNICAL })}
+          className="mt-2 text-[10px] font-semibold text-indigo-500 hover:text-indigo-400">Reset to default words</button>
+        <p className="text-[10px] t-muted mt-2">
+          Only <span className="font-semibold">new</span> emails are checked (replies on an existing ticket are never blocked). It reads the subject (counts double) and the top of the new message, not the quoted history below it.
+          A word counts once. An email is treated as commercial when its commercial score is at least 2 and higher than its technical score; when unsure, a ticket is created.
+          <span className="font-semibold"> Test mode</span> still creates the ticket and adds a note saying it would have been filtered, so you can check accuracy first. <span className="font-semibold">On</span> blocks it (it shows as Filtered in the Email Log and can be converted manually).
+          Remember to press Save.
         </p>
       </Card>
 
