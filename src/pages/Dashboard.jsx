@@ -831,10 +831,10 @@ export default function Dashboard() {
           </div>}
         />
         {loading && tickets.length === 0 ? <div className="py-8 text-center text-sm t-sub">Loading live ticket data…</div> : <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-6 gap-1.5 mb-3">
-            {visibleAgentStats.map(agent => <div key={agent.id} title={`${agent.name} — ${agent.allTimeResolved} resolved`} className="flex items-center justify-between gap-2 rounded-md border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] px-2 py-1.5">
-              <div className="min-w-0 truncate text-xs font-semibold t-main">{agent.name}</div>
-              <div className="shrink-0 rounded bg-emerald-500/10 px-1.5 py-0.5 text-sm leading-4 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div>
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-1.5 mb-3">
+            {visibleAgentStats.map(agent => <div key={agent.id} title={`${agent.name} — ${agent.allTimeResolved} resolved`} className="rounded-lg border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] px-2 py-1.5 text-center">
+              <div className="text-base leading-5 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div>
+              <div className="truncate text-[11px] t-sub">{agent.name}</div>
             </div>)}
             {visibleAgentStats.length === 0 && <div className="col-span-full py-5 text-center text-xs t-sub">No agents selected.</div>}
           </div>
