@@ -292,6 +292,31 @@ export default function Dashboard() {
     }
   }
 
+  const handleCategorySpecialistsExcel = async () => {
+    setExporting('category-specialists-excel')
+    try {
+      const XLSX = await import('xlsx')
+      const rows = [
+        ['Category Specialists · Completed Tickets'],
+        [],
+        ['Category', ...visibleAgents.map(agent => agent.name), 'Total'],
+        ...agentWorkSummary.categoryRows.map(row => [
+          getCategoryName(row.category) || 'Uncategorized',
+          ...visibleAgents.map(agent => row.counts[agent.name] || 0),
+          Object.values(row.counts).reduce((sum, count) => sum + count, 0),
+        ]),
+      ]
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.aoa_to_sheet(rows)
+      worksheet['!cols'] = [{ wch: 34 }, ...visibleAgents.map(() => ({ wch: 16 })), { wch: 10 }]
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Category Specialists')
+      XLSX.writeFile(workbook, 'category-specialists-completed.xlsx')
+    } catch (e) {
+      console.error('Category specialists Excel export failed', e)
+    } finally {
+      setExporting(null)
+    }
+  }
   const handleMonthTicketsExcel = async () => {
     setExporting('month-tickets-excel')
     try {
@@ -592,7 +617,7 @@ export default function Dashboard() {
       const agentName = agentNameById.get(agentId) || 'Unassigned'
       row.counts[agentName] = (row.counts[agentName] || 0) + 1
     })
-    return { agentStats: [...statsByAgent.values()], categoryRows: [...categoryMap.values()].sort((a, b) => a.category.localeCompare(b.category)) }
+    return { agentStats: [...statsByAgent.values()], categoryRows: [...categoryMap.values()].sort((a, b) => Object.values(b.counts).reduce((x, y) => x + y, 0) - Object.values(a.counts).reduce((x, y) => x + y, 0) || a.category.localeCompare(b.category)) }
   }, [tickets, dailyAgents, dashboardDay])
   const visibleAgentStats = useMemo(() => {
     const ids = new Set(visibleAgents.map(agent => String(agent.id)))
@@ -872,13 +897,18 @@ export default function Dashboard() {
               {agentWorkSummary.agentStats.length === 0 && <tr><td colSpan={10} className="py-6 text-center t-sub">No agent ticket data available.</td></tr>}</tbody>
             </table>
           </div>
-          <div className="flex items-center gap-2 mb-3"><Users size={14} className="text-violet-500" /><h3 className="text-xs font-bold t-main">Category Specialists · Completed Tickets</h3></div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2"><Users size={14} className="text-violet-500" /><h3 className="text-xs font-bold t-main">Category Specialists · Completed Tickets</h3>{agentWorkSummary.categoryRows.length > 10 && <span className="text-[10px] t-sub">Top 10 of {agentWorkSummary.categoryRows.length} categories</span>}</div>
+            <Button variant="outline" size="sm" onClick={handleCategorySpecialistsExcel} disabled={exporting === 'category-specialists-excel' || agentWorkSummary.categoryRows.length === 0}>
+              <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'category-specialists-excel' ? 'Preparing…' : 'Download all'}
+            </Button>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-glass">
             <table className="w-full text-xs min-w-max">
               <thead><tr className="bg-black/[0.03] dark:bg-white/[0.04] border-b border-glass">
                 {['Category', ...visibleAgents.map(agent => agent.name)].map((heading, index) => <th key={`${heading}-${index}`} className="py-3 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap">{heading}</th>)}
               </tr></thead>
-              <tbody>{agentWorkSummary.categoryRows.map(row => <tr key={row.key} className="border-b border-glass last:border-0 hover:bg-violet-500/[0.035]">
+              <tbody>{agentWorkSummary.categoryRows.slice(0, 10).map(row => <tr key={row.key} className="border-b border-glass last:border-0 hover:bg-violet-500/[0.035]">
                 <td className="py-3 px-3 t-main whitespace-nowrap">{getCategoryName(row.category) || 'Uncategorized'}</td>
                 {visibleAgents.map(agent => { const count = row.counts[agent.name] || 0; return <td key={agent.id} className="py-3 px-3">{count ? <span className="inline-flex rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500">{count} completed</span> : <span className="t-sub">—</span>}</td> })}
               </tr>)}
