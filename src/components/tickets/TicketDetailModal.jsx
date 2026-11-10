@@ -663,8 +663,11 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   }, [])
 
   // Load full ticket detail (with timeline) when modal opens
+  // Ticket lists only carry a description preview, so editing waits for the full text.
+  const [detailLoaded, setDetailLoaded] = useState(false)
   useEffect(() => {
-    fetchTicket(ticket._uuid)
+    setDetailLoaded(false)
+    Promise.resolve(fetchTicket(ticket._uuid)).finally(() => setDetailLoaded(true))
   }, [ticket._uuid])
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
@@ -727,6 +730,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
 
   // ── Edit / Save / Cancel ───────────────────────────────────────────────────
   const handleEdit = () => {
+    if (!detailLoaded) { addToast('Loading ticket details…', 'info'); return }
     // Email-sourced descriptions are stored as HTML (structure/signature/images
     // preserved for the read view). A raw-HTML textarea shows confusing markup
     // (<div style…>, &quot;), so convert to clean readable text for editing.
