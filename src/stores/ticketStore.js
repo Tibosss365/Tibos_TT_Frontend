@@ -105,9 +105,12 @@ export const useTicketStore = create(
         }
 
         const fetchAllPages = async () => {
-          // Keep any cached tickets visible while refreshing, then progressively
-          // merge fresh pages into the list instead of waiting for all history.
+          // Keep the cached snapshot visible until the first live page arrives,
+          // then build the visible list from the server pages. Preserve only
+          // local changes created while this refresh is in flight.
           const hasExistingTickets = get().tickets.length > 0
+          const refreshStartedAt = Date.now()
+          const initialTicketIds = new Set(get().tickets.map(ticket => String(ticket._uuid)))
           set({ loading: !hasExistingTickets, ticketsLoaded: false, ticketsLoadError: null })
           try {
             const firstPage = await api.get('/tickets?page=1&page_size=100')
@@ -119,13 +122,25 @@ export const useTicketStore = create(
             }))
             const publishLoadedPages = () => {
               const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
-              const merged = new Map(get().tickets.filter(ticket => !deletedIds.has(ticket._uuid)).map(ticket => [ticket._uuid, ticket]))
-              loadedTickets.forEach((ticket, id) => { if (!deletedIds.has(id)) merged.set(id, ticket) })
+              const merged = new Map(loadedTickets)
+              const changedDuringRefresh = get().tickets.filter(ticket => {
+                const id = String(ticket._uuid)
+                const changedAt = new Date(ticket.updated || ticket.created || 0).getTime()
+                return !initialTicketIds.has(id) || changedAt > refreshStartedAt
+              })
+              changedDuringRefresh.forEach(ticket => {
+                const id = String(ticket._uuid)
+                if (deletedIds.has(id)) return
+                const serverTicket = merged.get(id)
+                const localUpdatedAt = new Date(ticket.updated || ticket.created || 0).getTime()
+                const serverUpdatedAt = new Date(serverTicket?.updated || serverTicket?.created || 0).getTime()
+                if (!serverTicket || localUpdatedAt > serverUpdatedAt) merged.set(id, ticket)
+              })
+              deletedIds.forEach(id => merged.delete(String(id)))
               const visibleTickets = [...merged.values()].sort(
                 (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
               )
               set({ tickets: visibleTickets, loading: false })
-              saveTicketSnapshot(visibleTickets)
             }
             publishLoadedPages()
 
@@ -146,13 +161,24 @@ export const useTicketStore = create(
               publishLoadedPages()
             }
 
-            const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
-            const allTickets = [...new Map(
+            const deletedIds = new Set(get().deletedTickets.map(ticket => String(ticket._uuid)))
+            const allTicketMap = new Map(
               pageData
                 .flatMap(data => (data.items || []).map(normalizeTicket))
-                .filter(ticket => !deletedIds.has(ticket._uuid))
-                .map(ticket => [ticket._uuid, ticket])
-            ).values()]
+                .filter(ticket => !deletedIds.has(String(ticket._uuid)))
+                .map(ticket => [String(ticket._uuid), ticket])
+            )
+            get().tickets.forEach(ticket => {
+              const id = String(ticket._uuid)
+              const changedAt = new Date(ticket.updated || ticket.created || 0).getTime()
+              if (deletedIds.has(id) || (initialTicketIds.has(id) && changedAt <= refreshStartedAt)) return
+              const serverTicket = allTicketMap.get(id)
+              const serverUpdatedAt = new Date(serverTicket?.updated || serverTicket?.created || 0).getTime()
+              if (!serverTicket || changedAt > serverUpdatedAt) allTicketMap.set(id, ticket)
+            })
+            const allTickets = [...allTicketMap.values()].sort(
+              (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
+            )
             set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
             saveTicketSnapshot(allTickets)
           } catch (e) {
