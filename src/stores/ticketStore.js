@@ -105,12 +105,9 @@ export const useTicketStore = create(
         }
 
         const fetchAllPages = async () => {
-          // Keep the cached snapshot visible until the first live page arrives,
-          // then build the visible list from the server pages. Preserve only
-          // local changes created while this refresh is in flight.
+          // Keep any cached tickets visible while refreshing, then progressively
+          // merge fresh pages into the list instead of waiting for all history.
           const hasExistingTickets = get().tickets.length > 0
-          const refreshStartedAt = Date.now()
-          const initialTicketIds = new Set(get().tickets.map(ticket => String(ticket._uuid)))
           set({ loading: !hasExistingTickets, ticketsLoaded: false, ticketsLoadError: null })
           try {
             const firstPage = await api.get('/tickets?page=1&page_size=100')
@@ -122,25 +119,13 @@ export const useTicketStore = create(
             }))
             const publishLoadedPages = () => {
               const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
-              const merged = new Map(loadedTickets)
-              const changedDuringRefresh = get().tickets.filter(ticket => {
-                const id = String(ticket._uuid)
-                const changedAt = new Date(ticket.updated || ticket.created || 0).getTime()
-                return !initialTicketIds.has(id) || changedAt > refreshStartedAt
-              })
-              changedDuringRefresh.forEach(ticket => {
-                const id = String(ticket._uuid)
-                if (deletedIds.has(id)) return
-                const serverTicket = merged.get(id)
-                const localUpdatedAt = new Date(ticket.updated || ticket.created || 0).getTime()
-                const serverUpdatedAt = new Date(serverTicket?.updated || serverTicket?.created || 0).getTime()
-                if (!serverTicket || localUpdatedAt > serverUpdatedAt) merged.set(id, ticket)
-              })
-              deletedIds.forEach(id => merged.delete(String(id)))
+              const merged = new Map(get().tickets.filter(ticket => !deletedIds.has(ticket._uuid)).map(ticket => [ticket._uuid, ticket]))
+              loadedTickets.forEach((ticket, id) => { if (!deletedIds.has(id)) merged.set(id, ticket) })
               const visibleTickets = [...merged.values()].sort(
                 (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
               )
               set({ tickets: visibleTickets, loading: false })
+              saveTicketSnapshot(visibleTickets)
             }
             publishLoadedPages()
 
@@ -161,24 +146,13 @@ export const useTicketStore = create(
               publishLoadedPages()
             }
 
-            const deletedIds = new Set(get().deletedTickets.map(ticket => String(ticket._uuid)))
-            const allTicketMap = new Map(
+            const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
+            const allTickets = [...new Map(
               pageData
                 .flatMap(data => (data.items || []).map(normalizeTicket))
-                .filter(ticket => !deletedIds.has(String(ticket._uuid)))
-                .map(ticket => [String(ticket._uuid), ticket])
-            )
-            get().tickets.forEach(ticket => {
-              const id = String(ticket._uuid)
-              const changedAt = new Date(ticket.updated || ticket.created || 0).getTime()
-              if (deletedIds.has(id) || (initialTicketIds.has(id) && changedAt <= refreshStartedAt)) return
-              const serverTicket = allTicketMap.get(id)
-              const serverUpdatedAt = new Date(serverTicket?.updated || serverTicket?.created || 0).getTime()
-              if (!serverTicket || changedAt > serverUpdatedAt) allTicketMap.set(id, ticket)
-            })
-            const allTickets = [...allTicketMap.values()].sort(
-              (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
-            )
+                .filter(ticket => !deletedIds.has(ticket._uuid))
+                .map(ticket => [ticket._uuid, ticket])
+            ).values()]
             set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
             saveTicketSnapshot(allTickets)
           } catch (e) {
@@ -271,39 +245,15 @@ export const useTicketStore = create(
         if (changes.customFieldData !== undefined) body.custom_field_data = changes.customFieldData
         if (changes.dueDate      !== undefined) body.due_date          = changes.dueDate || null
         if (changes.owners       !== undefined) body.owners            = changes.owners || []
-        const fields = {
-          subject: 'subject', type: 'type', category: 'category', priority: 'priority',
-          status: 'status', assignee: 'assignee', company: 'company', submitter: 'contactName',
-          email: 'email', asset: 'asset', description: 'description', resolution: 'resolution',
-          holdReason: 'holdReason', resolutionCode: 'resolutionCode', group: 'group', source: 'source',
-          tags: 'tags', customFieldData: 'customFieldData', dueDate: 'dueDate', owners: 'owners',
-        }
-        const optimistic = Object.fromEntries(Object.entries(fields)
-          .filter(([key]) => changes[key] !== undefined)
-          .map(([key, field]) => [field, changes[key]]))
-        if (changes.status === 'resolved' || changes.status === 'closed') optimistic.resolvedAt = new Date().toISOString()
-        optimistic.updated = new Date().toISOString()
-        const previous = get().tickets.find(t => t._uuid === uuid) || get().myRequests.find(t => t._uuid === uuid)
-        const patchLists = transform => ({
-          tickets: transform('tickets'),
-          myRequests: transform('myRequests'),
+        const data = await api.patch(`/tickets/${uuid}`, body)
+        const updated = normalizeTicket(data)
+        // Preserve attachments already loaded in the store — PATCH response returns [] for attachments
+        set(s => {
+          const existing = s.tickets.find(t => t._uuid === uuid)
+          const merged = { ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
+          return { tickets: s.tickets.map(t => t._uuid === uuid ? merged : t) }
         })
-        set(s => patchLists(key => s[key].map(t => t._uuid === uuid ? { ...t, ...optimistic } : t)))
-        try {
-          const data = await api.patch(`/tickets/${uuid}`, body)
-          const updated = normalizeTicket(data)
-          // Preserve attachments already loaded in the store — PATCH response returns [] for attachments.
-          set(s => patchLists(key => s[key].map(t => t._uuid === uuid
-            ? { ...updated, attachments: t.attachments?.length ? t.attachments : updated.attachments }
-            : t)))
-          return updated
-        } catch (error) {
-          if (previous) {
-            const rollback = Object.fromEntries(Object.keys(optimistic).map(key => [key, previous[key]]))
-            set(s => patchLists(key => s[key].map(t => t._uuid === uuid ? { ...t, ...rollback } : t)))
-          }
-          throw error
-        }
+        return updated
       },
 
       deleteTicket: async (uuid) => {
@@ -410,16 +360,7 @@ export const useTicketStore = create(
         try {
           const data = await api.get(`/tickets/${uuid}`)
           const updated = normalizeTicket(data)
-          set(s => {
-            const existing = s.tickets.find(t => t._uuid === uuid)
-            const merged = { ...existing, ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
-            return {
-              tickets: existing
-                ? s.tickets.map(t => t._uuid === uuid ? merged : t)
-                : [merged, ...s.tickets],
-              myRequests: s.myRequests.map(t => t._uuid === uuid ? { ...t, ...updated } : t),
-            }
-          })
+          set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated } : t) }))
           return updated
         } catch (e) {
           console.error('fetchTicket error', e)
@@ -491,25 +432,8 @@ export const useTicketStore = create(
           ticket_ids: uuids, action,
           ...(action === 'resolve' ? { resolution: changes.resolution, resolution_code: changes.resolutionCode || undefined } : {}),
         })
-        const ids = new Set(uuids.map(String))
-        const now = new Date().toISOString()
-        set(s => ({
-          tickets: s.tickets.map(t => ids.has(String(t._uuid)) ? {
-            ...t,
-            status: changes.status,
-            updated: now,
-            resolvedAt: now,
-            ...(action === 'resolve' ? { resolution: changes.resolution, resolutionCode: changes.resolutionCode || '' } : {}),
-          } : t),
-          myRequests: s.myRequests.map(t => ids.has(String(t._uuid)) ? {
-            ...t,
-            status: changes.status,
-            updated: now,
-            resolvedAt: now,
-            ...(action === 'resolve' ? { resolution: changes.resolution, resolutionCode: changes.resolutionCode || '' } : {}),
-          } : t),
-          selectedIds: [],
-        }))
+        await get().fetchTickets()
+        set({ selectedIds: [] })
       },
 
       bulkDelete: async (uuids) => {

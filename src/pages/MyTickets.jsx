@@ -161,23 +161,21 @@ export default function MyTickets() {
     setDeleteReason('')
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const reason = deleteReason.trim()
     if (!ticketToDelete || !reason || deleting[ticketToDelete._uuid]) return
     const uuid = ticketToDelete._uuid
-    const ticketId = ticketToDelete.id
     setDeleting(prev => ({ ...prev, [uuid]: true }))
-    // softDelete applies its optimistic update before its first await, so dismiss
-    // the dialog immediately and report a server failure asynchronously.
-    const request = softDelete(uuid, reason)
-    setTicketToDelete(null)
-    setDeleteReason('')
-    addToast(`${ticketId} moved to Deleted Items`, 'success')
-    void request.catch(error => {
+    try {
+      await softDelete(uuid, reason)
+      addToast(`${ticketToDelete.id} moved to Deleted Items`, 'success')
+      setTicketToDelete(null)
+      setDeleteReason('')
+    } catch (error) {
       addToast(error?.message ? `Could not delete ticket: ${error.message}` : 'Could not delete ticket. Please try again.', 'error')
-    }).finally(() => {
+    } finally {
       setDeleting(prev => ({ ...prev, [uuid]: false }))
-    })
+    }
   }
 
   // ── Unassigned pool (visible to all agents) ───────────────────────────────

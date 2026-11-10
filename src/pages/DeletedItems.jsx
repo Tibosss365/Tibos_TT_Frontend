@@ -20,6 +20,8 @@ export default function DeletedItems() {
 
   useEffect(() => {
     fetchDeletedTickets()
+    const timer = setInterval(fetchDeletedTickets, 5000)
+    return () => clearInterval(timer)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRestore = async (uuid, ticketId) => {
