@@ -14,7 +14,7 @@ const TICKET_DATA_PATHS = new Set(['/dashboard', '/tickets', '/tickets/mine', '/
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
-  const { fetchTickets, fetchDeletedTickets, applyRemoteDelete, applyRemoteRestore, ticketsLoaded } = useTicketStore()
+  const { fetchTickets, fetchTicket, fetchDeletedTickets, applyRemoteDelete, applyRemoteRestore, ticketsLoaded } = useTicketStore()
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
@@ -50,20 +50,34 @@ export function Layout() {
 
     let refreshTimer = null
     let refreshDeletedTickets = false
-    const scheduleLiveRefresh = (includeDeleted = false) => {
-      refreshDeletedTickets = refreshDeletedTickets || includeDeleted
+    let refreshTickets = false
+    const refreshTicketIds = new Set()
+    const scheduleLiveRefresh = ({ tickets = false, ticketIds = [], deleted = false } = {}) => {
+      refreshTickets = refreshTickets || tickets
+      refreshDeletedTickets = refreshDeletedTickets || deleted
+      ticketIds.forEach(id => id && refreshTicketIds.add(String(id)))
       if (refreshTimer) clearTimeout(refreshTimer)
       refreshTimer = setTimeout(() => {
         refreshTimer = null
-        if (TICKET_DATA_PATHS.has(pathRef.current)) fetchTickets()
-        fetchNotifications()
-        fetchPendingApprovals()
+        if (TICKET_DATA_PATHS.has(pathRef.current)) {
+          if (refreshTickets || refreshTicketIds.size > 20) fetchTickets()
+          else refreshTicketIds.forEach(id => fetchTicket(id))
+        }
         if (refreshDeletedTickets && pathRef.current === '/deleted') fetchDeletedTickets()
+        refreshTickets = false
         refreshDeletedTickets = false
+        refreshTicketIds.clear()
       }, 400)
     }
 
-    const handleTicketEvent = () => scheduleLiveRefresh()
+    const handleTicketEvent = (event) => {
+      try {
+        const payload = JSON.parse(event.data || '{}')
+        scheduleLiveRefresh({ ticketIds: [payload.ticket_id] })
+      } catch {
+        scheduleLiveRefresh({ tickets: true })
+      }
+    }
     const handleDeleteEvent = (event) => {
       try {
         const payload = JSON.parse(event.data || '{}')
@@ -73,11 +87,13 @@ export function Layout() {
           applyRemoteDelete(payload.ticket_ids || [], payload.deleted_at, payload.delete_reason)
         } else if (event.type === 'ticket_restored' && payload.ticket_id) {
           applyRemoteRestore([payload.ticket_id])
+        } else if (event.type === 'tickets_bulk_updated' && payload.ticket_ids?.length) {
+          scheduleLiveRefresh({ ticketIds: payload.ticket_ids })
         }
       } catch (error) {
         console.error('Could not apply live ticket delete event', error)
       }
-      scheduleLiveRefresh(true)
+      scheduleLiveRefresh({ deleted: true })
     }
 
     es.addEventListener('ticket_created',      handleTicketEvent)
@@ -91,6 +107,7 @@ export function Layout() {
       try {
         const payload = JSON.parse(e.data)
         addNotification(payload.text || 'New notification', payload.type || 'info', !!payload.is_approval)
+        if (payload.is_approval) fetchPendingApprovals()
       } catch {
         // ignore malformed SSE data
       }

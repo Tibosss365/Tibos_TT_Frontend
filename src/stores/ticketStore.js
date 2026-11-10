@@ -245,15 +245,39 @@ export const useTicketStore = create(
         if (changes.customFieldData !== undefined) body.custom_field_data = changes.customFieldData
         if (changes.dueDate      !== undefined) body.due_date          = changes.dueDate || null
         if (changes.owners       !== undefined) body.owners            = changes.owners || []
-        const data = await api.patch(`/tickets/${uuid}`, body)
-        const updated = normalizeTicket(data)
-        // Preserve attachments already loaded in the store — PATCH response returns [] for attachments
-        set(s => {
-          const existing = s.tickets.find(t => t._uuid === uuid)
-          const merged = { ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
-          return { tickets: s.tickets.map(t => t._uuid === uuid ? merged : t) }
+        const fields = {
+          subject: 'subject', type: 'type', category: 'category', priority: 'priority',
+          status: 'status', assignee: 'assignee', company: 'company', submitter: 'contactName',
+          email: 'email', asset: 'asset', description: 'description', resolution: 'resolution',
+          holdReason: 'holdReason', resolutionCode: 'resolutionCode', group: 'group', source: 'source',
+          tags: 'tags', customFieldData: 'customFieldData', dueDate: 'dueDate', owners: 'owners',
+        }
+        const optimistic = Object.fromEntries(Object.entries(fields)
+          .filter(([key]) => changes[key] !== undefined)
+          .map(([key, field]) => [field, changes[key]]))
+        if (changes.status === 'resolved' || changes.status === 'closed') optimistic.resolvedAt = new Date().toISOString()
+        optimistic.updated = new Date().toISOString()
+        const previous = get().tickets.find(t => t._uuid === uuid) || get().myRequests.find(t => t._uuid === uuid)
+        const patchLists = transform => ({
+          tickets: transform('tickets'),
+          myRequests: transform('myRequests'),
         })
-        return updated
+        set(s => patchLists(key => s[key].map(t => t._uuid === uuid ? { ...t, ...optimistic } : t)))
+        try {
+          const data = await api.patch(`/tickets/${uuid}`, body)
+          const updated = normalizeTicket(data)
+          // Preserve attachments already loaded in the store — PATCH response returns [] for attachments.
+          set(s => patchLists(key => s[key].map(t => t._uuid === uuid
+            ? { ...updated, attachments: t.attachments?.length ? t.attachments : updated.attachments }
+            : t)))
+          return updated
+        } catch (error) {
+          if (previous) {
+            const rollback = Object.fromEntries(Object.keys(optimistic).map(key => [key, previous[key]]))
+            set(s => patchLists(key => s[key].map(t => t._uuid === uuid ? { ...t, ...rollback } : t)))
+          }
+          throw error
+        }
       },
 
       deleteTicket: async (uuid) => {
@@ -360,7 +384,16 @@ export const useTicketStore = create(
         try {
           const data = await api.get(`/tickets/${uuid}`)
           const updated = normalizeTicket(data)
-          set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated } : t) }))
+          set(s => {
+            const existing = s.tickets.find(t => t._uuid === uuid)
+            const merged = { ...existing, ...updated, attachments: existing?.attachments?.length ? existing.attachments : updated.attachments }
+            return {
+              tickets: existing
+                ? s.tickets.map(t => t._uuid === uuid ? merged : t)
+                : [merged, ...s.tickets],
+              myRequests: s.myRequests.map(t => t._uuid === uuid ? { ...t, ...updated } : t),
+            }
+          })
           return updated
         } catch (e) {
           console.error('fetchTicket error', e)
@@ -432,8 +465,25 @@ export const useTicketStore = create(
           ticket_ids: uuids, action,
           ...(action === 'resolve' ? { resolution: changes.resolution, resolution_code: changes.resolutionCode || undefined } : {}),
         })
-        await get().fetchTickets()
-        set({ selectedIds: [] })
+        const ids = new Set(uuids.map(String))
+        const now = new Date().toISOString()
+        set(s => ({
+          tickets: s.tickets.map(t => ids.has(String(t._uuid)) ? {
+            ...t,
+            status: changes.status,
+            updated: now,
+            resolvedAt: now,
+            ...(action === 'resolve' ? { resolution: changes.resolution, resolutionCode: changes.resolutionCode || '' } : {}),
+          } : t),
+          myRequests: s.myRequests.map(t => ids.has(String(t._uuid)) ? {
+            ...t,
+            status: changes.status,
+            updated: now,
+            resolvedAt: now,
+            ...(action === 'resolve' ? { resolution: changes.resolution, resolutionCode: changes.resolutionCode || '' } : {}),
+          } : t),
+          selectedIds: [],
+        }))
       },
 
       bulkDelete: async (uuids) => {
