@@ -52,6 +52,18 @@ const DEFAULT_ON_HOLD_REASONS = [
   'Customer Requested Delay',
 ]
 
+const DEFAULT_RESOLUTION_CODES = [
+  'Fixed - Software Issue',
+  'Fixed - Hardware Issue',
+  'Fixed - Configuration Change',
+  'Fixed - Network / Connectivity',
+  'Workaround Provided',
+  'User Training / Guidance',
+  'Third Party / Vendor Action',
+  'No Issue Found',
+  'Duplicate Ticket',
+].map(label => ({ id: label, label }))
+
 const LINK_TYPES = [
   { id: 'related',   label: 'Related',   color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' },
   { id: 'duplicate', label: 'Duplicate', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
@@ -556,6 +568,8 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const { signatures, fetchSignatures } = useEmailStore()
   const t = useT()
   const isEndUser = currentUser?.role === 'user'
+  // Provide usable standard codes if the configured list is empty or temporarily unavailable.
+  const availableResolutionCodes = resolutionCodes.length ? resolutionCodes : DEFAULT_RESOLUTION_CODES
 
   useEffect(() => { if (!isEndUser) fetchSignatures() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -1760,12 +1774,12 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                       </div>
                     </div>
                   )}
-                  {(resolutionCodes.length > 0 || resolutionCode) && (
+                  {(availableResolutionCodes.length > 0 || resolutionCode) && (
                     <div>
                       <div className={labelCls}>Resolution Code {!isResolvedLocked && <span className="text-rose-500">*</span>}</div>
                       {isResolvedLocked ? (
                         <div className="glass-input w-full text-sm t-main">
-                          {resolutionCodes.find(rc => rc.id === resolutionCode)?.label || resolutionCode || '—'}
+                          {availableResolutionCodes.find(rc => rc.id === resolutionCode)?.label || resolutionCode || '—'}
                         </div>
                       ) : (
                         <select
@@ -1774,7 +1788,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                           onChange={e => setResolutionCode(e.target.value)}
                         >
                           <option value="">— Select a resolution code —</option>
-                          {resolutionCodes.map(rc => (
+                          {availableResolutionCodes.map(rc => (
                             <option key={rc.id} value={rc.id}>{rc.label}</option>
                           ))}
                         </select>
@@ -1840,12 +1854,12 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                       <Button
                         variant="primary"
                         size="sm"
-                        disabled={!resolverId || !edits.resolution.trim() || !(edits.assignee || liveTicket.assignee) || (resolutionCodes.length > 0 && !resolutionCode)}
+                        disabled={!resolverId || !edits.resolution.trim() || !(edits.assignee || liveTicket.assignee) || !resolutionCode}
                         onClick={async () => {
                           if (!(edits.assignee || liveTicket.assignee)) { addToast('Assign an agent before resolving or closing the ticket', 'error'); setActiveTab('details'); return }
                           if (!resolverId) { addToast('Please select who resolved this ticket', 'error'); return }
                           if (!edits.resolution.trim()) { addToast('Please enter resolution notes before resolving', 'error'); return }
-                          if (resolutionCodes.length > 0 && !resolutionCode) { addToast('Please select a resolution code', 'error'); return }
+                          if (!resolutionCode) { addToast('Please select a resolution code', 'error'); return }
                           const resolverAgentName = getAgentName(resolverId)
                           set('status', 'resolved')
                           await handleSave({ status: 'resolved', resolution: edits.resolution, resolutionCode })

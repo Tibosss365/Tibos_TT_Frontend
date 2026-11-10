@@ -58,6 +58,12 @@ const STATUS_OPTIONS = [
   { key: 'closed',      label: 'Closed'      },
 ]
 
+const DEFAULT_RESOLUTION_CODES = [
+  'Fixed - Software Issue', 'Fixed - Hardware Issue', 'Fixed - Configuration Change',
+  'Fixed - Network / Connectivity', 'Workaround Provided', 'User Training / Guidance',
+  'Third Party / Vendor Action', 'No Issue Found', 'Duplicate Ticket',
+].map(label => ({ id: label, label }))
+
 const STATUS_ACTIVE_CLS = {
   '':             'bg-indigo-500/15 text-indigo-500 border-indigo-500/40',
   'open':         'bg-blue-500/15 text-blue-500 border-blue-500/40',
@@ -82,6 +88,7 @@ export default function AllTickets() {
   } = useTicketStore()
   const { getAgentName, getCategoryName, categories, groups, getGroupName, agents, resolutionCodes, fetchResolutionCodes } = useAdminStore()
   const { addToast } = useUiStore()
+  const availableResolutionCodes = resolutionCodes.length ? resolutionCodes : DEFAULT_RESOLUTION_CODES
   const t = useT()
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
@@ -227,7 +234,7 @@ export default function AllTickets() {
   }
   const confirmBulkResolve = async () => {
     if (!resolutionNotes.trim()) { addToast('Enter resolution notes before resolving', 'error'); return }
-    if (resolutionCodes.length > 0 && !resolutionCode) { addToast('Select a resolution code before resolving', 'error'); return }
+    if (!resolutionCode) { addToast('Select a resolution code before resolving', 'error'); return }
     setResolving(true)
     try {
       await bulkUpdate(selectedIds, { status: 'resolved', resolution: resolutionNotes.trim(), resolutionCode })
@@ -663,12 +670,12 @@ export default function AllTickets() {
       <Modal isOpen={showResolveDialog} onClose={() => !resolving && setShowResolveDialog(false)} title={`Resolve ${selectedIds.length} ticket${selectedIds.length === 1 ? '' : 's'}`} size="md">
         <div className="p-4 sm:p-5 space-y-4">
           <p className="text-sm t-sub">Add a shared resolution note for all selected tickets.</p>
-          {resolutionCodes.length > 0 && (
+          {availableResolutionCodes.length > 0 && (
             <label className="block">
               <span className="block text-xs font-semibold t-sub mb-1.5">Resolution code <span className="text-rose-500">*</span></span>
               <select className="glass-input w-full text-sm" value={resolutionCode} onChange={e => setResolutionCode(e.target.value)}>
                 <option value="">Select a resolution code</option>
-                {resolutionCodes.map(code => <option key={code.id} value={code.id}>{code.label}</option>)}
+                {availableResolutionCodes.map(code => <option key={code.id} value={code.id}>{code.label}</option>)}
               </select>
             </label>
           )}
@@ -678,7 +685,7 @@ export default function AllTickets() {
           </label>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={() => setShowResolveDialog(false)} disabled={resolving}>Cancel</Button>
-            <Button onClick={confirmBulkResolve} disabled={resolving || !resolutionNotes.trim() || (resolutionCodes.length > 0 && !resolutionCode)}>{resolving ? 'Resolving...' : 'Resolve tickets'}</Button>
+            <Button onClick={confirmBulkResolve} disabled={resolving || !resolutionNotes.trim() || (!resolutionCode)}>{resolving ? 'Resolving...' : 'Resolve tickets'}</Button>
           </div>
         </div>
       </Modal>
