@@ -262,12 +262,12 @@ export const useTicketStore = create(
       },
 
       // ── Recycle Bin (server-backed soft delete) ───────────────────────────────
-      applyRemoteDelete: (uuids, deletedAt = new Date().toISOString()) => {
+      applyRemoteDelete: (uuids, deletedAt = new Date().toISOString(), deleteReason = null) => {
         const ids = new Set((uuids || []).map(String))
         if (!ids.size) return
         set(s => {
           const moved = s.tickets.filter(ticket => ids.has(String(ticket._uuid)))
-            .map(ticket => ({ ...ticket, isDeleted: true, deletedAt }))
+            .map(ticket => ({ ...ticket, isDeleted: true, deletedAt, deleteReason: deleteReason ?? ticket.deleteReason ?? '' }))
           const existing = new Map(s.deletedTickets.map(ticket => [String(ticket._uuid), ticket]))
           moved.forEach(ticket => existing.set(String(ticket._uuid), ticket))
           return {
@@ -283,7 +283,7 @@ export const useTicketStore = create(
         if (!ids.size) return
         set(s => {
           const restored = s.deletedTickets.filter(ticket => ids.has(String(ticket._uuid)))
-            .map(ticket => ({ ...ticket, isDeleted: false, deletedAt: null }))
+            .map(ticket => ({ ...ticket, isDeleted: false, deletedAt: null, deleteReason: '' }))
           const active = new Map(s.tickets.map(ticket => [String(ticket._uuid), ticket]))
           restored.forEach(ticket => active.set(String(ticket._uuid), ticket))
           return {
@@ -303,12 +303,13 @@ export const useTicketStore = create(
         }
       },
 
-      softDelete: async (uuid) => {
+      softDelete: async (uuid, reason = '') => {
         const ticket = get().tickets.find(t => t._uuid === uuid)
         const deletedAt = new Date().toISOString()
-        get().applyRemoteDelete([uuid], deletedAt)
+        get().applyRemoteDelete([uuid], deletedAt, reason)
         try {
-          await api.delete('/tickets/' + uuid)
+          const query = reason ? '?reason=' + encodeURIComponent(reason) : ''
+          await api.delete('/tickets/' + uuid + query)
         } catch (error) {
           if (ticket) set(s => ({
             tickets: [ticket, ...s.tickets.filter(t => t._uuid !== uuid)],
@@ -318,12 +319,12 @@ export const useTicketStore = create(
         }
       },
 
-      softBulkDelete: async (uuids) => {
+      softBulkDelete: async (uuids, reason = '') => {
         const tickets = get().tickets.filter(t => uuids.includes(t._uuid))
         const deletedAt = new Date().toISOString()
-        get().applyRemoteDelete(uuids, deletedAt)
+        get().applyRemoteDelete(uuids, deletedAt, reason)
         try {
-          await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
+          await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete', delete_reason: reason || undefined })
         } catch (error) {
           set(s => ({
             tickets: [...tickets, ...s.tickets.filter(t => !uuids.includes(t._uuid))],

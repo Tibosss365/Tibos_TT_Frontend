@@ -178,6 +178,7 @@ export function normalizeTicket(t) {
     updated:     t.updated_at,
     resolvedAt:  t.resolved_at || t.closed_at || null,
     deletedAt:   t.deleted_at || null,
+    deleteReason: t.delete_reason || '',
     timeline: (t.timeline || []).map(ev => ({
       type:    ev.type,
       text:    ev.text,

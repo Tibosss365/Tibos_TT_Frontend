@@ -68,9 +68,9 @@ export function Layout() {
       try {
         const payload = JSON.parse(event.data || '{}')
         if (event.type === 'ticket_deleted' && payload.ticket_id) {
-          applyRemoteDelete([payload.ticket_id], payload.deleted_at)
+          applyRemoteDelete([payload.ticket_id], payload.deleted_at, payload.delete_reason)
         } else if (event.type === 'tickets_bulk_updated' && payload.action === 'delete') {
-          applyRemoteDelete(payload.ticket_ids || [], payload.deleted_at)
+          applyRemoteDelete(payload.ticket_ids || [], payload.deleted_at, payload.delete_reason)
         } else if (event.type === 'ticket_restored' && payload.ticket_id) {
           applyRemoteRestore([payload.ticket_id])
         }

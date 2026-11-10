@@ -249,8 +249,11 @@ export default function AllTickets() {
   }
   const handleBulkDelete = async () => {
     if (!window.confirm(`Move ${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} to trash?`)) return
+    const reason = window.prompt('Why are you deleting these tickets?')
+    if (reason === null) return
+    if (!reason.trim()) { addToast('Enter a deletion reason', 'error'); return }
     try {
-      await softBulkDelete(selectedIds)
+      await softBulkDelete(selectedIds, reason.trim())
       addToast(`${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} moved to trash`, 'info')
     } catch (error) {
       addToast(error?.message || 'Could not delete selected tickets', 'error')

@@ -99,7 +99,7 @@ export default function DeletedItems() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--c-border)' }}>
-                  {['Ticket', 'Priority', 'Status', 'Deleted On', 'Expires In', ''].map(h => (
+                  {['Ticket', 'Reason', 'Priority', 'Status', 'Deleted On', 'Expires In', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold t-sub uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
@@ -123,6 +123,9 @@ export default function DeletedItems() {
                       <td className="px-4 py-3 max-w-xs">
                         <div className="font-medium t-main truncate">{ticket.subject}</div>
                         <div className="text-[10px] t-muted mt-0.5 font-mono">{ticket.id}</div>
+                      </td>
+                      <td className="px-4 py-3 max-w-sm text-xs t-muted">
+                        <div className="line-clamp-2 whitespace-pre-wrap break-words">{ticket.deleteReason || 'No reason provided'}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <PriorityBadge priority={ticket.priority} />
