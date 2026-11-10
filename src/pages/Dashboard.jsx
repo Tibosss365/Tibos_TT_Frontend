@@ -50,6 +50,29 @@ const EMPTY_FILTERS = {
   status: '', priority: '', category: '', group: '', type: '', sla: '',
 }
 
+const AGENT_PERIODS = [
+  { key: 'day', label: 'Day', title: 'Daily', created: 'Today created', resolved: 'Resolved today' },
+  { key: 'month', label: 'Month', title: 'Monthly', created: 'Created this month', resolved: 'Resolved this month' },
+  { key: 'year', label: 'Year', title: 'Yearly', created: 'Created this year', resolved: 'Resolved this year' },
+]
+
+// Columns of the agent performance table. Open buckets are always the current
+// backlog; created/resolved follow the selected period.
+function agentPerformanceColumns(period, dayLabel) {
+  const p = AGENT_PERIODS.find(item => item.key === period) || AGENT_PERIODS[0]
+  return [
+    { label: p.created, date: period === 'day' ? dayLabel : '', get: a => a.periodCreated },
+    { label: 'Open < 1h', get: a => a.underOneHour },
+    { label: 'Open 1–2h', get: a => a.oneToTwoHours },
+    { label: 'Open 2–24h', get: a => a.twoToTwentyFourHours },
+    { label: p.resolved, get: a => a.periodResolved },
+    { label: 'Resolved < 1h', get: a => a.resolvedUnderOneHour },
+    { label: 'Resolved 1–2h', get: a => a.resolvedOneToTwoHours },
+    { label: 'Resolved 2–24h', get: a => a.resolvedTwoToTwentyFourHours },
+    ...(period === 'day' ? [{ label: 'This month', get: a => a.month }] : [{ label: 'Resolved > 24h', get: a => a.resolvedOverTwentyFourHours }]),
+  ]
+}
+
 function OverdueDuration({ slaDueTime }) {
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -176,6 +199,7 @@ export default function Dashboard() {
   const addToast = useUiStore(state => state.addToast)
   const navigate = useNavigate()
   const [dashboardDay, setDashboardDay] = useState(() => new Date())
+  const [agentPeriod, setAgentPeriod] = useState('day')
   const [selectedAgentIds, setSelectedAgentIds] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-visible-agent-ids')
@@ -277,18 +301,20 @@ export default function Dashboard() {
     try {
       const XLSX = await import('xlsx')
       const dateLabel = dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+      const periodInfo = AGENT_PERIODS.find(item => item.key === agentPeriod) || AGENT_PERIODS[0]
+      const columns = agentPerformanceColumns(agentPeriod, dateLabel)
       const rows = [
-        ['Daily Agent Report', dateLabel],
+        [periodInfo.title + ' Agent Report', dateLabel],
         [],
-        ['Agent', 'Today created', 'Open < 1h', 'Open 1–2h', 'Open 2–24h', 'Resolved today', 'Resolved < 1h', 'Resolved 1–2h', 'Resolved 2–24h', 'This month'],
-        ...visibleAgentStats.map(agent => [agent.name, agent.today, agent.underOneHour, agent.oneToTwoHours, agent.twoToTwentyFourHours, agent.resolvedToday, agent.resolvedUnderOneHour, agent.resolvedOneToTwoHours, agent.resolvedTwoToTwentyFourHours, agent.month]),
+        ['Agent', ...columns.map(column => column.label)],
+        ...visibleAgentStats.map(agent => [agent.name, ...columns.map(column => column.get(agent))]),
       ]
       const workbook = XLSX.utils.book_new()
       const worksheet = XLSX.utils.aoa_to_sheet(rows)
-      worksheet['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }]
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Agent Report')
+      worksheet['!cols'] = [{ wch: 28 }, ...columns.map(() => ({ wch: 18 }))]
+      XLSX.utils.book_append_sheet(workbook, worksheet, periodInfo.title + ' Agent Report')
       const datePart = `${dashboardDay.getFullYear()}-${String(dashboardDay.getMonth() + 1).padStart(2, '0')}-${String(dashboardDay.getDate()).padStart(2, '0')}`
-      XLSX.writeFile(workbook, `daily-agent-report-${datePart}.xlsx`)
+      XLSX.writeFile(workbook, `${agentPeriod}-agent-report-${datePart}.xlsx`)
     } catch (e) {
       console.error('Daily agent Excel export failed', e)
     } finally {
@@ -554,6 +580,7 @@ export default function Dashboard() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const tomorrow = new Date(today.getTime() + 86400000)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const periodStart = agentPeriod === 'year' ? new Date(now.getFullYear(), 0, 1) : agentPeriod === 'month' ? monthStart : today
     const completed = ticket => ticket.status === 'resolved' || ticket.status === 'closed'
     const validDate = value => value instanceof Date && !Number.isNaN(value.getTime())
     const resolvedAt = ticket => {
@@ -572,9 +599,9 @@ export default function Dashboard() {
       return completed(ticket) && ticket.updated ? new Date(ticket.updated) : null
     }
     const statsByAgent = new Map(dailyAgents.map(agent => [String(agent.id), {
-      ...agent, today: 0, underOneHour: 0, oneToTwoHours: 0, twoToTwentyFourHours: 0,
-      resolvedToday: 0, resolvedUnderOneHour: 0, resolvedOneToTwoHours: 0,
-      resolvedTwoToTwentyFourHours: 0,
+      ...agent, periodCreated: 0, underOneHour: 0, oneToTwoHours: 0, twoToTwentyFourHours: 0,
+      periodResolved: 0, resolvedUnderOneHour: 0, resolvedOneToTwoHours: 0,
+      resolvedTwoToTwentyFourHours: 0, resolvedOverTwentyFourHours: 0,
       month: 0, allTimeResolved: 0,
     }]))
     const agentNameById = new Map(dailyAgents.map(agent => [String(agent.id), agent.name]))
@@ -584,7 +611,7 @@ export default function Dashboard() {
       const agentStats = statsByAgent.get(agentId)
       const created = ticket.created ? new Date(ticket.created) : null
       if (agentStats && validDate(created)) {
-        if (created >= today && created < tomorrow) agentStats.today++
+        if (created >= periodStart && created < tomorrow) agentStats.periodCreated++
         if (created >= monthStart && created < tomorrow) agentStats.month++
         if (!completed(ticket)) {
           const ageHours = (now - created) / 3600000
@@ -596,13 +623,14 @@ export default function Dashboard() {
       if (!completed(ticket)) return
       if (agentStats) agentStats.allTimeResolved++
       const date = resolvedAt(ticket)
-      if (agentStats && validDate(date) && date >= today && date < tomorrow) {
-        agentStats.resolvedToday++
+      if (agentStats && validDate(date) && date >= periodStart && date < tomorrow) {
+        agentStats.periodResolved++
         if (validDate(created)) {
           const resolutionHours = (date.getTime() - created.getTime()) / 3600000
           if (resolutionHours >= 0 && resolutionHours < 1) agentStats.resolvedUnderOneHour++
           else if (resolutionHours >= 1 && resolutionHours < 2) agentStats.resolvedOneToTwoHours++
           else if (resolutionHours >= 2 && resolutionHours < 24) agentStats.resolvedTwoToTwentyFourHours++
+          else if (resolutionHours >= 24) agentStats.resolvedOverTwentyFourHours++
         }
       }
       const category = ticket.category || 'uncategorized'
@@ -612,7 +640,7 @@ export default function Dashboard() {
       row.counts[agentName] = (row.counts[agentName] || 0) + 1
     })
     return { agentStats: [...statsByAgent.values()], categoryRows: [...categoryMap.values()].sort((a, b) => Object.values(b.counts).reduce((x, y) => x + y, 0) - Object.values(a.counts).reduce((x, y) => x + y, 0) || a.category.localeCompare(b.category)) }
-  }, [tickets, dailyAgents, dashboardDay])
+  }, [tickets, dailyAgents, dashboardDay, agentPeriod])
   const visibleAgentStats = useMemo(() => {
     const ids = new Set(visibleAgents.map(agent => String(agent.id)))
     return agentWorkSummary.agentStats.filter(agent => ids.has(String(agent.id)))
@@ -851,7 +879,18 @@ export default function Dashboard() {
         />
         {loading && tickets.length === 0 ? <div className="py-8 text-center text-sm t-sub">Loading live ticket data…</div> : <>
           <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-xs font-bold t-main">Daily Agent Metrics</h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-xs font-bold t-main">{(AGENT_PERIODS.find(item => item.key === agentPeriod) || AGENT_PERIODS[0]).title} Agent Metrics</h3>
+              <div className="inline-flex rounded-lg border border-glass p-0.5" role="group" aria-label="Performance period">
+                {AGENT_PERIODS.map(item => <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setAgentPeriod(item.key)}
+                  aria-pressed={agentPeriod === item.key}
+                  className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${agentPeriod === item.key ? 'bg-indigo-500 text-white' : 't-sub hover:bg-black/5 dark:hover:bg-white/5'}`}
+                >{item.label}</button>)}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleMonthTicketsExcel} disabled={exporting === 'month-tickets-excel'}>
                 <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'month-tickets-excel' ? 'Preparing…' : 'This Month Tickets'}
@@ -864,22 +903,11 @@ export default function Dashboard() {
           <div className="mb-6 overflow-x-auto rounded-xl border border-glass">
             <table className="w-full text-xs min-w-max">
               <thead><tr className="bg-black/[0.03] dark:bg-white/[0.04] border-b border-glass">
-                {[
-                  { label: 'Agent' },
-                  { label: 'Today created', date: dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) },
-                  { label: 'Open < 1h' },
-                  { label: 'Open 1–2h' },
-                  { label: 'Open 2–24h' },
-                  { label: 'Resolved today' },
-                  { label: 'Resolved < 1h' },
-                  { label: 'Resolved 1–2h' },
-                  { label: 'Resolved 2–24h' },
-                  { label: 'This month' },
-                ].map(({ label, date }) => <th key={label} className="py-2.5 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap"><div>{label}</div>{date && <div className="mt-0.5 text-[9px] font-medium normal-case tracking-normal t-muted">{date}</div>}</th>)}
+                {[{ label: 'Agent' }, ...agentPerformanceColumns(agentPeriod, dashboardDay.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))].map(({ label, date }) => <th key={label} className="py-2.5 px-3 text-left text-[10px] font-bold t-sub uppercase tracking-wider whitespace-nowrap"><div>{label}</div>{date && <div className="mt-0.5 text-[9px] font-medium normal-case tracking-normal t-muted">{date}</div>}</th>)}
               </tr></thead>
               <tbody>{visibleAgentStats.map(agent => <tr key={agent.id} className="border-b border-glass last:border-0 hover:bg-indigo-500/[0.035]">
                 <td className="py-3 px-3 font-semibold t-main">{agent.name}</td>
-                {[agent.today, agent.underOneHour, agent.oneToTwoHours, agent.twoToTwentyFourHours, agent.resolvedToday, agent.resolvedUnderOneHour, agent.resolvedOneToTwoHours, agent.resolvedTwoToTwentyFourHours, agent.month].map((count, index) => <td key={index} className="py-3 px-3 tabular-nums t-main">{count}</td>)}
+                {agentPerformanceColumns(agentPeriod, '').map(column => column.get(agent)).map((count, index) => <td key={index} className="py-3 px-3 tabular-nums t-main">{count}</td>)}
               </tr>)}
               {agentWorkSummary.agentStats.length === 0 && <tr><td colSpan={10} className="py-6 text-center t-sub">No agent ticket data available.</td></tr>}</tbody>
             </table>
