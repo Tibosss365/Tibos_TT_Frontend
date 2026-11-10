@@ -12,8 +12,8 @@ import { useUiStore } from '../stores/uiStore'
 import { StatsCard } from '../components/ui/StatsCard'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
-import { timeAgo, fmtSlaSeconds } from '../utils/ticketUtils'
+import { PriorityBadge } from '../components/ui/Badge'
+import { fmtSlaSeconds } from '../utils/ticketUtils'
 
 const DashboardCharts = lazy(() => import('../components/dashboard/DashboardCharts'))
 
@@ -472,16 +472,6 @@ export default function Dashboard() {
     const companyCounts = new Map()
     const agentCounts = new Map(agents.filter(agent => agent.id !== 'unassigned' && agent.is_active !== false && (agent.role === 'technician' || agent.role === 'admin')).map(agent => [String(agent.id), { id: agent.id, name: agent.name, initials: agent.initials || agent.name.slice(0, 2).toUpperCase(), total: 0, open: 0, inProgress: 0, onHold: 0, resolved: 0 }]))
     const overdueTickets = []
-    const recent = []
-    const activityEvents = []
-    const keepNewest = (list, item, limit, dateValue) => {
-      const time = new Date(dateValue).getTime()
-      if (!Number.isFinite(time)) return
-      if (list.length < limit) { list.push({ item, time }); return }
-      let oldestIndex = 0
-      for (let index = 1; index < list.length; index++) if (list[index].time < list[oldestIndex].time) oldestIndex = index
-      if (time > list[oldestIndex].time) list[oldestIndex] = { item, time }
-    }
     for (const ticket of filteredTickets) statusCounts[ticket.status] = (statusCounts[ticket.status] || 0) + 1
     for (const ticket of displayTickets) {
       chartStatusCounts[ticket.status] = (chartStatusCounts[ticket.status] || 0) + 1
@@ -510,12 +500,8 @@ export default function Dashboard() {
         if (ticket.status === 'on-hold') agent.onHold++
         if (ticket.status === 'resolved') agent.resolved++
       }
-      keepNewest(recent, ticket, 6, ticket.created)
-      for (const event of ticket.timeline || []) keepNewest(activityEvents, { ...event, ticketId: ticket.id, ticketSubject: ticket.subject }, 8, event.ts)
     }
     overdueTickets.sort((a, b) => (b.slaDueTime ? now - new Date(b.slaDueTime).getTime() : 0) - (a.slaDueTime ? now - new Date(a.slaDueTime).getTime() : 0))
-    recent.sort((a, b) => b.time - a.time)
-    activityEvents.sort((a, b) => b.time - a.time)
     const categoryColors = new Map(categories.map((category, index) => [category.id, category.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length]]))
     const categoryData = [...categoryCounts].map(([category, count]) => ({ name: getCategoryName(category), count, fill: categoryColors.get(category) || '#0ea5e9' })).sort((a, b) => b.count - a.count)
     const statusData = Object.entries(chartStatusCounts).map(([status, count]) => ({ name: status.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' '), count, fill: { open: '#3b82f6', 'in-progress': '#0ea5e9', 'on-hold': '#f59e0b', resolved: '#10b981', closed: '#64748b' }[status] || '#0ea5e9' }))
@@ -531,9 +517,9 @@ export default function Dashboard() {
       stats.critical = apiStats.critical
       stats.total = apiStats.total
     }
-    return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, recent: recent.map(row => row.item), activityFeed: activityEvents.map(row => row.item), agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
+    return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
   }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName, apiStats, apiStatsCanRepresentFilters])
-  const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, recent, activityFeed, agentData } = dashboardData
+  const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, agentData } = dashboardData
   const openTicketsFromCard = card => navigate('/tickets', {
     state: { dashboardCardFilter: card, dashboardFilters: { ...dashFilters } },
   })
@@ -1124,95 +1110,6 @@ export default function Dashboard() {
           </table>
         </div>
       </Card>
-
-      {/* ── Recent tickets + activity ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-3">
-          <Card>
-            <CardHeader
-              title="Recent Tickets"
-              subtitle="Latest submissions"
-              action={
-                <button onClick={() => navigate('/tickets')} className="text-xs text-indigo-500 hover:text-indigo-400 font-medium transition-colors">
-                  View all →
-                </button>
-              }
-            />
-            <div className="space-y-2">
-              {loading ? (
-                <div className="py-6 text-center text-sm t-sub">Loading…</div>
-              ) : recent.length === 0 ? (
-                <div className="py-6 text-center text-sm t-muted">No tickets match the current filters</div>
-              ) : recent.map(ticket => (
-                <div
-                  key={ticket._uuid}
-                  onClick={() => navigate('/tickets', { state: { openTicketId: ticket.id } })}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer transition-all group border border-transparent hover:border-indigo-500/20"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-mono t-sub font-bold">{ticket.id}</span>
-                      <PriorityBadge priority={ticket.priority} />
-                      {ticket.slaStatus === 'overdue' && (
-                        <span className="text-[9px] font-bold text-rose-500 bg-rose-500/10 border border-rose-500/30 px-1.5 py-0.5 rounded-full">
-                          SLA Overdue
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm t-main font-bold truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {ticket.subject}
-                    </div>
-                    <div className="text-xs t-muted mt-0.5">{ticket.submitter} · {timeAgo(ticket.created)}</div>
-                  </div>
-                  <StatusBadge status={ticket.status} />
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader title="Activity Feed" subtitle="Recent events" />
-            <div className="space-y-3">
-              {activityFeed.length === 0 ? (
-                <div className="py-6 text-center text-sm t-sub">No activity yet</div>
-              ) : activityFeed.map((ev, i) => {
-                const typeStyle = {
-                  created:   { dot: 'bg-blue-500',    label: 'Created'  },
-                  assign:    { dot: 'bg-violet-500',  label: 'Assigned' },
-                  status:    { dot: 'bg-amber-500',   label: 'Updated'  },
-                  comment:   { dot: 'bg-indigo-500',  label: 'Comment'  },
-                  resolved:  { dot: 'bg-emerald-500', label: 'Resolved' },
-                  email_out: { dot: 'bg-sky-500',     label: 'Email'    },
-                  email_in:  { dot: 'bg-teal-500',    label: 'Reply'    },
-                }[ev.type] || { dot: 'bg-gray-400', label: 'Event' }
-
-                return (
-                  <div key={i} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${typeStyle.dot} shadow-sm`} />
-                      {i < activityFeed.length - 1 && (
-                        <div className="w-px flex-1 bg-gray-200 dark:bg-white/10 mt-1" />
-                      )}
-                    </div>
-                    <div className="pb-3 flex-1 min-w-0">
-                      <div className="text-[10px] font-bold t-sub uppercase tracking-wider mb-0.5">
-                        {ev.ticketId}
-                      </div>
-                      <div
-                        className="text-xs t-main leading-relaxed line-clamp-2"
-                        dangerouslySetInnerHTML={{ __html: ev.text }}
-                      />
-                      <div className="text-[10px] t-sub mt-0.5 font-medium">{timeAgo(ev.ts)}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
-        </div>
-      </div>
 
     </div>
   )
