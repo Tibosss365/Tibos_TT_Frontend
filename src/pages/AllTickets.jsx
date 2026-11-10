@@ -9,6 +9,7 @@ import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
+import { Modal } from '../components/ui/Modal'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import SourceBadge from '../components/tickets/SourceBadge'
@@ -79,11 +80,15 @@ export default function AllTickets() {
     selectedIds, toggleSelect, selectAll, clearSelection,
     bulkUpdate, softBulkDelete, getFilteredTickets,
   } = useTicketStore()
-  const { getAgentName, getCategoryName, categories, groups, getGroupName, agents } = useAdminStore()
+  const { getAgentName, getCategoryName, categories, groups, getGroupName, agents, resolutionCodes, fetchResolutionCodes } = useAdminStore()
   const { addToast } = useUiStore()
   const t = useT()
 
   const [selectedTicket, setSelectedTicket]   = useState(null)
+  const [showResolveDialog, setShowResolveDialog] = useState(false)
+  const [resolutionNotes, setResolutionNotes] = useState('')
+  const [resolutionCode, setResolutionCode] = useState('')
+  const [resolving, setResolving] = useState(false)
   const [dashboardCardFilter, setDashboardCardFilter] = useState('')
   const [staged, setStaged]                   = useState(() => ({
     dateRange: 'all',
@@ -101,6 +106,8 @@ export default function AllTickets() {
   const [exportingResolved, setExportingResolved] = useState(false)
   const colPickerRef = useRef(null)
   const panelRef     = useRef(null)
+
+  useEffect(() => { fetchResolutionCodes() }, [fetchResolutionCodes])
 
   // Dashboard KPI cards pass their active filters into this page so the table
   // opens on the exact ticket subset represented by the clicked card.
@@ -214,8 +221,20 @@ export default function AllTickets() {
   const handleSelectAll = () => { if (allSelected) clearSelection(); else selectAll(filtered.map(t => t._uuid)) }
 
   const handleBulkResolve = async () => {
-    try { await bulkUpdate(selectedIds, { status: 'resolved' }); addToast(`${selectedIds.length} tickets resolved`, 'success') }
-    catch (e) { addToast(e.message, 'error') }
+    setResolutionNotes('')
+    setResolutionCode('')
+    setShowResolveDialog(true)
+  }
+  const confirmBulkResolve = async () => {
+    if (!resolutionNotes.trim()) { addToast('Enter resolution notes before resolving', 'error'); return }
+    if (resolutionCodes.length > 0 && !resolutionCode) { addToast('Select a resolution code before resolving', 'error'); return }
+    setResolving(true)
+    try {
+      await bulkUpdate(selectedIds, { status: 'resolved', resolution: resolutionNotes.trim(), resolutionCode })
+      addToast(`${selectedIds.length} tickets resolved`, 'success')
+      setShowResolveDialog(false)
+    } catch (e) { addToast(e.message, 'error') }
+    finally { setResolving(false) }
   }
   const handleBulkClose = async () => {
     try { await bulkUpdate(selectedIds, { status: 'closed' }); addToast(`${selectedIds.length} tickets closed`, 'info') }
@@ -641,6 +660,28 @@ export default function AllTickets() {
         )}
       </Card>
 
+      <Modal isOpen={showResolveDialog} onClose={() => !resolving && setShowResolveDialog(false)} title={`Resolve ${selectedIds.length} ticket${selectedIds.length === 1 ? '' : 's'}`} size="md">
+        <div className="p-4 sm:p-5 space-y-4">
+          <p className="text-sm t-sub">Add a shared resolution note for all selected tickets.</p>
+          {resolutionCodes.length > 0 && (
+            <label className="block">
+              <span className="block text-xs font-semibold t-sub mb-1.5">Resolution code <span className="text-rose-500">*</span></span>
+              <select className="glass-input w-full text-sm" value={resolutionCode} onChange={e => setResolutionCode(e.target.value)}>
+                <option value="">Select a resolution code</option>
+                {resolutionCodes.map(code => <option key={code.id} value={code.id}>{code.label}</option>)}
+              </select>
+            </label>
+          )}
+          <label className="block">
+            <span className="block text-xs font-semibold t-sub mb-1.5">Resolution notes <span className="text-rose-500">*</span></span>
+            <textarea className="glass-input w-full resize-y text-sm leading-relaxed" rows={4} value={resolutionNotes} onChange={e => setResolutionNotes(e.target.value)} placeholder="Describe how these tickets were resolved" />
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setShowResolveDialog(false)} disabled={resolving}>Cancel</Button>
+            <Button onClick={confirmBulkResolve} disabled={resolving || !resolutionNotes.trim() || (resolutionCodes.length > 0 && !resolutionCode)}>{resolving ? 'Resolving...' : 'Resolve tickets'}</Button>
+          </div>
+        </div>
+      </Modal>
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />}
     </div>
   )

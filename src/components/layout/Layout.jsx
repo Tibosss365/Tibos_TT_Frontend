@@ -159,7 +159,9 @@ export function Layout() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Topbar />
         <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6">
-          <Outlet />
+          <Suspense fallback={<div className="py-8 text-center text-sm t-muted">Loading module…</div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

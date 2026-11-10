@@ -36,6 +36,49 @@ const safeTicketStorage = {
   },
 }
 
+const TICKET_CACHE_TTL = 12 * 60 * 60 * 1000
+
+function ticketCacheKey() {
+  try {
+    const userState = JSON.parse(localStorage.getItem('helpdesk-user') || '{}')?.state
+    const userId = userState?.currentUser?.id || 'anonymous'
+    return `helpdesk-ticket-snapshot:${userId}`
+  } catch {
+    return 'helpdesk-ticket-snapshot:anonymous'
+  }
+}
+
+function readTicketSnapshot() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(ticketCacheKey()) || 'null')
+    if (!cached || Date.now() - cached.savedAt > TICKET_CACHE_TTL || !Array.isArray(cached.items)) return []
+    return cached.items.map(normalizeTicket)
+  } catch {
+    return []
+  }
+}
+
+function saveTicketSnapshot(tickets) {
+  try {
+    const sorted = [...tickets].sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0))
+    for (let size = Math.min(75, sorted.length); size > 0; size = Math.floor(size / 2)) {
+      const items = sorted.slice(0, size).map(ticket => ({
+        ...ticket,
+        description: (ticket.description || '').slice(0, 1500),
+        attachments: [],
+      }))
+      try {
+        sessionStorage.setItem(ticketCacheKey(), JSON.stringify({ savedAt: Date.now(), items }))
+        return
+      } catch {
+        // Reduce the snapshot until it fits the browser's session storage quota.
+      }
+    }
+  } catch {
+    // Caching is optional; live API loading continues if browser storage is unavailable.
+  }
+}
+
 // Share an in-flight full refresh so bursts of live events do not start
 // several identical paginated downloads at once.
 let ticketsFetchPromise = null
@@ -44,7 +87,7 @@ let ticketsRefreshQueued = false
 export const useTicketStore = create(
   persist(
     (set, get) => ({
-      tickets: [],
+      tickets: readTicketSnapshot(),
       myRequests: [],
       deletedTickets: [],
       loading: false,
@@ -62,8 +105,8 @@ export const useTicketStore = create(
         }
 
         const fetchAllPages = async () => {
-          // Keep existing tickets on screen during background refreshes. Only
-          // progressively publish pages during the initial empty-state load.
+          // Keep any cached tickets visible while refreshing, then progressively
+          // merge fresh pages into the list instead of waiting for all history.
           const hasExistingTickets = get().tickets.length > 0
           set({ loading: !hasExistingTickets, ticketsLoaded: false, ticketsLoadError: null })
           try {
@@ -74,12 +117,16 @@ export const useTicketStore = create(
               const ticket = normalizeTicket(item)
               return [ticket._uuid, ticket]
             }))
-            // Publish the first page immediately only on initial load. During a
-            // refresh, keep the complete old list visible until the new snapshot
-            // has finished loading to prevent the dashboard from flashing/resetting.
-            if (!hasExistingTickets) {
-              set({ tickets: [...loadedTickets.values()], loading: false })
+            const publishLoadedPages = () => {
+              const merged = new Map(get().tickets.map(ticket => [ticket._uuid, ticket]))
+              loadedTickets.forEach((ticket, id) => merged.set(id, ticket))
+              const visibleTickets = [...merged.values()].sort(
+                (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
+              )
+              set({ tickets: visibleTickets, loading: false })
+              saveTicketSnapshot(visibleTickets)
             }
+            publishLoadedPages()
 
             // Fetch at most four pages concurrently to reduce latency without
             // flooding the API when an account has a large ticket history.
@@ -95,7 +142,7 @@ export const useTicketStore = create(
                 const ticket = normalizeTicket(item)
                 loadedTickets.set(ticket._uuid, ticket)
               })
-              if (!hasExistingTickets) set({ tickets: [...loadedTickets.values()] })
+              publishLoadedPages()
             }
 
             const allTickets = [...new Map(
@@ -104,6 +151,7 @@ export const useTicketStore = create(
                 .map(ticket => [ticket._uuid, ticket])
             ).values()]
             set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
+            saveTicketSnapshot(allTickets)
           } catch (e) {
             console.error('fetchTickets error', e)
             set({ loading: false, ticketsLoaded: true, ticketsLoadError: e?.message || 'Could not load ticket history.' })
@@ -335,7 +383,10 @@ export const useTicketStore = create(
 
       bulkUpdate: async (uuids, changes) => {
         const action = changes.status === 'resolved' ? 'resolve' : 'close'
-        await api.post('/tickets/bulk', { ticket_ids: uuids, action })
+        await api.post('/tickets/bulk', {
+          ticket_ids: uuids, action,
+          ...(action === 'resolve' ? { resolution: changes.resolution, resolution_code: changes.resolutionCode || undefined } : {}),
+        })
         await get().fetchTickets()
         set({ selectedIds: [] })
       },
