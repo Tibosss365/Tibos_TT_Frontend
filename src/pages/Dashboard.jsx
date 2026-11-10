@@ -172,7 +172,6 @@ export default function Dashboard() {
   const addToast = useUiStore(state => state.addToast)
   const navigate = useNavigate()
   const [dashboardDay, setDashboardDay] = useState(() => new Date())
-  const [showAllInternalActivities, setShowAllInternalActivities] = useState(false)
   const [selectedAgentIds, setSelectedAgentIds] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-visible-agent-ids')
@@ -510,10 +509,6 @@ export default function Dashboard() {
     return { stats, statusCounts, overdueTickets: overdueTickets.slice(0, 25), categoryData, statusData, companyData, recent: recent.map(row => row.item), activityFeed: activityEvents.map(row => row.item), agentData: [...agentCounts.values()].sort((a, b) => b.total - a.total) }
   }, [filteredTickets, displayTickets, ignoredSlaIds, agents, categories, getCategoryName, apiStats, apiStatsCanRepresentFilters])
   const { stats, statusCounts, overdueTickets, categoryData, statusData, companyData, recent, activityFeed, agentData } = dashboardData
-  const internalActivityTickets = useMemo(() => tickets
-    .filter(ticket => ticket.type === 'internal-activity')
-    .sort((a, b) => new Date(b.created || 0).getTime() - new Date(a.created || 0).getTime()), [tickets])
-  const visibleInternalActivityTickets = showAllInternalActivities ? internalActivityTickets : internalActivityTickets.slice(0, 1)
   const openTicketsFromCard = card => navigate('/tickets', {
     state: { dashboardCardFilter: card, dashboardFilters: { ...dashFilters } },
   })
@@ -813,43 +808,6 @@ export default function Dashboard() {
         <StatsCard label="SLA Overdue"   value={loading ? '…' : stats.slaOverdue}  icon={AlarmClock}    color={stats.slaOverdue > 0 ? 'rose' : 'emerald'} onClick={() => openTicketsFromCard('sla-overdue')} disabled={loading} />
         <StatsCard label="Total Tickets" value={loading ? '…' : stats.total}       icon={Activity}      color="cyan"    onClick={() => openTicketsFromCard('total')} disabled={loading} />
       </div>
-
-      <Card>
-        <CardHeader
-          title={<div className="flex items-center gap-2"><Activity size={15} className="text-emerald-500" />Internal Activities</div>}
-          subtitle="Internal work records submitted by the TIBOS team"
-        />
-        <div className="max-h-[32rem] overflow-y-auto divide-y divide-glass">
-          {visibleInternalActivityTickets.map(ticket => (
-            <button
-              key={ticket._uuid || ticket.id}
-              type="button"
-              onClick={() => navigate('/tickets', { state: { openTicketId: ticket.id } })}
-              className="block w-full px-3 py-3 text-left hover:bg-emerald-500/[0.04] transition-colors"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="font-semibold t-main break-words">{ticket.subject}</div>
-                  <div className="mt-1 text-xs t-sub">{ticket.company || 'TIBOS Solutions and Services Pvt Ltd'} · {ticket.contactName || ticket.submitter || ticket.contact_name || 'Internal team'}{ticket.email ? ` · ${ticket.email}` : ''}</div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <StatusBadge status={ticket.status} />
-                  <span className="text-[11px] t-muted">{ticket.created ? new Date(ticket.created).toLocaleString() : ''}</span>
-                </div>
-              </div>
-              {ticket.description && <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed t-muted">{ticket.description}</p>}
-            </button>
-          ))}
-          {internalActivityTickets.length === 0 && <div className="py-8 text-center text-sm t-muted">No internal activities have been submitted yet.</div>}
-          {internalActivityTickets.length > 1 && <button
-            type="button"
-            onClick={() => setShowAllInternalActivities(show => !show)}
-            className="flex w-full items-center justify-center gap-1.5 px-3 py-3 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/[0.04] dark:text-emerald-400"
-          >
-            {showAllInternalActivities ? 'View less' : 'View more'} <ChevronDown size={14} className={showAllInternalActivities ? 'rotate-180' : ''} />
-          </button>}
-        </div>
-      </Card>
 
       <Card>
         <CardHeader
