@@ -18,7 +18,11 @@ export default function DeletedItems() {
   const { addToast } = useUiStore()
   const [deleting, setDeleting] = useState({})
 
-  useEffect(() => { fetchDeletedTickets() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchDeletedTickets()
+    const timer = setInterval(fetchDeletedTickets, 5000)
+    return () => clearInterval(timer)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleRestore = async (uuid, ticketId) => {
     await restoreTicket(uuid)

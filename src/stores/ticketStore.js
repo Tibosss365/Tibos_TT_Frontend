@@ -118,8 +118,9 @@ export const useTicketStore = create(
               return [ticket._uuid, ticket]
             }))
             const publishLoadedPages = () => {
-              const merged = new Map(get().tickets.map(ticket => [ticket._uuid, ticket]))
-              loadedTickets.forEach((ticket, id) => merged.set(id, ticket))
+              const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
+              const merged = new Map(get().tickets.filter(ticket => !deletedIds.has(ticket._uuid)).map(ticket => [ticket._uuid, ticket]))
+              loadedTickets.forEach((ticket, id) => { if (!deletedIds.has(id)) merged.set(id, ticket) })
               const visibleTickets = [...merged.values()].sort(
                 (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
               )
@@ -145,9 +146,11 @@ export const useTicketStore = create(
               publishLoadedPages()
             }
 
+            const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
             const allTickets = [...new Map(
               pageData
                 .flatMap(data => (data.items || []).map(normalizeTicket))
+                .filter(ticket => !deletedIds.has(ticket._uuid))
                 .map(ticket => [ticket._uuid, ticket])
             ).values()]
             set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
@@ -259,6 +262,37 @@ export const useTicketStore = create(
       },
 
       // ── Recycle Bin (server-backed soft delete) ───────────────────────────────
+      applyRemoteDelete: (uuids, deletedAt = new Date().toISOString()) => {
+        const ids = new Set((uuids || []).map(String))
+        if (!ids.size) return
+        set(s => {
+          const moved = s.tickets.filter(ticket => ids.has(String(ticket._uuid)))
+            .map(ticket => ({ ...ticket, isDeleted: true, deletedAt }))
+          const existing = new Map(s.deletedTickets.map(ticket => [String(ticket._uuid), ticket]))
+          moved.forEach(ticket => existing.set(String(ticket._uuid), ticket))
+          return {
+            tickets: s.tickets.filter(ticket => !ids.has(String(ticket._uuid))),
+            deletedTickets: [...existing.values()].sort((a, b) => new Date(b.deletedAt || 0) - new Date(a.deletedAt || 0)),
+            selectedIds: s.selectedIds.filter(id => !ids.has(String(id))),
+          }
+        })
+      },
+
+      applyRemoteRestore: (uuids) => {
+        const ids = new Set((uuids || []).map(String))
+        if (!ids.size) return
+        set(s => {
+          const restored = s.deletedTickets.filter(ticket => ids.has(String(ticket._uuid)))
+            .map(ticket => ({ ...ticket, isDeleted: false, deletedAt: null }))
+          const active = new Map(s.tickets.map(ticket => [String(ticket._uuid), ticket]))
+          restored.forEach(ticket => active.set(String(ticket._uuid), ticket))
+          return {
+            tickets: [...active.values()],
+            deletedTickets: s.deletedTickets.filter(ticket => !ids.has(String(ticket._uuid))),
+          }
+        })
+      },
+
       fetchDeletedTickets: async () => {
         try {
           const data = await api.get('/tickets/deleted?page_size=100')
@@ -271,27 +305,37 @@ export const useTicketStore = create(
 
       softDelete: async (uuid) => {
         const ticket = get().tickets.find(t => t._uuid === uuid)
-        await api.delete(`/tickets/${uuid}`)
         const deletedAt = new Date().toISOString()
-        set(s => ({
-          tickets: s.tickets.filter(t => t._uuid !== uuid),
-          deletedTickets: ticket
-            ? [{ ...ticket, isDeleted: true, deletedAt }, ...s.deletedTickets.filter(t => t._uuid !== uuid)]
-            : s.deletedTickets,
-        }))
+        get().applyRemoteDelete([uuid], deletedAt)
+        try {
+          await api.delete('/tickets/' + uuid)
+        } catch (error) {
+          if (ticket) set(s => ({
+            tickets: [ticket, ...s.tickets.filter(t => t._uuid !== uuid)],
+            deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid),
+          }))
+          throw error
+        }
       },
 
       softBulkDelete: async (uuids) => {
-        await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
-        set(s => ({
-          tickets: s.tickets.filter(t => !uuids.includes(t._uuid)),
-          selectedIds: [],
-        }))
+        const tickets = get().tickets.filter(t => uuids.includes(t._uuid))
+        const deletedAt = new Date().toISOString()
+        get().applyRemoteDelete(uuids, deletedAt)
+        try {
+          await api.post('/tickets/bulk', { ticket_ids: uuids, action: 'delete' })
+        } catch (error) {
+          set(s => ({
+            tickets: [...tickets, ...s.tickets.filter(t => !uuids.includes(t._uuid))],
+            deletedTickets: s.deletedTickets.filter(t => !uuids.includes(t._uuid)),
+          }))
+          throw error
+        }
       },
 
       restoreTicket: async (uuid) => {
-        await api.post(`/tickets/${uuid}/restore`, {})
-        set(s => ({ deletedTickets: s.deletedTickets.filter(t => t._uuid !== uuid) }))
+        await api.post('/tickets/' + uuid + '/restore', {})
+        get().applyRemoteRestore([uuid])
       },
 
       permanentDelete: async (uuid) => {

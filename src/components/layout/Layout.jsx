@@ -14,7 +14,7 @@ const TICKET_DATA_PATHS = new Set(['/dashboard', '/tickets', '/tickets/mine', '/
 
 export function Layout() {
   const { isLoggedIn, token } = useUserStore()
-  const { fetchTickets, fetchDeletedTickets, ticketsLoaded } = useTicketStore()
+  const { fetchTickets, fetchDeletedTickets, applyRemoteDelete, applyRemoteRestore, ticketsLoaded } = useTicketStore()
   const {
     fetchAgents, fetchSla, fetchEmailConfig, fetchCategories, fetchGroups,
     fetchInboundConfig, fetchInboundLogs, fetchTicketSettings,
@@ -64,7 +64,21 @@ export function Layout() {
     }
 
     const handleTicketEvent = () => scheduleLiveRefresh()
-    const handleDeleteEvent = () => scheduleLiveRefresh(true)
+    const handleDeleteEvent = (event) => {
+      try {
+        const payload = JSON.parse(event.data || '{}')
+        if (event.type === 'ticket_deleted' && payload.ticket_id) {
+          applyRemoteDelete([payload.ticket_id], payload.deleted_at)
+        } else if (event.type === 'tickets_bulk_updated' && payload.action === 'delete') {
+          applyRemoteDelete(payload.ticket_ids || [], payload.deleted_at)
+        } else if (event.type === 'ticket_restored' && payload.ticket_id) {
+          applyRemoteRestore([payload.ticket_id])
+        }
+      } catch (error) {
+        console.error('Could not apply live ticket delete event', error)
+      }
+      scheduleLiveRefresh(true)
+    }
 
     es.addEventListener('ticket_created',      handleTicketEvent)
     es.addEventListener('ticket_updated',      handleTicketEvent)

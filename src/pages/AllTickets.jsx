@@ -247,10 +247,14 @@ export default function AllTickets() {
     try { await bulkUpdate(selectedIds, { status: 'closed' }); addToast(`${selectedIds.length} tickets closed`, 'info') }
     catch (e) { addToast(e.message, 'error') }
   }
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (!window.confirm(`Move ${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} to trash?`)) return
-    softBulkDelete(selectedIds)
-    addToast(`${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} moved to trash`, 'info')
+    try {
+      await softBulkDelete(selectedIds)
+      addToast(`${selectedIds.length} ticket${selectedIds.length !== 1 ? 's' : ''} moved to trash`, 'info')
+    } catch (error) {
+      addToast(error?.message || 'Could not delete selected tickets', 'error')
+    }
   }
 
   const handleExportCSV = () => {
