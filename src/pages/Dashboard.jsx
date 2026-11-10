@@ -842,13 +842,6 @@ export default function Dashboard() {
           </div>}
         />
         {loading && tickets.length === 0 ? <div className="py-8 text-center text-sm t-sub">Loading live ticket data…</div> : <>
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-1.5 mb-3">
-            {visibleAgentStats.map(agent => <div key={agent.id} title={`${agent.name} — ${agent.allTimeResolved} resolved`} className="rounded-lg border border-glass bg-gradient-to-br from-indigo-500/[0.09] to-cyan-500/[0.04] px-2 py-1.5 text-center">
-              <div className="text-base leading-5 font-extrabold text-emerald-500 tabular-nums">{agent.allTimeResolved}</div>
-              <div className="truncate text-[11px] t-sub">{agent.name}</div>
-            </div>)}
-            {visibleAgentStats.length === 0 && <div className="col-span-full py-5 text-center text-xs t-sub">No agents selected.</div>}
-          </div>
           <div className="mb-2 flex items-center justify-between gap-3">
             <h3 className="text-xs font-bold t-main">Daily Agent Metrics</h3>
             <div className="flex items-center gap-2">
