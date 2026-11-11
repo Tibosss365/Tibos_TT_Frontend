@@ -291,6 +291,16 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
   const [showPass, setShowPass] = useState(false)
   const [polling, setPolling] = useState(false)
   const [newRule, setNewRule] = useState({ field: 'subject', operator: 'contains', value: '' })
+  const [savingInbound, setSavingInbound] = useState(false)
+  const saveHere = async () => {
+    setSavingInbound(true)
+    try { await onSaveInbound() } finally { setSavingInbound(false) }
+  }
+  const saveButton = (
+    <Button variant="primary" size="sm" onClick={saveHere} disabled={savingInbound} title="Saves the filter rules and smart filter together with the inbound email settings">
+      {savingInbound ? <><RefreshCw size={13} className="animate-spin" /> Saving…</> : <><Save size={13} /> Save</>}
+    </Button>
+  )
   const smart = inboundEdits.smartFilter || { mode: 'off', commercial: SMART_DEFAULT_COMMERCIAL, technical: SMART_DEFAULT_TECHNICAL }
   const setSmart = patch => set('smartFilter', { ...smart, ...patch })
   const parseWords = text => text.split(',').map(w => w.trim().toLowerCase()).filter(Boolean)
@@ -577,7 +587,7 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
 
       {/* ── Filter Rules ─────────────────────────────────────────────────── */}
       <Card>
-        <CardHeader title="Filter Rules" subtitle="Block matching emails before they become tickets" />
+        <CardHeader title="Filter Rules" subtitle="Block matching emails before they become tickets" action={saveButton} />
 
         {/* Quick-add presets */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -644,7 +654,7 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
 
       {/* ── Smart Filter (keywords) ──────────────────────────────────────── */}
       <Card>
-        <CardHeader title="Smart Filter" subtitle="Keep sales / commercial emails from becoming tickets (keyword based, free)" />
+        <CardHeader title="Smart Filter" subtitle="Keep sales / commercial emails from becoming tickets (keyword based, free)" action={saveButton} />
         <div className="flex items-center gap-2 mb-3">
           <span className="text-[11px] font-semibold t-sub">Mode</span>
           <div className="inline-flex rounded-lg border border-glass p-0.5" role="group" aria-label="Smart filter mode">
@@ -676,6 +686,7 @@ function InboundEmailSection({ inboundEdits, setInboundEdits, agents, emailLog, 
           <span className="font-semibold"> Test mode</span> still creates the ticket and adds a note saying it would have been filtered, so you can check accuracy first. <span className="font-semibold">On</span> blocks it (it shows as Filtered in the Email Log and can be converted manually).
           Remember to press Save.
         </p>
+        <div className="flex justify-end mt-3">{saveButton}</div>
       </Card>
 
       {/* Email Log */}
