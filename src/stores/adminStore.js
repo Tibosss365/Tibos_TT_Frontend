@@ -154,6 +154,8 @@ export const useAdminStore = create(
             number_digits:    current.numberDigits,
             default_status:   current.defaultStatus,
             default_priority: current.defaultPriority,
+            auto_assign_enabled:       !!current.autoAssignEnabled,
+            auto_assign_after_minutes: Number(current.autoAssignAfterMinutes) || 30,
           })
         } catch (e) {
           console.error('updateTicketSettings backend error', e)
@@ -170,6 +172,8 @@ export const useAdminStore = create(
               numberDigits:    data.number_digits    || 4,
               defaultStatus:   data.default_status   || 'open',
               defaultPriority: data.default_priority || 'medium',
+              autoAssignEnabled:      !!data.auto_assign_enabled,
+              autoAssignAfterMinutes: data.auto_assign_after_minutes || 30,
             },
           }))
         } catch (e) {

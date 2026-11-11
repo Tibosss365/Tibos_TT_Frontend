@@ -141,6 +141,8 @@ export const DEFAULT_TICKET_SETTINGS = {
   numberDigits:    4,        // zero-pad length          4 → 0001
   defaultStatus:   'open',
   defaultPriority: 'low',
+  autoAssignEnabled:      false,  // give unpicked tickets to the least-busy technician
+  autoAssignAfterMinutes: 30,
 }
 
 // ── Email Templates ───────────────────────────────────────────────────────────

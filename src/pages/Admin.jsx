@@ -2854,6 +2854,10 @@ export default function Admin() {
 
   // ── Ticket Settings local state ──────────────────────────────────────────
   const [tktEdits, setTktEdits] = useState({ ...ticketSettings })
+  // keep the auto-assign fields in step with what the server returned
+  useEffect(() => {
+    setTktEdits(p => ({ ...p, autoAssignEnabled: !!ticketSettings.autoAssignEnabled, autoAssignAfterMinutes: ticketSettings.autoAssignAfterMinutes || 30 }))
+  }, [ticketSettings.autoAssignEnabled, ticketSettings.autoAssignAfterMinutes])
   const [tplEdits, setTplEdits] = useState({
     ticketOpen:       { ...(emailTemplates.ticketOpen       || DEFAULT_EMAIL_TEMPLATES.ticketOpen) },
     ticketInProgress: { ...(emailTemplates.ticketInProgress || DEFAULT_EMAIL_TEMPLATES.ticketInProgress) },
@@ -2879,7 +2883,7 @@ export default function Admin() {
   const handleSaveTicketSettings = async () => {
     try {
       await updateTicketSettings(tktEdits)
-      addToast('Ticket settings saved — new tickets will use this format', 'success')
+      addToast('Ticket settings saved', 'success')
     } catch {
       addToast('Failed to save ticket settings', 'error')
     }
@@ -3992,6 +3996,47 @@ export default function Admin() {
                   Existing tickets are not renamed.
                 </p>
               </div>
+            </div>
+          </Card>
+
+          {/* ── Auto-assign ─────────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader
+              title="Auto-assign unpicked tickets"
+              subtitle="If nobody picks a ticket up, give it to the technician with the least work"
+              action={
+                <Button variant="primary" size="sm" onClick={handleSaveTicketSettings}>
+                  <Save size={13} /> Save
+                </Button>
+              }
+            />
+            <div className="space-y-4">
+              <label className="flex items-center gap-2.5 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 accent-indigo-500"
+                  checked={!!tktEdits.autoAssignEnabled}
+                  onChange={e => setTktEdits(p => ({ ...p, autoAssignEnabled: e.target.checked }))}
+                />
+                <span className="text-sm t-main font-medium">Turn on auto-assign</span>
+              </label>
+              <div className={tktEdits.autoAssignEnabled ? '' : 'opacity-50 pointer-events-none'}>
+                <label className="block text-[10px] font-bold t-sub uppercase tracking-wider mb-1.5">
+                  Assign if still unassigned after (minutes)
+                </label>
+                <input
+                  type="number" min={1} max={1440}
+                  className={`${inputCls} max-w-[140px]`}
+                  value={tktEdits.autoAssignAfterMinutes}
+                  onChange={e => setTktEdits(p => ({ ...p, autoAssignAfterMinutes: e.target.value === '' ? '' : Math.max(1, Math.min(1440, Number(e.target.value))) }))}
+                />
+              </div>
+              <ul className="text-[11px] t-sub space-y-1 list-disc pl-4">
+                <li>Only tickets that are still <strong>Open</strong> and unassigned are touched.</li>
+                <li>Goes to the technician with the lowest current workload (critical = 4, high = 3, medium = 2, low = 1 per open ticket). Admins are never auto-assigned.</li>
+                <li>The ticket moves to In&nbsp;Progress, the SLA timer starts, and the technician is notified.</li>
+                <li>It is also recorded in the ticket's history as "Auto-assigned". You can reassign any time.</li>
+              </ul>
             </div>
           </Card>
 
