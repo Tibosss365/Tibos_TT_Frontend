@@ -14,6 +14,7 @@ import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { PriorityBadge } from '../components/ui/Badge'
 import { fmtSlaSeconds } from '../utils/ticketUtils'
+import { withFullDescriptions } from '../utils/fullDescriptions'
 
 const DashboardCharts = lazy(() => import('../components/dashboard/DashboardCharts'))
 
@@ -252,9 +253,18 @@ export default function Dashboard() {
     () => new Set(agents.filter(a => a.is_active !== false).map(a => String(a.id))),
     [agents],
   )
+  // Exports include complete descriptions; if they can't be fetched, still export with the shortened ones.
+  const withFullText = async list => {
+    try { return await withFullDescriptions(list) }
+    catch (e) {
+      console.error('Could not load full descriptions', e)
+      addToast('Could not load full descriptions — the export contains shortened descriptions', 'error')
+      return list
+    }
+  }
   const handleExportExcel = async () => {
     setExporting('excel')
-    try { const { exportTicketsExcel } = await import('../utils/reportExport'); await exportTicketsExcel(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
+    try { const { exportTicketsExcel } = await import('../utils/reportExport'); await exportTicketsExcel(await withFullText(displayTickets), getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('Excel export failed', e) }
     finally { setExporting(null) }
   }
@@ -263,7 +273,7 @@ export default function Dashboard() {
     try {
       const today = new Date()
       const { exportTicketsExcel } = await import('../utils/reportExport')
-      await exportTicketsExcel(tickets, getAgentName, {
+      await exportTicketsExcel(await withFullText(tickets), getAgentName, {
         includeCategorySummary: true,
         filterLabel: 'All categories · live dashboard tickets',
         fileName: `category-tickets-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`,
@@ -292,7 +302,7 @@ export default function Dashboard() {
   }
   const handleExportPdf = async () => {
     setExporting('pdf')
-    try { const { exportTicketsPdf } = await import('../utils/reportExport'); await exportTicketsPdf(displayTickets, getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
+    try { const { exportTicketsPdf } = await import('../utils/reportExport'); await exportTicketsPdf(await withFullText(displayTickets), getAgentName, { filterLabel: buildFilterLabel(), activeAgentIds, getCategoryName }) }
     catch (e) { console.error('PDF export failed', e) }
     finally { setExporting(null) }
   }
@@ -360,7 +370,7 @@ export default function Dashboard() {
       })
       const monthLabel = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
       const { exportTicketsExcel } = await import('../utils/reportExport')
-      await exportTicketsExcel(monthTickets, getAgentName, {
+      await exportTicketsExcel(await withFullText(monthTickets), getAgentName, {
         filterLabel: `Tickets created in ${monthLabel}`,
         fileName: `monthly-ticket-details-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.xlsx`,
         activeAgentIds,

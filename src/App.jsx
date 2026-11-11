@@ -21,6 +21,7 @@ import { useUiStore } from './stores/uiStore'
 import { useAdminStore } from './stores/adminStore'
 import { useUserStore } from './stores/userStore'
 import { useSessionTimeout } from './hooks/useSessionTimeout'
+import { UpdateNotice } from './components/UpdateNotice'
 import { LANGUAGES } from './locales/translations'
 
 function DefaultRedirect() {
@@ -54,6 +55,8 @@ export default function App() {
   }, [language])
 
   return (
+    <>
+    <UpdateNotice />
     <Suspense fallback={<div className="p-8 text-center text-sm t-muted">Loading page…</div>}>
     <Routes>
       {/* Public — no auth required */}
@@ -81,5 +84,6 @@ export default function App() {
       </Route>
     </Routes>
     </Suspense>
+    </>
   )
 }
