@@ -92,6 +92,10 @@ export const useTicketStore = create(
       deletedTickets: [],
       loading: false,
       ticketsLoaded: false,
+      // true once the first complete download of this visit has finished — until then
+      // `tickets` may be only the small cached snapshot (newest 75), so counts built
+      // from it (e.g. "unassigned available") are incomplete.
+      ticketsEverLoaded: false,
       ticketsLoadError: null,
       filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' },
       selectedIds: [],
@@ -153,11 +157,11 @@ export const useTicketStore = create(
                 .filter(ticket => !deletedIds.has(ticket._uuid))
                 .map(ticket => [ticket._uuid, ticket])
             ).values()]
-            set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsLoadError: null })
+            set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsEverLoaded: true, ticketsLoadError: null })
             saveTicketSnapshot(allTickets)
           } catch (e) {
             console.error('fetchTickets error', e)
-            set({ loading: false, ticketsLoaded: true, ticketsLoadError: e?.message || 'Could not load ticket history.' })
+            set({ loading: false, ticketsLoaded: true, ticketsEverLoaded: true, ticketsLoadError: e?.message || 'Could not load ticket history.' })
           }
         }
 

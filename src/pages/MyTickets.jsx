@@ -60,7 +60,10 @@ const todayStr   = () => new Date().toISOString().split('T')[0]
 const daysAgoStr = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0] }
 
 export default function MyTickets() {
-  const { tickets, loading, updateTicket, softDelete, addTimelineEvent } = useTicketStore()
+  const { tickets, loading: ticketsLoading, ticketsEverLoaded, updateTicket, softDelete, addTimelineEvent } = useTicketStore()
+  // Until the first full download finishes the list is only a small cached snapshot,
+  // so show "loading" instead of counts/lists that would jump a few seconds later.
+  const loading = ticketsLoading || !ticketsEverLoaded
   const { currentUser }                    = useUserStore()
   const { addToast }                       = useUiStore()
   const { getCategoryName, getAgentName, categories, groups, agents } = useAdminStore()
@@ -319,11 +322,15 @@ export default function MyTickets() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">My Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
-            {myTickets.length} ticket{myTickets.length !== 1 ? 's' : ''} assigned to you
-            {unassignedPool.length > 0 && (
-              <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
-                · {unassignedPool.length} unassigned available
-              </span>
+            {loading ? 'Loading your tickets…' : (
+              <>
+                {myTickets.length} ticket{myTickets.length !== 1 ? 's' : ''} assigned to you
+                {unassignedPool.length > 0 && (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
+                    · {unassignedPool.length} unassigned available
+                  </span>
+                )}
+              </>
             )}
           </p>
         </div>
@@ -375,7 +382,7 @@ export default function MyTickets() {
               <div className="text-sm font-bold t-main">Unassigned Tickets</div>
               <div className="text-[11px] t-muted">Open tickets available for any agent to pick up</div>
             </div>
-            {unassignedPool.length > 0 && (
+            {!loading && unassignedPool.length > 0 && (
               <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                 {unassignedPool.length}
               </span>
@@ -387,7 +394,12 @@ export default function MyTickets() {
         </button>
 
         {!poolCollapsed && (
-          unassignedPool.length === 0 ? (
+          loading ? (
+            <div className="px-4 pb-4 pt-1 flex items-center gap-2 text-xs t-muted">
+              <Loader2 size={13} className="animate-spin" />
+              Loading all tickets…
+            </div>
+          ) : unassignedPool.length === 0 ? (
             <div className="px-4 pb-4 pt-1 flex items-center gap-2 text-xs t-muted">
               <Check size={13} className="text-emerald-500" />
               No unassigned tickets — all caught up!
