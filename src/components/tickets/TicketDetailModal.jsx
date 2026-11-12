@@ -581,7 +581,35 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   }, [isEndUser, fetchResolutionCodes, fetchOnHoldReasons])
 
 
-  const [activeTab, setActiveTab] = useState(conversationOnly || isEndUser ? 'conversations' : 'details')
+  // After a browser refresh the ticket's tab is restored from the URL (?tab=…).
+  const [activeTab, setActiveTab] = useState(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('tab')
+    if (fromUrl && MODAL_TABS.some(t => t.id === fromUrl) && !(isEndUser && !['details', 'conversations'].includes(fromUrl))) return fromUrl
+    return conversationOnly || isEndUser ? 'conversations' : 'details'
+  })
+
+  // Keep the open ticket (and tab) in the address bar so a refresh comes back to
+  // this same ticket instead of the bare list page. The state lives in the URL
+  // only — nothing is cached locally — and is removed again when the ticket closes.
+  useEffect(() => {
+    const u = new URL(window.location.href)
+    u.searchParams.set('ticket', ticket._uuid)
+    if (conversationOnly) u.searchParams.set('mode', 'conv'); else u.searchParams.delete('mode')
+    window.history.replaceState(window.history.state, '', u)
+    return () => {
+      const c = new URL(window.location.href)
+      if (c.searchParams.get('ticket') !== ticket._uuid) return   // another ticket already took over
+      ;['ticket', 'tab', 'mode'].forEach(k => c.searchParams.delete(k))
+      window.history.replaceState(window.history.state, '', c)
+    }
+  }, [ticket._uuid, conversationOnly])
+  useEffect(() => {
+    const u = new URL(window.location.href)
+    if (u.searchParams.get('ticket') !== ticket._uuid) return
+    u.searchParams.set('tab', activeTab)
+    window.history.replaceState(window.history.state, '', u)
+  }, [activeTab, ticket._uuid])
+
   const [resolverId, setResolverId]     = useState(currentUser?.id || '')
   const [resolutionCode, setResolutionCode] = useState('')
   const [editingResolution, setEditingResolution] = useState(false)

@@ -4,7 +4,7 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { ToastContainer } from '../ui/Toast'
 import { useUserStore } from '../../stores/userStore'
-import { BASE } from '../../api/client'
+import { BASE, api, normalizeTicket } from '../../api/client'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useAdminStore } from '../../stores/adminStore'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -140,6 +140,32 @@ export function Layout() {
     }
   }, [location.pathname, isLoggedIn, token]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // After a browser refresh, reopen the ticket that was open (its id is in the URL).
+  useEffect(() => {
+    if (!isLoggedIn || !token) return undefined
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get('ticket')
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id) || useUiStore.getState().activeModal) return undefined
+    let cancelled = false
+    const clearParams = () => {
+      const u = new URL(window.location.href)
+      ;['ticket', 'tab', 'mode'].forEach(k => u.searchParams.delete(k))
+      window.history.replaceState(window.history.state, '', u)
+    }
+    api.get(`/tickets/${id}`).then(data => {
+      if (cancelled) return
+      if (data?.deleted_at) { clearParams(); return }
+      const full = { ...normalizeTicket(data), _detail: true }
+      useTicketStore.setState(s => ({
+        tickets: s.tickets.some(t => t._uuid === full._uuid)
+          ? s.tickets.map(t => (t._uuid === full._uuid ? { ...t, ...full } : t))
+          : [full, ...s.tickets],
+      }))
+      useUiStore.getState().openModal('ticket', full, { conversationOnly: params.get('mode') === 'conv' })
+    }).catch(() => { if (!cancelled) clearParams() })
+    return () => { cancelled = true }
+  }, [isLoggedIn, token])
+
   if (!isLoggedIn) return <Navigate to="/login" replace />
 
   return (
@@ -182,7 +208,7 @@ export function Layout() {
       <ToastContainer />
 
       {activeModal?.type === 'ticket' && activeModal.data && (
-        <Suspense fallback={null}><TicketDetailModal ticket={activeModal.data} onClose={closeModal} /></Suspense>
+        <Suspense fallback={null}><TicketDetailModal ticket={activeModal.data} onClose={closeModal} conversationOnly={!!activeModal.conversationOnly} /></Suspense>
       )}
     </div>
   )

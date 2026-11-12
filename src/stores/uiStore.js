@@ -22,7 +22,7 @@ export const useUiStore = create(
         set({ isDark: next })
       },
 
-      openModal: (type, data = null) => set({ activeModal: { type, data } }),
+      openModal: (type, data = null, options = {}) => set({ activeModal: { type, data, ...options } }),
       closeModal: () => set({ activeModal: null }),
 
       addToast: (message, type = 'success') => {
