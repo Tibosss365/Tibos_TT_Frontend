@@ -66,6 +66,7 @@ function saveTicketSnapshot(tickets) {
         ...ticket,
         description: (ticket.description || '').slice(0, 1500),
         attachments: [],
+        _detail: false,   // the cached copy is shortened — never treat it as full detail
       }))
       try {
         sessionStorage.setItem(ticketCacheKey(), JSON.stringify({ savedAt: Date.now(), items }))
@@ -77,6 +78,16 @@ function saveTicketSnapshot(tickets) {
   } catch {
     // Caching is optional; live API loading continues if browser storage is unavailable.
   }
+}
+
+// Ticket lists carry no conversation and only a short description preview. When a
+// ticket whose full detail was already loaded (an open ticket) is refreshed from
+// a list, keep that detail instead of replacing it with the stripped-down copy —
+// otherwise the open ticket's conversation vanishes and its description is cut
+// off a few seconds after it is opened.
+function keepLoadedDetail(fresh, old) {
+  if (!old?._detail) return fresh
+  return { ...fresh, timeline: old.timeline, attachments: old.attachments, description: old.description, _detail: true }
 }
 
 // Share an in-flight full refresh so bursts of live events do not start
@@ -124,7 +135,7 @@ export const useTicketStore = create(
             const publishLoadedPages = () => {
               const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
               const merged = new Map(get().tickets.filter(ticket => !deletedIds.has(ticket._uuid)).map(ticket => [ticket._uuid, ticket]))
-              loadedTickets.forEach((ticket, id) => { if (!deletedIds.has(id)) merged.set(id, ticket) })
+              loadedTickets.forEach((ticket, id) => { if (!deletedIds.has(id)) merged.set(id, keepLoadedDetail(ticket, merged.get(id))) })
               const visibleTickets = [...merged.values()].sort(
                 (a, b) => new Date(b.created || 0) - new Date(a.created || 0)
               )
@@ -151,11 +162,12 @@ export const useTicketStore = create(
             }
 
             const deletedIds = new Set(get().deletedTickets.map(ticket => ticket._uuid))
+            const previous = new Map(get().tickets.map(ticket => [ticket._uuid, ticket]))
             const allTickets = [...new Map(
               pageData
                 .flatMap(data => (data.items || []).map(normalizeTicket))
                 .filter(ticket => !deletedIds.has(ticket._uuid))
-                .map(ticket => [ticket._uuid, ticket])
+                .map(ticket => [ticket._uuid, keepLoadedDetail(ticket, previous.get(ticket._uuid))])
             ).values()]
             set({ tickets: allTickets, loading: false, ticketsLoaded: true, ticketsEverLoaded: true, ticketsLoadError: null })
             saveTicketSnapshot(allTickets)
@@ -364,7 +376,7 @@ export const useTicketStore = create(
         try {
           const data = await api.get(`/tickets/${uuid}`)
           const updated = normalizeTicket(data)
-          set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated } : t) }))
+          set(s => ({ tickets: s.tickets.map(t => t._uuid === uuid ? { ...t, ...updated, _detail: true } : t) }))
           return updated
         } catch (e) {
           console.error('fetchTicket error', e)

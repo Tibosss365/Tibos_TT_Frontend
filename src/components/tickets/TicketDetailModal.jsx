@@ -670,6 +670,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
     setDetailLoaded(false)
     Promise.resolve(fetchTicket(ticket._uuid)).finally(() => setDetailLoaded(true))
   }, [ticket._uuid])
+  // A live refresh keeps the conversation already on screen (see keepLoadedDetail in the
+  // store), so when the ticket changes underneath us — e.g. a customer reply arrives —
+  // reload its detail to show the new message.
+  const seenUpdatedRef = useRef(null)
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState({
     subject:         ticket.subject         || '',
@@ -696,6 +700,13 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
 
   // ── Live ticket data ────────────────────────────────────────────────────────
   const liveTicket = useTicketStore(s => s.tickets.find(t => t.id === ticket.id)) || ticket
+
+  useEffect(() => {
+    if (seenUpdatedRef.current === null) { seenUpdatedRef.current = liveTicket.updated || ''; return }
+    if (seenUpdatedRef.current === (liveTicket.updated || '')) return
+    seenUpdatedRef.current = liveTicket.updated || ''
+    if (detailLoaded) fetchTicket(ticket._uuid)
+  }, [liveTicket.updated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync edits whenever liveTicket changes (e.g. after save or SSE push) so the
   // sidebar/SLA panel always reflects the latest backend values.
@@ -925,9 +936,8 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
   const [composeBcc, setComposeBcc]   = useState('')
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
-  const [expandedEmail, setExpandedEmail] = useState(null) // track which email is expanded
-  // In conversationOnly mode the whole point is reading email content, so every
-  // email starts open — this tracks ones the agent has manually collapsed instead.
+  // Emails whose open/closed state the agent has flipped by clicking its header
+  // (incoming emails start open, automatic outgoing ones start closed).
   const [collapsedEmails, setCollapsedEmails] = useState(() => new Set())
 
   // Compose attachments (files/pasted images pending upload)
@@ -1243,7 +1253,10 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                       const isEmailIn  = ev.type === 'email_in'
                       const isComment  = ev.type === 'comment'
                       const isEmail    = isEmailOut || isEmailIn
-                      const isExpanded = conversationOnly ? !collapsedEmails.has(i) : expandedEmail === i
+                      // Replies people sent in (and every email in conversation-only mode) start open,
+                      // each showing just that person's own message; our automatic status emails start
+                      // closed. Clicking a header flips whichever state it is in.
+                      const isExpanded = (conversationOnly || isEmailIn) ? !collapsedEmails.has(i) : collapsedEmails.has(i)
 
                       /* ── Email bubble (in or out) ── */
                       if (isEmail) {
@@ -1257,15 +1270,11 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                             <div
                               className="flex items-start justify-between gap-2 px-3 py-2.5 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                               onClick={() => {
-                                if (conversationOnly) {
-                                  setCollapsedEmails(prev => {
-                                    const next = new Set(prev)
-                                    if (next.has(i)) next.delete(i); else next.add(i)
-                                    return next
-                                  })
-                                } else {
-                                  setExpandedEmail(isExpanded ? null : i)
-                                }
+                                setCollapsedEmails(prev => {
+                                  const next = new Set(prev)
+                                  if (next.has(i)) next.delete(i); else next.add(i)
+                                  return next
+                                })
                               }}
                             >
                               <div className="flex items-center gap-2 min-w-0">
