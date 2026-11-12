@@ -18,7 +18,8 @@ import { useEmailStore } from '../../stores/emailStore'
 import { RichDescription } from './RichDescription'
 import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, fmtDateTime, fmtDate, timeAgo, getSlaInfo, getSlaRemainingSeconds, fmtSlaSeconds } from '../../utils/ticketUtils'
 import { useT } from '../../utils/i18n'
-import { looksLikeHtml, cleanEmailHtml, htmlToText } from '../../utils/htmlContent'
+import { looksLikeHtml, htmlToText } from '../../utils/htmlContent'
+import { EmailBody } from './EmailBody'
 import SourceBadge from './SourceBadge'
 import OwnersInput from './OwnersInput'
 
@@ -1312,9 +1313,7 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
 
                                 {/* Body — full HTML (including any quoted trail the sender's
                                     mail client attached), sanitized like the email preview. */}
-                                <div className="px-3 py-3 email-body">
-                                  <div className="text-xs t-main leading-relaxed" dangerouslySetInnerHTML={{ __html: cleanEmailHtml(ev.text) }} />
-                                </div>
+                                <EmailBody html={ev.text} className="px-3 py-3 email-body text-xs t-main leading-relaxed" />
 
                                 {/* Reply actions (only on received emails, staff only) */}
                                 {isEmailIn && !isEndUser && (
@@ -1676,9 +1675,9 @@ export function TicketDetailModal({ ticket, onClose, conversationOnly = false })
                         value={edits.description} onChange={e => set('description', e.target.value)} />
                     ) : edits.description ? (
                       looksLikeHtml(edits.description) ? (
-                        <div
+                        <EmailBody
+                          html={edits.description}
                           className="text-sm t-main leading-relaxed py-1 min-h-[120px] email-body"
-                          dangerouslySetInnerHTML={{ __html: cleanEmailHtml(edits.description) }}
                         />
                       ) : (
                         <div className="text-xs t-main leading-relaxed py-1 whitespace-pre-wrap min-h-[120px]">{edits.description}</div>
