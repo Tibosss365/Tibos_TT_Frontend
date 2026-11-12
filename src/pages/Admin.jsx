@@ -43,6 +43,73 @@ const TABS = [
 const FEATURE_TABS = new Set(['customFields','automation','webhooks','notificationChannels','assets','escalation','recurring'])
 const VALID_TAB_IDS = new Set(TABS.map(t => t.id))
 
+// The admin menu, grouped by what the setting is for (every tab id appears once;
+// anything not listed falls into "More" so a new tab can never go missing).
+const TAB_SECTIONS = [
+  { title: 'General',            ids: ['overview', 'company', 'domains'] },
+  { title: 'Tickets & Workflow', ids: ['tickets', 'groups', 'customFields', 'sla', 'escalation', 'automation', 'recurring'] },
+  { title: 'People',             ids: ['agents'] },
+  { title: 'Communication',      ids: ['email', 'alerts', 'notificationChannels', 'webhooks', 'teams'] },
+  { title: 'Security',           ids: ['sso'] },
+  { title: 'Assets',             ids: ['assets'] },
+]
+
+// Background services the helpdesk depends on, as reported by the server's /health.
+const SERVICE_LABELS = [
+  ['email_poller',            'Email → Ticket',        'Turns incoming emails into tickets (runs only when Inbound Email is enabled)'],
+  ['sla_breach_detector',     'SLA breach detector',   'Marks tickets overdue and runs "SLA breach" rules'],
+  ['escalation_service',      'Escalation',            'Escalates tickets that sit too long'],
+  ['auto_assign_service',     'Auto-assign',           'Assigns unpicked tickets (when turned on in Tickets)'],
+  ['report_scheduler',        'Scheduled reports',     'Sends the daily / weekly / monthly report emails'],
+  ['condition_alert_service', 'Alert conditions',      'Alerts about unassigned / SLA / on-hold tickets'],
+  ['recurring_ticket_service','Recurring tickets',     'Creates tickets on a schedule'],
+  ['redis',                   'Cache',                 'Speeds up ticket lists'],
+]
+
+function SystemStatusCard() {
+  const [health, setHealth] = useState(null)
+  const [error, setError] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const load = async () => {
+    setLoading(true); setError(false)
+    try {
+      const res = await fetch(`${BASE}/health`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(String(res.status))
+      setHealth(await res.json())
+    } catch { setError(true) } finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+  const isUp = (v) => v === 'running' || v === 'ok'
+  const down = health ? SERVICE_LABELS.filter(([k]) => health[k] !== undefined && !isUp(health[k])) : []
+  return (
+    <Card className="xl:col-span-2">
+      <CardHeader
+        title="System status"
+        subtitle={error ? 'Could not reach the server' : health ? (down.length ? `${down.length} background service${down.length > 1 ? 's' : ''} not running` : 'All background services are running') : 'Checking…'}
+        action={<Button variant="ghost" size="sm" onClick={load} disabled={loading}><RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Check</Button>}
+      />
+      {health && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+          {SERVICE_LABELS.filter(([k]) => health[k] !== undefined).map(([k, label, hint]) => (
+            <div key={k} title={hint} className="flex items-center gap-2 rounded-lg border border-glass px-3 py-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isUp(health[k]) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span className="text-xs t-main font-medium truncate">{label}</span>
+              <span className={`ml-auto text-[10px] font-semibold ${isUp(health[k]) ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                {isUp(health[k]) ? 'running' : String(health[k])}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {down.length > 0 && (
+        <p className="mt-3 text-[11px] t-sub">
+          A stopped service means its rules and schedules are not running. Restart the app in Azure (and make sure "Always on" is enabled) to start them.
+        </p>
+      )}
+    </Card>
+  )
+}
+
 const GROUP_COLORS = [
   '#EF4444','#F97316','#F59E0B','#84CC16','#10B981',
   '#06B6D4','#3B82F6','#8B5CF6','#EC4899','#6B7280',
@@ -3610,23 +3677,34 @@ export default function Admin() {
         </Button>
       </div>
 
-      {/* Tabs */}
-      <div className="overflow-x-auto pb-0.5">
-        <div className="flex gap-1 p-1 glass-card w-fit min-w-full sm:min-w-0 border border-glass">
-          {TABS.map(({ id, icon: Icon, labelKey }) => (
-            <button key={id} onClick={() => changeTab(id)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${tab === id ? 'bg-indigo-600/30 dark:bg-indigo-600/30 t-main border border-indigo-500/30' : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
-              <Icon size={13} />{t(labelKey)}
-            </button>
-          ))}
-        </div>
+      {/* Tabs — grouped by purpose */}
+      <div className="glass-card border border-glass p-2 space-y-1.5">
+        {[...TAB_SECTIONS, ...(() => {
+          const listed = new Set(TAB_SECTIONS.flatMap(sec => sec.ids))
+          const rest = TABS.filter(x => !listed.has(x.id)).map(x => x.id)
+          return rest.length ? [{ title: 'More', ids: rest }] : []
+        })()].map(sec => (
+          <div key={sec.title} className="flex flex-wrap items-center gap-1">
+            <span className="w-full sm:w-36 flex-shrink-0 px-2 text-[10px] font-bold t-sub uppercase tracking-wider">{sec.title}</span>
+            {sec.ids.map(id => {
+              const def = TABS.find(x => x.id === id)
+              if (!def) return null
+              const Icon = def.icon
+              return (
+                <button key={id} onClick={() => changeTab(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${tab === id ? 'bg-indigo-600/30 dark:bg-indigo-600/30 t-main border border-indigo-500/30' : 't-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5 border border-transparent'}`}>
+                  <Icon size={13} />{t(def.labelKey)}
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
-
-
 
       {/* Overview */}
       {tab === 'overview' && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <SystemStatusCard />
           <Card>
             <CardHeader title="Unassigned Tickets" subtitle={`${unassigned.length} tickets need assignment`} />
             <div className="space-y-2 max-h-72 overflow-y-auto">

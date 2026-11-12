@@ -156,6 +156,12 @@ const COND_FIELDS = [
   { value: 'group_id',    label: 'Group' },
   { value: 'source',      label: 'Source' },
   { value: 'assignee_id', label: 'Assignee' },
+  { value: 'type',        label: 'Ticket type' },
+  { value: 'subject',     label: 'Subject' },
+  { value: 'description', label: 'Description (text)' },
+  { value: 'company',     label: 'Company' },
+  { value: 'email',       label: 'Requester email' },
+  { value: 'email_domain', label: 'Requester email domain' },
 ]
 const COND_OPS = [
   { value: 'equals',     label: 'equals' },
@@ -163,18 +169,30 @@ const COND_OPS = [
   { value: 'in',         label: 'is one of' },
   { value: 'not_in',     label: 'is not one of' },
   { value: 'contains',   label: 'contains' },
+  { value: 'not_contains', label: 'does not contain' },
+  { value: 'starts_with',  label: 'starts with' },
 ]
 const ACTION_TYPES = [
   { value: 'assign',            label: 'Assign to agent' },
   { value: 'assign_least_busy', label: 'Assign to least-busy agent' },
   { value: 'set_priority',      label: 'Set priority' },
   { value: 'set_status',        label: 'Set status' },
+  { value: 'set_category',      label: 'Set category' },
+  { value: 'set_type',          label: 'Set ticket type' },
   { value: 'add_tag',           label: 'Add tag' },
   { value: 'set_group',         label: 'Set group' },
 ]
+const TRIGGER_HELP = {
+  ticket_created:  'Runs once when a new ticket is created — from the portal, an incoming email, Microsoft Teams, or a recurring schedule.',
+  ticket_updated:  'Runs every time a ticket is edited by an agent.',
+  comment_added:   'Runs when a comment is added, or when the customer replies by email.',
+  status_changed:  'Runs when a ticket’s status changes.',
+  sla_breach:      'Runs once, the moment a ticket’s SLA time runs out.',
+}
 const A_PRIORITIES = ['critical', 'high', 'medium', 'low']
 const A_STATUSES = ['open', 'in-progress', 'on-hold', 'resolved', 'closed']
-const A_SOURCES = ['portal', 'email', 'phone', 'chat']
+const A_SOURCES = ['portal', 'email', 'teams', 'phone', 'chat', 'api', 'walk_in']
+const A_TYPES = ['request', 'incident', 'problem', 'change']
 const isMulti = (op) => op === 'in' || op === 'not_in'
 
 const inputCls = 'rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800'
@@ -184,6 +202,7 @@ function condValueOptions(field, { categories, groups, agents }) {
   if (field === 'priority') return A_PRIORITIES
   if (field === 'status')   return A_STATUSES
   if (field === 'source')   return A_SOURCES
+  if (field === 'type')     return A_TYPES
   if (field === 'category') return categories.map(c => ({ value: c.id, label: c.name }))
   if (field === 'group_id') return groups.map(g => ({ value: g.id, label: g.name }))
   if (field === 'assignee_id') return agents.filter(a => a.id !== 'unassigned').map(a => ({ value: String(a.id), label: a.name }))
@@ -195,6 +214,8 @@ function actionValueOptions(type, { categories, groups, agents }) {
   if (type === 'assign')       return agents.filter(a => a.id !== 'unassigned').map(a => ({ value: String(a.id), label: a.name }))
   if (type === 'assign_least_busy') return [{ value: '*', label: '— Any group (all active agents) —' }, ...groups.map(g => ({ value: g.id, label: g.name }))]
   if (type === 'set_group')    return groups.map(g => ({ value: g.id, label: g.name }))
+  if (type === 'set_category') return categories.map(c => ({ value: c.id, label: c.name }))
+  if (type === 'set_type')     return A_TYPES
   return null // add_tag → free text
 }
 function asOpt(o) { return typeof o === 'string' ? { value: o, label: o } : o }
@@ -354,6 +375,7 @@ function AutomationTab() {
               ))}
             </select>
           </div>
+          <p className="text-xs text-gray-500">{TRIGGER_HELP[form.trigger]}</p>
           <p className="text-xs text-gray-500">Conditions and actions can be configured after saving.</p>
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || !form.name}
