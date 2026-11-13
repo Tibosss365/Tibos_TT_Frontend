@@ -4840,10 +4840,6 @@ export default function Admin() {
 
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <Button variant="primary" size="sm" onClick={handleSaveSla}><Save size={13} /> Save SLA Settings</Button>
-          </div>
         </div>
       )}
 
