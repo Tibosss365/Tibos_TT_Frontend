@@ -90,10 +90,18 @@ function keepLoadedDetail(fresh, old) {
   return { ...fresh, timeline: old.timeline, attachments: old.attachments, description: old.description, _detail: true }
 }
 
-// "Time to resolve" filter: only tickets that are resolved/closed and took more than `hours`.
-export function takesLongerThan(ticket, hours) {
+// "Time to resolve" filter — only resolved/closed tickets can match.
+// key "1-2" = at least 1 h and under 2 h; "24+" = 24 h or more; a plain number
+// (saved by an earlier version) = more than that many hours.
+export function matchesResolveTime(ticket, key) {
+  if (!key) return true
   if (!ticket.resolvedAt || !['resolved', 'closed'].includes(ticket.status)) return false
-  return new Date(ticket.resolvedAt).getTime() - new Date(ticket.created).getTime() > hours * 3600 * 1000
+  const hours = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.created).getTime()) / 3600000
+  let m = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(key)
+  if (m) return hours >= Number(m[1]) && hours < Number(m[2])
+  m = /^(\d+(?:\.\d+)?)\+$/.exec(key)
+  if (m) return hours >= Number(m[1])
+  return hours > Number(key)
 }
 
 // Share an in-flight full refresh so bursts of live events do not start
@@ -618,7 +626,7 @@ export const useTicketStore = create(
         }
         if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
         else if (filters.assignee) result = result.filter(t => String(t.assignee) === String(filters.assignee))
-        if (filters.resolveTime) result = result.filter(t => takesLongerThan(t, Number(filters.resolveTime)))
+        if (filters.resolveTime) result = result.filter(t => matchesResolveTime(t, filters.resolveTime))
         const dashboardCardStatus = { open: 'open', 'in-progress': 'in-progress', 'on-hold': 'on-hold', resolved: 'resolved' }
         if (dashboardCardStatus[filters.dashboardCard]) result = result.filter(t => t.status === dashboardCardStatus[filters.dashboardCard])
         if (filters.dashboardCard === 'unassigned') result = result.filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed')

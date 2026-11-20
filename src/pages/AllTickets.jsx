@@ -4,7 +4,7 @@ import {
   Search, Download, Trash2, CheckSquare, Square, X, Check,
   SlidersHorizontal, Filter, RotateCcw, Tag,
 } from 'lucide-react'
-import { useTicketStore, takesLongerThan } from '../stores/ticketStore'
+import { useTicketStore, matchesResolveTime } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
@@ -86,10 +86,12 @@ const STAGED_DEFAULTS = {
 }
 
 const RESOLVE_TIME_OPTIONS = [
-  { value: '',   label: 'Any time' },
-  { value: '1',  label: 'More than 1 hour' },
-  { value: '2',  label: 'More than 2 hours' },
-  { value: '24', label: 'More than 24 hours' },
+  { value: '',     label: 'Any time' },
+  { value: '0-1',  label: 'Under 1 hour' },
+  { value: '1-2',  label: '1 to 2 hours' },
+  { value: '2-4',  label: '2 to 4 hours' },
+  { value: '4-24', label: '4 to 24 hours' },
+  { value: '24+',  label: 'More than 24 hours' },
 ]
 
 const DATE_RANGES = [
@@ -400,7 +402,7 @@ export default function AllTickets() {
       if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
       else result = result.filter(t => String(t.assignee) === String(filters.assignee))
     }
-    if (filters.resolveTime) result = result.filter(t => takesLongerThan(t, Number(filters.resolveTime)))
+    if (filters.resolveTime) result = result.filter(t => matchesResolveTime(t, filters.resolveTime))
     if (filters.search) {
       const q = filters.search.toLowerCase()
       result = result.filter(t =>
@@ -654,7 +656,7 @@ export default function AllTickets() {
                     <select value={staged.resolveTime} onChange={e => setSF('resolveTime', e.target.value)} className={selectCls + ' w-full'}>
                       {RESOLVE_TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
-                    <p className="text-[10px] t-sub leading-snug">Shows resolved / closed tickets that took longer than this from creation to resolution. Press Apply to filter.</p>
+                    <p className="text-[10px] t-sub leading-snug">Shows resolved / closed tickets whose time from creation to resolution falls in this range. Press Apply to filter.</p>
                   </div>
                 )}
               </div>
