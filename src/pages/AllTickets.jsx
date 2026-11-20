@@ -4,7 +4,7 @@ import {
   Search, Download, Trash2, CheckSquare, Square, X, Check,
   SlidersHorizontal, Filter, RotateCcw, Tag,
 } from 'lucide-react'
-import { useTicketStore } from '../stores/ticketStore'
+import { useTicketStore, takesLongerThan } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
@@ -13,33 +13,84 @@ import { Modal } from '../components/ui/Modal'
 import { Card } from '../components/ui/Card'
 import { TicketDetailModal } from '../components/tickets/TicketDetailModal'
 import SourceBadge from '../components/tickets/SourceBadge'
-import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo } from '../utils/ticketUtils'
+import { STATUSES, PRIORITIES, TICKET_TYPES, TICKET_TYPE_META, timeAgo, getSlaInfo, fmtDateTime } from '../utils/ticketUtils'
 import { useT } from '../utils/i18n'
 import { BASE } from '../api/client'
 
 // ── Column definitions ────────────────────────────────────────────────────────
+// Table order follows this list; the picker groups the same columns by `section`.
 const ALL_COLUMNS = [
-  { key: 'id',        label: 'ID' },
-  { key: 'type',      label: 'Type' },
-  { key: 'subject',   label: 'Subject' },
-  { key: 'priority',  label: 'Priority' },
-  { key: 'status',    label: 'Status' },
-  { key: 'sla',       label: 'SLA' },
-  { key: 'source',    label: 'Source' },
-  { key: 'group',     label: 'Group' },
-  { key: 'category',  label: 'Category' },
-  { key: 'assignee',  label: 'Assignee' },
-  { key: 'submitter', label: 'Submitter' },
-  { key: 'created',   label: 'Created' },
-  { key: 'updated',   label: 'Updated' },
+  { key: 'id',            label: 'ID',                     section: 'Ticket' },
+  { key: 'type',          label: 'Type',                   section: 'Ticket' },
+  { key: 'subject',       label: 'Subject',                section: 'Ticket' },
+  { key: 'priority',      label: 'Priority',               section: 'Ticket' },
+  { key: 'status',        label: 'Status',                 section: 'Ticket' },
+  { key: 'sla',           label: 'SLA',                    section: 'SLA & quality' },
+  { key: 'source',        label: 'Source',                 section: 'Ticket' },
+  { key: 'group',         label: 'Group',                  section: 'Ticket' },
+  { key: 'category',      label: 'Category',               section: 'Ticket' },
+  { key: 'assignee',      label: 'Assignee',               section: 'Ticket' },
+  { key: 'tags',          label: 'Tags',                   section: 'Ticket' },
+  { key: 'description',   label: 'Description',            section: 'Ticket' },
+  { key: 'submitter',     label: 'Submitter',              section: 'Requester' },
+  { key: 'company',       label: 'Company',                section: 'Requester' },
+  { key: 'email',         label: 'Requester email',        section: 'Requester' },
+  { key: 'phone',         label: 'Phone',                  section: 'Requester' },
+  { key: 'asset',         label: 'Asset',                  section: 'Requester' },
+  { key: 'created',       label: 'Created',                section: 'Dates & time' },
+  { key: 'createdAt',     label: 'Created (date & time)',  section: 'Dates & time' },
+  { key: 'updated',       label: 'Updated',                section: 'Dates & time' },
+  { key: 'updatedAt',     label: 'Updated (date & time)',  section: 'Dates & time' },
+  { key: 'firstResponse', label: 'First response time',    section: 'Dates & time' },
+  { key: 'resolvedAt',    label: 'Resolved / closed at',   section: 'Dates & time' },
+  { key: 'timeToResolve', label: 'Time to resolve',        section: 'Dates & time' },
+  { key: 'dueDate',       label: 'Due date',               section: 'Dates & time' },
+  { key: 'slaDeadline',   label: 'SLA deadline',           section: 'SLA & quality' },
+  { key: 'reopened',      label: 'Reopened (times)',       section: 'SLA & quality' },
+  { key: 'csat',          label: 'Customer rating',        section: 'SLA & quality' },
+  { key: 'resolutionCode', label: 'Resolution code',       section: 'Resolution' },
+  { key: 'resolution',    label: 'Resolution note',        section: 'Resolution' },
+  { key: 'holdReason',    label: 'On-hold reason',         section: 'Resolution' },
 ]
+const COLUMN_SECTIONS = ['Ticket', 'Requester', 'Dates & time', 'SLA & quality', 'Resolution']
 const DEFAULT_COLS = ['id','type','subject','priority','status','sla','group','category','assignee','updated']
+const COLS_STORAGE_KEY = 'allTicketsVisibleColumns'
+
+// The agent's chosen columns are a display preference, remembered in this browser.
+const loadSavedCols = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLS_STORAGE_KEY) || 'null')
+    const valid = Array.isArray(saved) ? saved.filter(k => ALL_COLUMNS.some(c => c.key === k)) : []
+    return valid.length ? valid : DEFAULT_COLS
+  } catch { return DEFAULT_COLS }
+}
+
+// 95 min -> "1h 35m", 26 h -> "1d 2h", 40 s -> "<1m"
+const fmtDuration = (ms) => {
+  if (ms == null || Number.isNaN(ms) || ms < 0) return '—'
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return '<1m'
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ${mins % 60}m`
+  const days = Math.floor(hours / 24)
+  return `${days}d ${hours % 24}h`
+}
+const msBetween = (from, to) => (from && to ? new Date(to).getTime() - new Date(from).getTime() : null)
+const clip = (text, n) => { const t = String(text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t }
 
 // ── Staged filter defaults ────────────────────────────────────────────────────
 const STAGED_DEFAULTS = {
   dateRange: 'all', priority: '', category: '', group: '', type: '',
-  assignee: '', dateFrom: '', dateTo: '', dateField: 'created',
+  assignee: '', dateFrom: '', dateTo: '', dateField: 'created', resolveTime: '',
 }
+
+const RESOLVE_TIME_OPTIONS = [
+  { value: '',   label: 'Any time' },
+  { value: '1',  label: 'More than 1 hour' },
+  { value: '2',  label: 'More than 2 hours' },
+  { value: '24', label: 'More than 24 hours' },
+]
 
 const DATE_RANGES = [
   { key: 'all',    label: 'All Time'   },
@@ -104,17 +155,21 @@ export default function AllTickets() {
     group:     filters.group     || '',
     type:      filters.type      || '',
     assignee:  filters.assignee  || '',
+    resolveTime: filters.resolveTime || '',
     dateFrom:  filters.dateFrom  || '',
     dateTo:    filters.dateTo    || '',
     dateField: filters.dateField || 'created',
   }))
-  const [visibleCols, setVisibleCols]         = useState(DEFAULT_COLS)
+  const [visibleCols, setVisibleCols]         = useState(loadSavedCols)
   const [showColPicker, setShowColPicker]     = useState(false)
+  const [showMore, setShowMore]               = useState(false)
+  const moreRef = useRef(null)
   const [exportingResolved, setExportingResolved] = useState(false)
   const colPickerRef = useRef(null)
   const panelRef     = useRef(null)
 
   useEffect(() => { fetchResolutionCodes() }, [fetchResolutionCodes])
+  useEffect(() => { try { localStorage.setItem(COLS_STORAGE_KEY, JSON.stringify(visibleCols)) } catch { /* private mode */ } }, [visibleCols])
 
   // Dashboard KPI cards pass their active filters into this page so the table
   // opens on the exact ticket subset represented by the clicked card.
@@ -212,6 +267,18 @@ export default function AllTickets() {
     setFilter('status', val)
   }
 
+  // Assignee filter lists support staff only (agents and admins) — not the customers/end users in /agents
+  const assigneeOptions = (() => {
+    const list = (agents || []).filter(a => a.id !== 'unassigned' && a.is_active !== false && (a.role === 'technician' || a.role === 'admin'))
+    const current = staged.assignee && staged.assignee !== 'unassigned' ? (agents || []).find(a => String(a.id) === String(staged.assignee)) : null
+    return current && !list.some(a => a.id === current.id) ? [...list, current] : list   // never blank an already-selected value
+  })()
+  useEffect(() => {
+    const close = (e) => { if (moreRef.current && !moreRef.current.contains(e.target)) setShowMore(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
   // Column customization
   const toggleCol = (key) => {
     setVisibleCols(prev =>
@@ -296,7 +363,7 @@ export default function AllTickets() {
 
 
   const hasSearch    = !!filters.search
-  const hasAnyFilter = !!(filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || filters.dashboardCard || filters.dashboardSla || hasSearch)
+  const hasAnyFilter = !!(filters.resolveTime || filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || filters.dashboardCard || filters.dashboardSla || hasSearch)
   const dashboardCardLabel = {
     open: 'Open Tickets',
     unassigned: 'Unassigned Tickets',
@@ -316,6 +383,7 @@ export default function AllTickets() {
     staged.group     !== (filters.group     || '') ||
     staged.type      !== (filters.type      || '') ||
     staged.assignee  !== (filters.assignee  || '') ||
+    staged.resolveTime !== (filters.resolveTime || '') ||
     staged.dateFrom  !== (filters.dateFrom  || '') ||
     staged.dateTo    !== (filters.dateTo    || '') ||
     staged.dateRange !== 'all'
@@ -332,6 +400,7 @@ export default function AllTickets() {
       if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
       else result = result.filter(t => String(t.assignee) === String(filters.assignee))
     }
+    if (filters.resolveTime) result = result.filter(t => takesLongerThan(t, Number(filters.resolveTime)))
     if (filters.search) {
       const q = filters.search.toLowerCase()
       result = result.filter(t =>
@@ -430,6 +499,36 @@ export default function AllTickets() {
       case 'submitter': return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.submitter || '—'}</td>
       case 'created':   return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{timeAgo(ticket?.created)}</td>
       case 'updated':   return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{timeAgo(ticket?.updated)}</td>
+      case 'tags': return (
+        <td key={key} className="py-3 px-3 text-xs t-muted">
+          {ticket.tags?.length ? <div className="flex flex-wrap gap-1 max-w-[180px]">{ticket.tags.map(tag => (
+            <span key={tag} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-medium"><Tag size={8} />{tag}</span>
+          ))}</div> : '—'}
+        </td>
+      )
+      case 'description':   return <td key={key} className="py-3 px-3 text-xs t-muted max-w-xs" title={clip(ticket.description, 600)}><div className="truncate">{clip(ticket.description, 90) || '—'}</div></td>
+      case 'company':       return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.company || '—'}</td>
+      case 'email':         return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.email || '—'}</td>
+      case 'phone':         return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.phone || '—'}</td>
+      case 'asset':         return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.asset || '—'}</td>
+      case 'createdAt':     return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{fmtDateTime(ticket.created)}</td>
+      case 'updatedAt':     return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{fmtDateTime(ticket.updated)}</td>
+      case 'firstResponse': return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{fmtDuration(msBetween(ticket.created, ticket.firstRespondedAt))}</td>
+      case 'resolvedAt':    return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{ticket.resolvedAt ? fmtDateTime(ticket.resolvedAt) : '—'}</td>
+      case 'timeToResolve': return (
+        <td key={key} className="py-3 px-3 text-xs whitespace-nowrap">
+          {ticket.resolvedAt && ['resolved', 'closed'].includes(ticket.status)
+            ? <span className="font-semibold text-emerald-600 dark:text-emerald-400">{fmtDuration(msBetween(ticket.created, ticket.resolvedAt))}</span>
+            : <span className="t-muted">—</span>}
+        </td>
+      )
+      case 'dueDate':       return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{ticket.dueDate ? fmtDateTime(ticket.dueDate) : '—'}</td>
+      case 'slaDeadline':   return <td key={key} className="py-3 px-3 text-xs t-sub whitespace-nowrap">{ticket.slaDueTime || ticket.slaDueAt ? fmtDateTime(ticket.slaDueTime || ticket.slaDueAt) : '—'}</td>
+      case 'reopened':      return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.reopenCount > 0 ? ticket.reopenCount : '—'}</td>
+      case 'csat':          return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.csatRating ? `${'★'.repeat(ticket.csatRating)} ${ticket.csatRating}/5` : '—'}</td>
+      case 'resolutionCode': return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.resolutionCode || '—'}</td>
+      case 'resolution':    return <td key={key} className="py-3 px-3 text-xs t-muted max-w-xs" title={clip(ticket.resolution, 600)}><div className="truncate">{clip(ticket.resolution, 80) || '—'}</div></td>
+      case 'holdReason':    return <td key={key} className="py-3 px-3 text-xs t-muted whitespace-nowrap">{ticket.holdReason || '—'}</td>
       default: return <td key={key} className="py-3 px-3 text-xs t-muted">—</td>
     }
   }
@@ -456,23 +555,28 @@ export default function AllTickets() {
               <SlidersHorizontal size={13} /> <span className="hidden sm:inline">Columns</span>
             </button>
             {showColPicker && (
-              <div className="absolute right-0 top-full mt-2 w-52 glass-card border border-glass rounded-xl shadow-xl z-50 p-2 animate-fade-in">
-                <div className="text-[10px] font-bold t-sub uppercase tracking-wider px-2 py-1.5">Visible Columns</div>
-                {ALL_COLUMNS.map(col => (
-                  <button key={col.key} onClick={() => toggleCol(col.key)}
-                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all">
-                    <span className="text-xs t-main">{col.label}</span>
-                    {visibleCols.includes(col.key)
-                      ? <Check size={13} className="text-indigo-500" />
-                      : <span className="w-3.5 h-3.5 rounded border-2 border-glass/60" />}
-                  </button>
-                ))}
-                <div className="border-t border-glass mt-1 pt-1">
-                  <button onClick={() => setVisibleCols(DEFAULT_COLS)}
-                    className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-xs t-muted transition-all">
-                    <RotateCcw size={11} /> Reset to default
-                  </button>
+              <div className="absolute right-0 top-full mt-2 w-64 max-h-[70vh] overflow-y-auto glass-card border border-glass rounded-xl shadow-xl z-50 p-2 animate-fade-in">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-[10px] font-bold t-sub uppercase tracking-wider">Show columns ({visibleCols.length}/{ALL_COLUMNS.length})</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setVisibleCols(ALL_COLUMNS.map(c => c.key))} className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline">All</button>
+                    <button onClick={() => setVisibleCols(DEFAULT_COLS)} className="text-[11px] font-medium t-muted hover:t-main flex items-center gap-1"><RotateCcw size={10} /> Reset</button>
+                  </div>
                 </div>
+                {COLUMN_SECTIONS.map(section => (
+                  <div key={section} className="mt-1">
+                    <div className="text-[10px] font-bold t-sub uppercase tracking-wider px-2 pt-2 pb-1 opacity-70">{section}</div>
+                    {ALL_COLUMNS.filter(c => c.section === section).map(col => (
+                      <button key={col.key} onClick={() => toggleCol(col.key)}
+                        className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all">
+                        <span className="text-xs t-main">{col.label}</span>
+                        {visibleCols.includes(col.key)
+                          ? <Check size={13} className="text-indigo-500" />
+                          : <span className="w-3.5 h-3.5 rounded border-2 border-glass/60" />}
+                      </button>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -535,8 +639,25 @@ export default function AllTickets() {
               <select value={staged.assignee} onChange={e => setSF('assignee', e.target.value)} className={selectCls}>
                 <option value="">All Assignees</option>
                 <option value="unassigned">Unassigned</option>
-                {(agents||[]).map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                {assigneeOptions.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
               </select>
+
+              {/* More filters */}
+              <div className="relative" ref={moreRef}>
+                <button onClick={() => setShowMore(v => !v)}
+                  className={`flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap ${showMore || staged.resolveTime ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400' : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                  <SlidersHorizontal size={12} /> More filters{staged.resolveTime ? ' (1)' : ''}
+                </button>
+                {showMore && (
+                  <div className="absolute right-0 top-full mt-2 w-64 glass-card border border-glass rounded-xl shadow-xl z-50 p-3 space-y-2 animate-fade-in">
+                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider">Time to resolve</label>
+                    <select value={staged.resolveTime} onChange={e => setSF('resolveTime', e.target.value)} className={selectCls + ' w-full'}>
+                      {RESOLVE_TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <p className="text-[10px] t-sub leading-snug">Shows resolved / closed tickets that took longer than this from creation to resolution. Press Apply to filter.</p>
+                  </div>
+                )}
+              </div>
 
               <button onClick={clearAllFilters}
                 className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold t-muted hover:text-rose-500 border border-glass hover:border-rose-500/40 rounded-lg transition-all whitespace-nowrap">

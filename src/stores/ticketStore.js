@@ -90,6 +90,12 @@ function keepLoadedDetail(fresh, old) {
   return { ...fresh, timeline: old.timeline, attachments: old.attachments, description: old.description, _detail: true }
 }
 
+// "Time to resolve" filter: only tickets that are resolved/closed and took more than `hours`.
+export function takesLongerThan(ticket, hours) {
+  if (!ticket.resolvedAt || !['resolved', 'closed'].includes(ticket.status)) return false
+  return new Date(ticket.resolvedAt).getTime() - new Date(ticket.created).getTime() > hours * 3600 * 1000
+}
+
 // Share an in-flight full refresh so bursts of live events do not start
 // several identical paginated downloads at once.
 let ticketsFetchPromise = null
@@ -108,7 +114,7 @@ export const useTicketStore = create(
       // from it (e.g. "unassigned available") are incomplete.
       ticketsEverLoaded: false,
       ticketsLoadError: null,
-      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' },
+      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '' },
       selectedIds: [],
 
       // ── API Methods ────────────────────────────────────────────────────────
@@ -579,7 +585,7 @@ export const useTicketStore = create(
       },
 
       resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '' } })
+        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '' } })
       },
 
       toggleSelect: (uuid) => {
@@ -612,6 +618,7 @@ export const useTicketStore = create(
         }
         if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
         else if (filters.assignee) result = result.filter(t => String(t.assignee) === String(filters.assignee))
+        if (filters.resolveTime) result = result.filter(t => takesLongerThan(t, Number(filters.resolveTime)))
         const dashboardCardStatus = { open: 'open', 'in-progress': 'in-progress', 'on-hold': 'on-hold', resolved: 'resolved' }
         if (dashboardCardStatus[filters.dashboardCard]) result = result.filter(t => t.status === dashboardCardStatus[filters.dashboardCard])
         if (filters.dashboardCard === 'unassigned') result = result.filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed')
