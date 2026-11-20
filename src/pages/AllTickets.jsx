@@ -4,7 +4,7 @@ import {
   Search, Download, Trash2, CheckSquare, Square, X, Check,
   SlidersHorizontal, Filter, RotateCcw, Tag,
 } from 'lucide-react'
-import { useTicketStore, matchesResolveTime } from '../stores/ticketStore'
+import { useTicketStore, matchesResolveTime, matchesOpenAge, matchesResolvedBetween } from '../stores/ticketStore'
 import { useAdminStore } from '../stores/adminStore'
 import { useUiStore } from '../stores/uiStore'
 import { PriorityBadge, StatusBadge } from '../components/ui/Badge'
@@ -83,7 +83,23 @@ const clip = (text, n) => { const t = String(text || '').replace(/<[^>]*>/g, ' '
 const STAGED_DEFAULTS = {
   dateRange: 'all', priority: '', category: '', group: '', type: '',
   assignee: '', dateFrom: '', dateTo: '', dateField: 'created', resolveTime: '',
+  openAge: '', resolvedFrom: '', resolvedTo: '',
 }
+
+const OPEN_AGE_OPTIONS = [
+  { value: '',     label: 'Any age' },
+  { value: '0-1',  label: 'Under 1 hour' },
+  { value: '1-2',  label: '1 to 2 hours' },
+  { value: '2-24', label: '2 to 24 hours' },
+  { value: '24+',  label: 'More than 24 hours' },
+]
+// A range chosen elsewhere (e.g. from the Dashboard) may not be in the fixed list — still show it.
+const rangeLabel = (v) => {
+  const m = /^(\d+)-(\d+)$/.exec(v); if (m) return `${m[1]} to ${m[2]} hours`
+  const p = /^(\d+)\+$/.exec(v);     if (p) return `More than ${p[1]} hours`
+  return `More than ${v} hours`
+}
+const withCurrent = (options, v) => (v && !options.some(o => o.value === v) ? [...options, { value: v, label: rangeLabel(v) }] : options)
 
 const RESOLVE_TIME_OPTIONS = [
   { value: '',     label: 'Any time' },
@@ -150,6 +166,7 @@ export default function AllTickets() {
   const [resolutionCode, setResolutionCode] = useState('')
   const [resolving, setResolving] = useState(false)
   const [dashboardCardFilter, setDashboardCardFilter] = useState('')
+  const [dashboardNote, setDashboardNote] = useState('')   // e.g. "Sobika S · Resolved today"
   const [staged, setStaged]                   = useState(() => ({
     dateRange: 'all',
     priority:  filters.priority  || '',
@@ -158,6 +175,9 @@ export default function AllTickets() {
     type:      filters.type      || '',
     assignee:  filters.assignee  || '',
     resolveTime: filters.resolveTime || '',
+    openAge: filters.openAge || '',
+    resolvedFrom: filters.resolvedFrom || '',
+    resolvedTo: filters.resolvedTo || '',
     dateFrom:  filters.dateFrom  || '',
     dateTo:    filters.dateTo    || '',
     dateField: filters.dateField || 'created',
@@ -203,6 +223,10 @@ export default function AllTickets() {
       group: dashboard.group || '',
       type: dashboard.type || '',
       assignee: dashboard.assignee || '',
+      resolveTime: dashboard.resolveTime || '',
+      openAge: dashboard.openAge || '',
+      resolvedFrom: dashboard.resolvedFrom || '',
+      resolvedTo: dashboard.resolvedTo || '',
       dateFrom,
       dateTo,
       dateField: 'created',
@@ -218,8 +242,9 @@ export default function AllTickets() {
 
     resetFilters()
     Object.entries(next).forEach(([key, value]) => setFilter(key, value))
-    setStaged({ ...STAGED_DEFAULTS, priority: next.priority, category: next.category, group: next.group, type: next.type, assignee: next.assignee, dateFrom: next.dateFrom, dateTo: next.dateTo })
+    setStaged({ ...STAGED_DEFAULTS, priority: next.priority, category: next.category, group: next.group, type: next.type, assignee: next.assignee, resolveTime: next.resolveTime, openAge: next.openAge, resolvedFrom: next.resolvedFrom, resolvedTo: next.resolvedTo, dateFrom: next.dateFrom, dateTo: next.dateTo, dateRange: (next.dateFrom || next.dateTo) ? 'custom' : 'all' })
     setDashboardCardFilter(card)
+    setDashboardNote(location.state?.dashboardLabel || '')
     window.history.replaceState({}, '')
   }, [location.key])
 
@@ -261,6 +286,7 @@ export default function AllTickets() {
     resetFilters()
     setStaged(STAGED_DEFAULTS)
     setDashboardCardFilter('')
+    setDashboardNote('')
   }
 
   // Status chips apply instantly
@@ -268,6 +294,8 @@ export default function AllTickets() {
     const val = filters.status === key && key !== '' ? '' : key
     setFilter('status', val)
   }
+
+  const moreCount = [staged.resolveTime, staged.openAge, (staged.resolvedFrom || staged.resolvedTo) ? 'resolved-between' : ''].filter(Boolean).length
 
   // Assignee filter lists support staff only (agents and admins) — not the customers/end users in /agents
   const assigneeOptions = (() => {
@@ -365,7 +393,7 @@ export default function AllTickets() {
 
 
   const hasSearch    = !!filters.search
-  const hasAnyFilter = !!(filters.resolveTime || filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || filters.dashboardCard || filters.dashboardSla || hasSearch)
+  const hasAnyFilter = !!(filters.resolveTime || filters.openAge || filters.resolvedFrom || filters.resolvedTo || filters.status || filters.priority || filters.category || filters.group || filters.type || filters.assignee || filters.dateFrom || filters.dateTo || filters.dashboardCard || filters.dashboardSla || hasSearch)
   const dashboardCardLabel = {
     open: 'Open Tickets',
     unassigned: 'Unassigned Tickets',
@@ -387,9 +415,12 @@ export default function AllTickets() {
     staged.type      !== (filters.type      || '') ||
     staged.assignee  !== (filters.assignee  || '') ||
     staged.resolveTime !== (filters.resolveTime || '') ||
+    staged.openAge     !== (filters.openAge     || '') ||
+    staged.resolvedFrom !== (filters.resolvedFrom || '') ||
+    staged.resolvedTo   !== (filters.resolvedTo   || '') ||
     staged.dateFrom  !== (filters.dateFrom  || '') ||
     staged.dateTo    !== (filters.dateTo    || '') ||
-    staged.dateRange !== 'all'
+    (staged.dateRange !== 'all' && staged.dateRange !== 'custom')   // 'custom' is covered by the date comparisons above
   )
 
   // Status chip counts (pre-status filter for accurate per-status numbers)
@@ -404,6 +435,8 @@ export default function AllTickets() {
       else result = result.filter(t => String(t.assignee) === String(filters.assignee))
     }
     if (filters.resolveTime) result = result.filter(t => matchesResolveTime(t, filters.resolveTime))
+    if (filters.openAge) result = result.filter(t => matchesOpenAge(t, filters.openAge))
+    if (filters.resolvedFrom || filters.resolvedTo) result = result.filter(t => matchesResolvedBetween(t, filters.resolvedFrom, filters.resolvedTo))
     if (filters.search) {
       const q = filters.search.toLowerCase()
       result = result.filter(t =>
@@ -414,7 +447,7 @@ export default function AllTickets() {
     }
     if (filters.dateFrom || filters.dateTo) {
       const field = filters.dateField || 'created'
-      const from  = filters.dateFrom ? new Date(filters.dateFrom) : null
+      const from  = filters.dateFrom ? new Date(filters.dateFrom + 'T00:00:00') : null
       const to    = filters.dateTo   ? new Date(filters.dateTo + 'T23:59:59') : null
       result = result.filter(t => {
         const d = new Date(t[field])
@@ -544,7 +577,7 @@ export default function AllTickets() {
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold t-main">All Tickets</h1>
           <p className="text-sm t-muted mt-0.5">
-            {filtered.length} ticket{filtered.length !== 1 ? 's' : ''}{dashboardCardLabel ? ` · ${dashboardCardLabel} from Dashboard` : hasAnyFilter ? ' (filtered)' : ''}
+            {filtered.length} ticket{filtered.length !== 1 ? 's' : ''}{dashboardNote ? ` · ${dashboardNote} (from Dashboard)` : dashboardCardLabel ? ` · ${dashboardCardLabel} from Dashboard` : hasAnyFilter ? ' (filtered)' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -648,16 +681,34 @@ export default function AllTickets() {
               {/* More filters */}
               <div className="relative" ref={moreRef}>
                 <button onClick={() => setShowMore(v => !v)}
-                  className={`flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap ${showMore || staged.resolveTime ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400' : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
-                  <SlidersHorizontal size={12} /> More filters{staged.resolveTime ? ' (1)' : ''}
+                  className={`flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border transition-all whitespace-nowrap ${showMore || moreCount > 0 ? 'bg-indigo-500/15 border-indigo-500/40 text-indigo-600 dark:text-indigo-400' : 'border-glass t-muted hover:t-main hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                  <SlidersHorizontal size={12} /> More filters{moreCount > 0 ? ` (${moreCount})` : ''}
                 </button>
                 {showMore && (
-                  <div className="absolute right-0 top-full mt-2 w-64 glass-card border border-glass rounded-xl shadow-xl z-50 p-3 space-y-2 animate-fade-in">
-                    <label className="block text-[10px] font-bold t-sub uppercase tracking-wider">Time to resolve</label>
-                    <select value={staged.resolveTime} onChange={e => setSF('resolveTime', e.target.value)} className={selectCls + ' w-full'}>
-                      {RESOLVE_TIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <p className="text-[10px] t-sub leading-snug">Shows resolved / closed tickets whose time from creation to resolution falls in this range. Press Apply to filter.</p>
+                  <div className="absolute right-0 top-full mt-2 w-72 glass-card border border-glass rounded-xl shadow-xl z-50 p-3 space-y-3 animate-fade-in">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider">Time to resolve</label>
+                      <select value={staged.resolveTime} onChange={e => setSF('resolveTime', e.target.value)} className={selectCls + ' w-full'}>
+                        {withCurrent(RESOLVE_TIME_OPTIONS, staged.resolveTime).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      <p className="text-[10px] t-sub leading-snug">Resolved / closed tickets whose time from creation to resolution is in this range.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider">Open for</label>
+                      <select value={staged.openAge} onChange={e => setSF('openAge', e.target.value)} className={selectCls + ' w-full'}>
+                        {withCurrent(OPEN_AGE_OPTIONS, staged.openAge).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      <p className="text-[10px] t-sub leading-snug">Tickets still not resolved, created this long ago.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold t-sub uppercase tracking-wider">Resolved between</label>
+                      <div className="flex items-center gap-1.5">
+                        <input type="date" value={staged.resolvedFrom} onChange={e => setSF('resolvedFrom', e.target.value)} className={selectCls + ' flex-1 min-w-0'} />
+                        <span className="text-[10px] t-muted">to</span>
+                        <input type="date" value={staged.resolvedTo} onChange={e => setSF('resolvedTo', e.target.value)} className={selectCls + ' flex-1 min-w-0'} />
+                      </div>
+                    </div>
+                    <p className="text-[10px] t-sub leading-snug">Press Apply to filter.</p>
                   </div>
                 )}
               </div>

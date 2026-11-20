@@ -62,15 +62,18 @@ const AGENT_PERIODS = [
 function agentPerformanceColumns(period, dayLabel) {
   const p = AGENT_PERIODS.find(item => item.key === period) || AGENT_PERIODS[0]
   return [
-    { label: p.created, date: period === 'day' ? dayLabel : '', get: a => a.periodCreated },
-    { label: 'Open < 1h', get: a => a.underOneHour },
-    { label: 'Open 1–2h', get: a => a.oneToTwoHours },
-    { label: 'Open 2–24h', get: a => a.twoToTwentyFourHours },
-    { label: p.resolved, get: a => a.periodResolved },
-    { label: 'Resolved < 1h', get: a => a.resolvedUnderOneHour },
-    { label: 'Resolved 1–2h', get: a => a.resolvedOneToTwoHours },
-    { label: 'Resolved 2–24h', get: a => a.resolvedTwoToTwentyFourHours },
-    ...(period === 'day' ? [{ label: 'This month', get: a => a.month }] : [{ label: 'Resolved > 24h', get: a => a.resolvedOverTwentyFourHours }]),
+    // `filter(range)` = the All Tickets filters that list exactly the tickets this column counts.
+    { label: p.created, date: period === 'day' ? dayLabel : '', get: a => a.periodCreated, filter: r => ({ dateFrom: r.from, dateTo: r.to }) },
+    { label: 'Open < 1h', get: a => a.underOneHour, filter: () => ({ openAge: '0-1' }) },
+    { label: 'Open 1–2h', get: a => a.oneToTwoHours, filter: () => ({ openAge: '1-2' }) },
+    { label: 'Open 2–24h', get: a => a.twoToTwentyFourHours, filter: () => ({ openAge: '2-24' }) },
+    { label: p.resolved, get: a => a.periodResolved, filter: r => ({ resolvedFrom: r.from, resolvedTo: r.to }) },
+    { label: 'Resolved < 1h', get: a => a.resolvedUnderOneHour, filter: r => ({ resolvedFrom: r.from, resolvedTo: r.to, resolveTime: '0-1' }) },
+    { label: 'Resolved 1–2h', get: a => a.resolvedOneToTwoHours, filter: r => ({ resolvedFrom: r.from, resolvedTo: r.to, resolveTime: '1-2' }) },
+    { label: 'Resolved 2–24h', get: a => a.resolvedTwoToTwentyFourHours, filter: r => ({ resolvedFrom: r.from, resolvedTo: r.to, resolveTime: '2-24' }) },
+    ...(period === 'day'
+      ? [{ label: 'This month', get: a => a.month, filter: r => ({ dateFrom: r.monthFrom, dateTo: r.to }) }]
+      : [{ label: 'Resolved > 24h', get: a => a.resolvedOverTwentyFourHours, filter: r => ({ resolvedFrom: r.from, resolvedTo: r.to, resolveTime: '24+' }) }]),
   ]
 }
 
@@ -567,6 +570,23 @@ export default function Dashboard() {
   const openTicketsFromCard = card => navigate('/tickets', {
     state: { dashboardCardFilter: card, dashboardFilters: { ...dashFilters } },
   })
+  // A number in the Agent Performance table → All Tickets with that agent + the column's filters applied
+  const openAgentMetricTickets = (agent, column) => {
+    const now = new Date()
+    const pad = n => String(n).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    const monthFrom = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`
+    const range = { from: agentPeriod === 'year' ? `${now.getFullYear()}-01-01` : agentPeriod === 'month' ? monthFrom : today, to: today, monthFrom }
+    const f = column.filter(range)
+    const span = f.dateFrom || f.resolvedFrom ? ` (${(f.dateFrom || f.resolvedFrom) === (f.dateTo || f.resolvedTo) ? (f.dateFrom || f.resolvedFrom) : `${f.dateFrom || f.resolvedFrom} → ${f.dateTo || f.resolvedTo}`})` : ''
+    navigate('/tickets', {
+      state: {
+        dashboardCardFilter: 'agent-metric',
+        dashboardLabel: `${agent.name} · ${column.label}${span}`,
+        dashboardFilters: { assignee: String(agent.id), ...(f.dateFrom ? { dateRange: 'custom' } : {}), ...f },
+      },
+    })
+  }
   // A cell of the Category Specialists table → the completed tickets of that category by that agent
   const openCategoryAgentTickets = (category, agent) => navigate('/tickets', {
     state: { dashboardCardFilter: 'completed', dashboardFilters: { category, assignee: String(agent.id) } },
@@ -921,7 +941,17 @@ export default function Dashboard() {
               </tr></thead>
               <tbody>{visibleAgentStats.map(agent => <tr key={agent.id} className="border-b border-glass last:border-0 hover:bg-indigo-500/[0.035]">
                 <td className="py-3 px-3 font-semibold t-main">{agent.name}</td>
-                {agentPerformanceColumns(agentPeriod, '').map(column => column.get(agent)).map((count, index) => <td key={index} className="py-3 px-3 tabular-nums t-main">{count}</td>)}
+                {agentPerformanceColumns(agentPeriod, '').map((column, index) => { const count = column.get(agent); return (
+                  <td key={index} className="py-3 px-3 tabular-nums t-main">
+                    {count > 0 ? (
+                      <button type="button" onClick={() => openAgentMetricTickets(agent, column)}
+                        title={`Show these ${count} ticket${count === 1 ? '' : 's'}: ${agent.name} · ${column.label}`}
+                        className="min-w-[2rem] rounded-lg px-2 py-0.5 font-semibold text-indigo-600 dark:text-indigo-400 cursor-pointer transition-colors hover:bg-indigo-500/15 hover:ring-1 hover:ring-indigo-500/40">
+                        {count}
+                      </button>
+                    ) : count}
+                  </td>
+                ) })}
               </tr>)}
               {agentWorkSummary.agentStats.length === 0 && <tr><td colSpan={10} className="py-6 text-center t-sub">No agent ticket data available.</td></tr>}</tbody>
             </table>

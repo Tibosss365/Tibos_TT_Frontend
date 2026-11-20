@@ -93,15 +93,38 @@ function keepLoadedDetail(fresh, old) {
 // "Time to resolve" filter — only resolved/closed tickets can match.
 // key "1-2" = at least 1 h and under 2 h; "24+" = 24 h or more; a plain number
 // (saved by an earlier version) = more than that many hours.
-export function matchesResolveTime(ticket, key) {
-  if (!key) return true
-  if (!ticket.resolvedAt || !['resolved', 'closed'].includes(ticket.status)) return false
-  const hours = (new Date(ticket.resolvedAt).getTime() - new Date(ticket.created).getTime()) / 3600000
+function inHoursRange(hours, key) {
   let m = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(key)
   if (m) return hours >= Number(m[1]) && hours < Number(m[2])
   m = /^(\d+(?:\.\d+)?)\+$/.exec(key)
   if (m) return hours >= Number(m[1])
   return hours > Number(key)
+}
+const isDone = (ticket) => ['resolved', 'closed'].includes(ticket.status)
+
+export function matchesResolveTime(ticket, key) {
+  if (!key) return true
+  if (!ticket.resolvedAt || !isDone(ticket)) return false
+  return inHoursRange((new Date(ticket.resolvedAt).getTime() - new Date(ticket.created).getTime()) / 3600000, key)
+}
+
+// "Open for" filter — tickets NOT resolved/closed whose age (now − created) is in the range.
+export function matchesOpenAge(ticket, key) {
+  if (!key) return true
+  if (isDone(ticket)) return false
+  return inHoursRange((Date.now() - new Date(ticket.created).getTime()) / 3600000, key)
+}
+
+// "Resolved between" filter — resolved/closed tickets whose resolved time falls on those days
+// (whole local days, both ends included).
+export function matchesResolvedBetween(ticket, from, to) {
+  if (!from && !to) return true
+  if (!isDone(ticket)) return false
+  const at = new Date(ticket.resolvedAt || ticket.updated)
+  if (Number.isNaN(at.getTime())) return false
+  if (from && at < new Date(from + 'T00:00:00')) return false
+  if (to) { const end = new Date(to + 'T00:00:00'); end.setDate(end.getDate() + 1); if (at >= end) return false }
+  return true
 }
 
 // Share an in-flight full refresh so bursts of live events do not start
@@ -122,7 +145,7 @@ export const useTicketStore = create(
       // from it (e.g. "unassigned available") are incomplete.
       ticketsEverLoaded: false,
       ticketsLoadError: null,
-      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '' },
+      filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '', openAge: '', resolvedFrom: '', resolvedTo: '' },
       selectedIds: [],
 
       // ── API Methods ────────────────────────────────────────────────────────
@@ -593,7 +616,7 @@ export const useTicketStore = create(
       },
 
       resetFilters: () => {
-        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '' } })
+        set({ filters: { status: '', priority: '', category: '', group: '', type: '', sort: 'newest', search: '', assignee: '', dateFrom: '', dateTo: '', dateField: 'created', dashboardCard: '', dashboardSla: '', resolveTime: '', openAge: '', resolvedFrom: '', resolvedTo: '' } })
       },
 
       toggleSelect: (uuid) => {
@@ -627,6 +650,8 @@ export const useTicketStore = create(
         if (filters.assignee === 'unassigned') result = result.filter(t => !t.assignee)
         else if (filters.assignee) result = result.filter(t => String(t.assignee) === String(filters.assignee))
         if (filters.resolveTime) result = result.filter(t => matchesResolveTime(t, filters.resolveTime))
+        if (filters.openAge) result = result.filter(t => matchesOpenAge(t, filters.openAge))
+        if (filters.resolvedFrom || filters.resolvedTo) result = result.filter(t => matchesResolvedBetween(t, filters.resolvedFrom, filters.resolvedTo))
         const dashboardCardStatus = { open: 'open', 'in-progress': 'in-progress', 'on-hold': 'on-hold', resolved: 'resolved' }
         if (dashboardCardStatus[filters.dashboardCard]) result = result.filter(t => t.status === dashboardCardStatus[filters.dashboardCard])
         if (filters.dashboardCard === 'completed') result = result.filter(t => t.status === 'resolved' || t.status === 'closed')
@@ -644,7 +669,7 @@ export const useTicketStore = create(
         }
         if (filters.dateFrom || filters.dateTo) {
           const field = filters.dateField || 'created'
-          const from = filters.dateFrom ? new Date(filters.dateFrom) : null
+          const from = filters.dateFrom ? new Date(filters.dateFrom + 'T00:00:00') : null   // local day start (a bare date would parse as UTC)
           const to   = filters.dateTo   ? new Date(filters.dateTo + 'T23:59:59') : null
           result = result.filter(t => {
             const d = new Date(t[field])
