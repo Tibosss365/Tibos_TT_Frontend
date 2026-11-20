@@ -629,6 +629,7 @@ export const useTicketStore = create(
         if (filters.resolveTime) result = result.filter(t => matchesResolveTime(t, filters.resolveTime))
         const dashboardCardStatus = { open: 'open', 'in-progress': 'in-progress', 'on-hold': 'on-hold', resolved: 'resolved' }
         if (dashboardCardStatus[filters.dashboardCard]) result = result.filter(t => t.status === dashboardCardStatus[filters.dashboardCard])
+        if (filters.dashboardCard === 'completed') result = result.filter(t => t.status === 'resolved' || t.status === 'closed')
         if (filters.dashboardCard === 'unassigned') result = result.filter(t => !t.assignee && t.status !== 'resolved' && t.status !== 'closed')
         if (filters.dashboardCard === 'reopened') result = result.filter(t => (t.reopenCount || 0) > 0)
         if (filters.dashboardCard === 'critical') result = result.filter(t => t.priority === 'critical')

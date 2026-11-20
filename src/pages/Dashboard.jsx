@@ -567,6 +567,10 @@ export default function Dashboard() {
   const openTicketsFromCard = card => navigate('/tickets', {
     state: { dashboardCardFilter: card, dashboardFilters: { ...dashFilters } },
   })
+  // A cell of the Category Specialists table → the completed tickets of that category by that agent
+  const openCategoryAgentTickets = (category, agent) => navigate('/tickets', {
+    state: { dashboardCardFilter: 'completed', dashboardFilters: { category, assignee: String(agent.id) } },
+  })
 
   // Agent workload and resolution summary, calculated from live ticket data.
   const dailyAgents = useMemo(() => agents
@@ -935,7 +939,13 @@ export default function Dashboard() {
               </tr></thead>
               <tbody>{agentWorkSummary.categoryRows.slice(0, 10).map(row => <tr key={row.key} className="border-b border-glass last:border-0 hover:bg-violet-500/[0.035]">
                 <td className="py-3 px-3 t-main whitespace-nowrap">{getCategoryName(row.category) || 'Uncategorized'}</td>
-                {visibleAgents.map(agent => { const count = row.counts[agent.name] || 0; return <td key={agent.id} className="py-3 px-3">{count ? <span className="inline-flex rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500">{count} completed</span> : <span className="t-sub">—</span>}</td> })}
+                {visibleAgents.map(agent => { const count = row.counts[agent.name] || 0; return <td key={agent.id} className="py-3 px-3">{count ? (
+                  <button type="button" onClick={() => openCategoryAgentTickets(row.category, agent)}
+                    title={`Show the ${count} completed ${getCategoryName(row.category) || ''} ticket${count === 1 ? '' : 's'} of ${agent.name}`}
+                    className="inline-flex rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-500 cursor-pointer transition-colors hover:bg-emerald-500/25 hover:ring-1 hover:ring-emerald-500/40">
+                    {count} completed
+                  </button>
+                ) : <span className="t-sub">—</span>}</td> })}
               </tr>)}
               {agentWorkSummary.categoryRows.length === 0 && <tr><td colSpan={visibleAgents.length + 1} className="py-8 text-center t-sub">No resolved or closed tickets yet.</td></tr>}</tbody>
             </table>
