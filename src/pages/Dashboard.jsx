@@ -53,9 +53,31 @@ const EMPTY_FILTERS = {
 
 const AGENT_PERIODS = [
   { key: 'day', label: 'Day', title: 'Daily', created: 'Today created', resolved: 'Resolved today' },
+  { key: 'week', label: 'Week', title: 'Weekly', created: 'Created this week', resolved: 'Resolved this week' },
   { key: 'month', label: 'Month', title: 'Monthly', created: 'Created this month', resolved: 'Resolved this month' },
   { key: 'year', label: 'Year', title: 'Yearly', created: 'Created this year', resolved: 'Resolved this year' },
 ]
+
+// Category Specialists can look at everything or just one period.
+const CATEGORY_PERIODS = [
+  { key: 'all', label: 'All time' },
+  { key: 'day', label: 'Day' },
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'year', label: 'Year' },
+]
+
+// Start of the current day / week / month / year (local time); null for "all". The week starts on
+// Sunday, the same as the dashboard's "This Week" filter.
+function periodStartOf(period, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'day') return today
+  if (period === 'week') { const d = new Date(today); d.setDate(today.getDate() - today.getDay()); return d }
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
+  if (period === 'year') return new Date(now.getFullYear(), 0, 1)
+  return null
+}
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 // Columns of the agent performance table. Open buckets are always the current
 // backlog; created/resolved follow the selected period.
@@ -204,6 +226,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [dashboardDay, setDashboardDay] = useState(() => new Date())
   const [agentPeriod, setAgentPeriod] = useState('day')
+  const [categoryPeriod, setCategoryPeriod] = useState('all')
   const [selectedAgentIds, setSelectedAgentIds] = useState(() => {
     try {
       const saved = localStorage.getItem('dashboard-visible-agent-ids')
@@ -340,7 +363,7 @@ export default function Dashboard() {
     try {
       const XLSX = await import('xlsx')
       const rows = [
-        ['Category Specialists · Completed Tickets'],
+        ['Category Specialists · Completed Tickets' + (categoryPeriod !== 'all' ? ` · ${CATEGORY_PERIODS.find(p => p.key === categoryPeriod)?.label}` : '')],
         [],
         ['Category', ...visibleAgents.map(agent => agent.name), 'Total'],
         ...agentWorkSummary.categoryRows.map(row => [
@@ -353,7 +376,7 @@ export default function Dashboard() {
       const worksheet = XLSX.utils.aoa_to_sheet(rows)
       worksheet['!cols'] = [{ wch: 34 }, ...visibleAgents.map(() => ({ wch: 16 })), { wch: 10 }]
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Category Specialists')
-      XLSX.writeFile(workbook, 'category-specialists-completed.xlsx')
+      XLSX.writeFile(workbook, `category-specialists-completed${categoryPeriod !== 'all' ? `-${categoryPeriod}` : ''}.xlsx`)
     } catch (e) {
       console.error('Category specialists Excel export failed', e)
     } finally {
@@ -576,7 +599,7 @@ export default function Dashboard() {
     const pad = n => String(n).padStart(2, '0')
     const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
     const monthFrom = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`
-    const range = { from: agentPeriod === 'year' ? `${now.getFullYear()}-01-01` : agentPeriod === 'month' ? monthFrom : today, to: today, monthFrom }
+    const range = { from: ymd(periodStartOf(agentPeriod, now) || now), to: today, monthFrom }
     const f = column.filter(range)
     const span = f.dateFrom || f.resolvedFrom ? ` (${(f.dateFrom || f.resolvedFrom) === (f.dateTo || f.resolvedTo) ? (f.dateFrom || f.resolvedFrom) : `${f.dateFrom || f.resolvedFrom} → ${f.dateTo || f.resolvedTo}`})` : ''
     navigate('/tickets', {
@@ -588,9 +611,18 @@ export default function Dashboard() {
     })
   }
   // A cell of the Category Specialists table → the completed tickets of that category by that agent
-  const openCategoryAgentTickets = (category, agent) => navigate('/tickets', {
-    state: { dashboardCardFilter: 'completed', dashboardFilters: { category, assignee: String(agent.id) } },
-  })
+  const openCategoryAgentTickets = (category, agent) => {
+    const now = new Date()
+    const start = periodStartOf(categoryPeriod, now)
+    const span = start ? ` (${ymd(start) === ymd(now) ? ymd(now) : `${ymd(start)} → ${ymd(now)}`})` : ' (all time)'
+    navigate('/tickets', {
+      state: {
+        dashboardCardFilter: 'completed',
+        dashboardLabel: `${agent.name} · ${getCategoryName(category) || 'Uncategorized'} · Completed${span}`,
+        dashboardFilters: { category, assignee: String(agent.id), ...(start ? { resolvedFrom: ymd(start), resolvedTo: ymd(now) } : {}) },
+      },
+    })
+  }
 
   // Agent workload and resolution summary, calculated from live ticket data.
   const dailyAgents = useMemo(() => agents
@@ -614,7 +646,8 @@ export default function Dashboard() {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const tomorrow = new Date(today.getTime() + 86400000)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const periodStart = agentPeriod === 'year' ? new Date(now.getFullYear(), 0, 1) : agentPeriod === 'month' ? monthStart : today
+    const periodStart = periodStartOf(agentPeriod, now)
+    const categoryStart = periodStartOf(categoryPeriod, now)
     const completed = ticket => ticket.status === 'resolved' || ticket.status === 'closed'
     const validDate = value => value instanceof Date && !Number.isNaN(value.getTime())
     const resolvedAt = ticket => {
@@ -667,6 +700,8 @@ export default function Dashboard() {
           else if (resolutionHours >= 24) agentStats.resolvedOverTwentyFourHours++
         }
       }
+      // Category Specialists: when a period is chosen, count only tickets completed within it
+      if (categoryStart && !(validDate(date) && date >= categoryStart && date < tomorrow)) return
       const category = ticket.category || 'uncategorized'
       if (!categoryMap.has(category)) categoryMap.set(category, { key: category, category, counts: {} })
       const row = categoryMap.get(category)
@@ -674,7 +709,7 @@ export default function Dashboard() {
       row.counts[agentName] = (row.counts[agentName] || 0) + 1
     })
     return { agentStats: [...statsByAgent.values()], categoryRows: [...categoryMap.values()].sort((a, b) => Object.values(b.counts).reduce((x, y) => x + y, 0) - Object.values(a.counts).reduce((x, y) => x + y, 0) || a.category.localeCompare(b.category)) }
-  }, [tickets, dailyAgents, dashboardDay, agentPeriod])
+  }, [tickets, dailyAgents, dashboardDay, agentPeriod, categoryPeriod])
   const visibleAgentStats = useMemo(() => {
     const ids = new Set(visibleAgents.map(agent => String(agent.id)))
     return agentWorkSummary.agentStats.filter(agent => ids.has(String(agent.id)))
@@ -957,7 +992,18 @@ export default function Dashboard() {
             </table>
           </div>
           <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2"><Users size={14} className="text-violet-500" /><h3 className="text-xs font-bold t-main">Category Specialists · Completed Tickets</h3>{agentWorkSummary.categoryRows.length > 10 && <span className="text-[10px] t-sub">Top 10 of {agentWorkSummary.categoryRows.length} categories</span>}</div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2"><Users size={14} className="text-violet-500" /><h3 className="text-xs font-bold t-main">Category Specialists · Completed Tickets</h3>{agentWorkSummary.categoryRows.length > 10 && <span className="text-[10px] t-sub">Top 10 of {agentWorkSummary.categoryRows.length} categories</span>}</div>
+              <div className="inline-flex rounded-lg border border-glass p-0.5" role="group" aria-label="Category specialists period">
+                {CATEGORY_PERIODS.map(item => <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setCategoryPeriod(item.key)}
+                  aria-pressed={categoryPeriod === item.key}
+                  className={`px-3 py-1 text-[11px] font-semibold rounded-md transition-colors ${categoryPeriod === item.key ? 'bg-indigo-500 text-white' : 't-sub hover:bg-black/5 dark:hover:bg-white/5'}`}
+                >{item.label}</button>)}
+              </div>
+            </div>
             <Button variant="outline" size="sm" onClick={handleCategorySpecialistsExcel} disabled={exporting === 'category-specialists-excel' || agentWorkSummary.categoryRows.length === 0}>
               <FileSpreadsheet size={13} className="text-emerald-500" />{exporting === 'category-specialists-excel' ? 'Preparing…' : 'Download all'}
             </Button>
@@ -977,7 +1023,7 @@ export default function Dashboard() {
                   </button>
                 ) : <span className="t-sub">—</span>}</td> })}
               </tr>)}
-              {agentWorkSummary.categoryRows.length === 0 && <tr><td colSpan={visibleAgents.length + 1} className="py-8 text-center t-sub">No resolved or closed tickets yet.</td></tr>}</tbody>
+              {agentWorkSummary.categoryRows.length === 0 && <tr><td colSpan={visibleAgents.length + 1} className="py-8 text-center t-sub">{categoryPeriod === 'all' ? 'No resolved or closed tickets yet.' : 'No tickets were completed in this period.'}</td></tr>}</tbody>
             </table>
           </div>
         </>}
