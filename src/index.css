@@ -3,37 +3,46 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════
-   THEME TOKENS  (light = default, dark = html.dark)
+   THEME TOKENS  — "liquid glass"  (light = default, dark = html.dark)
+   One calm accent colour; translucent frosted surfaces over a soft wallpaper.
 ═══════════════════════════════════════════════════════════ */
 :root {
-  /* backgrounds — clean premium white */
-  --c-app-bg:      #ffffff;
-  --c-sidebar-bg:  #ffffff;
-  --c-topbar-bg:   rgba(255,255,255,0.85);
-  --c-body-bg:     #ffffff;
+  --accent:      #4f46e5;
+  --accent-rgb:  79, 70, 229;
 
-  /* cards / surfaces — white with soft neutral elevation */
-  --c-card-bg:     #ffffff;
-  --c-card-border: rgba(15,23,42,0.07);
-  --c-card-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.05);
+  /* wallpaper (behind everything) */
+  --c-app-bg:     linear-gradient(135deg, #e9eef7 0%, #eef0f8 55%, #e8f1f3 100%);
+  --c-body-bg:    #e9eef7;
+  --c-wallpaper:  radial-gradient(48rem 38rem at 8% 6%,  rgba(130,160,235,0.55), transparent 62%),
+                  radial-gradient(52rem 40rem at 94% 24%, rgba(180,160,235,0.50), transparent 62%),
+                  radial-gradient(46rem 36rem at 42% 104%, rgba(120,205,195,0.50), transparent 62%);
+
+  /* glass surfaces */
+  --c-sidebar-bg:   rgba(255,255,255,0.42);
+  --c-topbar-bg:    rgba(255,255,255,0.42);
+  --c-card-bg:      rgba(255,255,255,0.46);
+  --c-card-bg-strong: rgba(255,255,255,0.88);   /* popovers, dialogs: must stay readable over content */
+  --c-card-border:  rgba(255,255,255,0.68);
+  --c-card-sheen:   linear-gradient(160deg, rgba(255,255,255,0.40) 0%, rgba(255,255,255,0) 36%, rgba(255,255,255,0) 72%, rgba(255,255,255,0.12) 100%);
+  --c-card-shadow:  inset 0 1.5px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(255,255,255,0.28), 0 16px 44px rgba(30,50,100,0.12);
 
   /* inputs */
-  --c-input-bg:     #ffffff;
-  --c-input-border: rgba(15,23,42,0.12);
+  --c-input-bg:     rgba(255,255,255,0.62);
+  --c-input-border: rgba(71,85,105,0.22);
 
   /* misc */
-  --c-border:          rgba(15,23,42,0.07);
-  --c-hover:           rgba(15,23,42,0.04);
-  --c-nav-active-bg:   rgba(14,165,233,0.08);
-  --c-nav-active-border: rgba(14,165,233,0.2);
-  --c-scrollbar:       rgba(15,23,42,0.15);
+  --c-border:          rgba(15,23,42,0.08);
+  --c-hover:           rgba(15,23,42,0.05);
+  --c-nav-active-bg:   rgba(255,255,255,0.78);
+  --c-nav-active-border: rgba(255,255,255,0.95);
+  --c-scrollbar:       rgba(71,85,105,0.28);
 
-  /* text — solid slate values so nothing is washed out in light mode */
+  /* text — solid slate values so nothing is washed out on glass */
   --c-text:    #0f172a;
   --c-text-80: #1e293b;
   --c-text-70: #334155;
   --c-text-60: #475569;
-  --c-text-50: #64748b;
+  --c-text-50: #5b6a7e;
   --c-text-40: #64748b;
   --c-text-30: #94a3b8;
   --c-text-25: #94a3b8;
@@ -46,43 +55,44 @@
 
 html.dark {
   color-scheme: dark;
+  --accent:      #818cf8;
+  --accent-rgb:  129, 140, 248;
 
-  /* backgrounds */
-  --c-app-bg:      linear-gradient(135deg, #030712 0%, #0f172a 50%, #030712 100%);
-  --c-sidebar-bg:  linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(3,7,18,0.98) 100%);
-  --c-topbar-bg:   rgba(3,7,18,0.6);
-  --c-body-bg:     #030712;
+  --c-app-bg:     #0b111d;
+  --c-body-bg:    #0b111d;
+  --c-wallpaper:  radial-gradient(48rem 38rem at 8% 6%,  rgba(36,59,117,0.75), transparent 62%),
+                  radial-gradient(52rem 40rem at 94% 24%, rgba(59,47,107,0.70), transparent 62%),
+                  radial-gradient(46rem 36rem at 42% 104%, rgba(27,74,74,0.70), transparent 62%);
 
-  /* cards / surfaces */
-  --c-card-bg:     rgba(255,255,255,0.05);
-  --c-card-border: rgba(255,255,255,0.1);
-  --c-card-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  --c-sidebar-bg:   rgba(255,255,255,0.06);
+  --c-topbar-bg:    rgba(255,255,255,0.06);
+  --c-card-bg:      rgba(255,255,255,0.07);
+  --c-card-bg-strong: rgba(20,27,42,0.90);
+  --c-card-border:  rgba(255,255,255,0.14);
+  --c-card-sheen:   linear-gradient(160deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 36%, rgba(255,255,255,0) 72%, rgba(255,255,255,0.04) 100%);
+  --c-card-shadow:  inset 0 1.5px 0 rgba(255,255,255,0.26), inset 0 -1px 0 rgba(255,255,255,0.05), 0 18px 46px rgba(0,0,0,0.5);
 
-  /* inputs */
-  --c-input-bg:     rgba(255,255,255,0.05);
-  --c-input-border: rgba(255,255,255,0.1);
+  --c-input-bg:     rgba(255,255,255,0.08);
+  --c-input-border: rgba(255,255,255,0.16);
 
-  /* misc */
-  --c-border:          rgba(255,255,255,0.06);
-  --c-hover:           rgba(255,255,255,0.05);
-  --c-nav-active-bg:   rgba(14,165,233,0.2);
-  --c-nav-active-border: rgba(14,165,233,0.3);
-  --c-scrollbar:       rgba(14,165,233,0.3);
+  --c-border:          rgba(255,255,255,0.07);
+  --c-hover:           rgba(255,255,255,0.06);
+  --c-nav-active-bg:   rgba(255,255,255,0.15);
+  --c-nav-active-border: rgba(255,255,255,0.24);
+  --c-scrollbar:       rgba(148,163,184,0.35);
 
-  /* text */
   --c-text:    #f1f5f9;
   --c-text-80: rgba(241,245,249,0.8);
   --c-text-70: rgba(241,245,249,0.7);
-  --c-text-60: rgba(241,245,249,0.6);
-  --c-text-50: rgba(241,245,249,0.5);
+  --c-text-60: rgba(241,245,249,0.62);
+  --c-text-50: rgba(241,245,249,0.52);
   --c-text-40: rgba(241,245,249,0.4);
   --c-text-30: rgba(241,245,249,0.3);
   --c-text-25: rgba(241,245,249,0.25);
   --c-text-20: rgba(241,245,249,0.2);
 
-  /* charts */
   --c-chart-grid: rgba(255,255,255,0.05);
-  --c-chart-text: rgba(241,245,249,0.3);
+  --c-chart-text: rgba(241,245,249,0.35);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -94,7 +104,6 @@ html.dark {
   }
 
   html {
-    /* smooth theme transitions */
     transition: color-scheme 0.3s;
   }
 
@@ -104,16 +113,27 @@ html.dark {
   }
 
   body {
-    background: var(--c-body-bg);
+    background: var(--c-app-bg);
+    background-attachment: fixed;
     color: var(--c-text);
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
+  /* soft coloured light behind the glass — gradients only, so it costs almost nothing */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--c-wallpaper);
+  }
+
   ::-webkit-scrollbar        { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track  { background: transparent; }
   ::-webkit-scrollbar-thumb  { background: var(--c-scrollbar); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(14,165,233,0.5); }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(var(--accent-rgb), 0.55); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -121,82 +141,108 @@ html.dark {
 ═══════════════════════════════════════════════════════════ */
 @layer components {
 
-  /* Glass card */
+  /* Glass card — the frosted panel used by Card, dialogs, popovers, tables */
   .glass-card {
-    background: var(--c-card-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: var(--c-card-sheen), var(--c-card-bg);
+    backdrop-filter: blur(26px) saturate(1.7);
+    -webkit-backdrop-filter: blur(26px) saturate(1.7);
     border: 1px solid var(--c-card-border);
     box-shadow: var(--c-card-shadow);
-    border-radius: 0.75rem;
+    border-radius: 1.5rem;
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  /* floating menus and dialogs need a firmer surface so text behind them doesn't show through */
+  .glass-card.absolute, .glass-card.fixed, .glass-strong {
+    background: var(--c-card-sheen), var(--c-card-bg-strong);
+  }
+
+  /* Sidebar / top bar panels (radius is set where they are used) */
+  .glass-panel {
+    background: var(--c-card-sheen), var(--c-sidebar-bg);
+    backdrop-filter: blur(30px) saturate(1.8);
+    -webkit-backdrop-filter: blur(30px) saturate(1.8);
+    border: 1px solid var(--c-card-border);
+    box-shadow: var(--c-card-shadow);
+  }
+
+  /* A card with its own soft tint: set --tint on the element */
+  .tint-card {
+    background: var(--c-card-sheen), color-mix(in srgb, var(--tint, var(--accent)) 16%, var(--c-card-bg));
   }
 
   /* Glass input */
   .glass-input {
     background: var(--c-input-bg);
     border: 1px solid var(--c-input-border);
-    border-radius: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    border-radius: 9999px;
+    padding: 0.5rem 0.95rem;
     color: var(--c-text);
     font-size: 0.875rem;
     transition: all 0.2s ease;
     width: 100%;
   }
-  html.dark .glass-input {
-    background: #1e293b;
-  }
+  textarea.glass-input, .glass-input[rows] { border-radius: 1.15rem; }
   .glass-input::placeholder {
     color: var(--c-text-30);
   }
   .glass-input:focus {
     outline: none;
-    border-color: rgba(14,165,233,0.6);
-    box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
   }
 
-  /* Buttons */
+  /* Buttons — capsule shaped */
   .btn-primary {
-    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    background: var(--accent);
     color: #fff;
-    font-weight: 500;
-    border-radius: 0.5rem;
+    font-weight: 600;
+    border-radius: 9999px;
     transition: all 0.2s ease;
-    box-shadow: 0 0 20px rgba(14,165,233,0.25);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 8px 20px rgba(var(--accent-rgb), 0.32);
     border: none;
   }
+  html.dark .btn-primary { color: #0b1030; }
   .btn-primary:hover {
-    background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 100%);
-    box-shadow: 0 0 28px rgba(37,99,235,0.35);
-    transform: scale(1.02);
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 12px 26px rgba(var(--accent-rgb), 0.4);
   }
   .btn-primary:active { transform: scale(0.98); }
 
   .btn-ghost {
-    background: var(--c-hover);
+    background: var(--c-input-bg);
     border: 1px solid var(--c-card-border);
-    color: var(--c-text-60);
+    color: var(--c-text-70);
     font-weight: 500;
-    border-radius: 0.5rem;
+    border-radius: 9999px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     transition: all 0.2s ease;
   }
   .btn-ghost:hover {
-    background: var(--c-input-bg);
-    border-color: var(--c-input-border);
+    background: var(--c-nav-active-bg);
+    border-color: var(--c-nav-active-border);
     color: var(--c-text);
   }
 
   .btn-danger {
-    @apply bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-medium rounded-lg transition-all duration-200;
+    background: #e11d48;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 9999px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 8px 20px rgba(225,29,72,0.28);
+    transition: all 0.2s ease;
   }
+  .btn-danger:hover { filter: brightness(1.08); transform: translateY(-1px); }
 
-  /* Nav items */
+  /* Nav items — pill with a frosted highlight when active */
   .nav-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.625rem 0.75rem;
-    border-radius: 0.5rem;
+    padding: 0.625rem 0.9rem;
+    border-radius: 9999px;
     color: var(--c-text-60);
     font-size: 0.875rem;
     font-weight: 500;
@@ -213,20 +259,42 @@ html.dark {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.625rem 0.75rem;
-    border-radius: 0.5rem;
-    color: #0ea5e9;
+    padding: 0.625rem 0.9rem;
+    border-radius: 9999px;
+    color: var(--c-text);
     background: var(--c-nav-active-bg);
     border: 1px solid var(--c-nav-active-border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 6px 18px rgba(30,50,100,0.12);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
   }
   html.dark .nav-item-active {
     color: #fff;
-    box-shadow: 0 0 20px rgba(14,165,233,0.2);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 6px 18px rgba(0,0,0,0.3);
+  }
+}
+
+/* Any plain <button> that was a rounded rectangle becomes a capsule (big blocks keep a soft corner) */
+button[class*="rounded-lg"], button[class*="rounded-xl"], button[class*="rounded-md"] {
+  border-radius: 1.1rem;
+}
+
+/* "Reduce glass effect" — for older PCs, or when the OS asks for less transparency */
+html.reduce-glass body::before { display: none; }
+html.reduce-glass .glass-card, html.reduce-glass .glass-panel, html.reduce-glass .btn-ghost {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background: var(--c-card-bg-strong) !important;
+}
+@media (prefers-reduced-transparency: reduce) {
+  body::before { display: none; }
+  .glass-card, .glass-panel, .btn-ghost {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--c-card-bg-strong) !important;
   }
 }
 
@@ -251,7 +319,7 @@ html.dark {
 
   /* Theme-aware background */
   .bg-app {
-    background: var(--c-app-bg);
+    background: var(--c-wallpaper), var(--c-app-bg);
   }
 }
 
@@ -281,7 +349,7 @@ html.dark {
 .email-body h1 { font-size: 1.25rem; font-weight: 700; margin: 0.7rem 0 0.4rem; }
 .email-body h2 { font-size: 1.1rem;  font-weight: 700; margin: 0.6rem 0 0.4rem; }
 .email-body h3, .email-body h4 { font-size: 1rem; font-weight: 700; margin: 0.5rem 0 0.3rem; }
-.email-body a { color: #0ea5e9; text-decoration: underline; }
+.email-body a { color: var(--accent); text-decoration: underline; }
 .email-body blockquote { border-left: 3px solid var(--c-card-border); padding-left: 0.75rem; margin: 0.5rem 0; color: var(--c-text-60); }
 .email-body table { border-collapse: collapse; margin: 0.5rem 0; max-width: 100%; }
 .email-body td, .email-body th { border: 1px solid var(--c-card-border); padding: 0.3rem 0.5rem; }
@@ -290,13 +358,17 @@ html.dark {
 
 /* contentEditable rich description — placeholder + focus */
 .rt-editable:empty:before { content: attr(data-placeholder); color: var(--c-text-30); pointer-events: none; }
-.rt-editable:focus { outline: none; border-color: rgba(14,165,233,0.6); box-shadow: 0 0 0 3px rgba(14,165,233,0.12); }
+.rt-editable:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18); }
 
 /* ── Dark mode: native select / option visibility fix ─────────────────── */
 html.dark select {
-  background-color: #1e293b;
+  background-color: rgba(255,255,255,0.08);
   color: #f1f5f9;
-  border-color: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.16);
+}
+/* a few controls carry an explicit solid dark background class — make them glass like the rest */
+html.dark select.dark\:bg-slate-800, html.dark input.dark\:bg-slate-800 {
+  background-color: rgba(255,255,255,0.08);
 }
 html.dark select option {
   background-color: #1e293b;
@@ -319,7 +391,7 @@ html.dark select option:hover {
 }
 html.dark input[type="date"] {
   color-scheme: dark;
-  background-color: #1e293b;
+  background-color: rgba(255,255,255,0.08);
   color: #f1f5f9;
 }
 
@@ -356,3 +428,38 @@ html.dark input[type="date"] {
   .animate-pulse-glow    { animation: pulseGlow 2s ease-in-out infinite; }
   .animate-marquee       { animation: marquee 20s linear infinite; }
 }
+
+/* ── Floating menus that were written with a plain white / dark panel ───────────────
+   (dropdowns opened from a button: they carry `top-full`) — same firm glass as popovers. */
+[class*="top-full"].bg-white,
+html.dark [class*="top-full"][class*="dark:bg-slate-900"] {
+  background: var(--c-card-sheen), var(--c-card-bg-strong);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  border-color: var(--c-card-border);
+  box-shadow: var(--c-card-shadow);
+}
+.sticky.bg-white, html.dark .sticky[class*="dark:bg-slate-900"] { background: var(--c-card-bg-strong); }
+
+/* ── Admin feature tabs (Automation, Webhooks, Assets, …) use plain white / gray Tailwind cards.
+   Inside `.glassify` they become frosted glass, so they match the rest of the app. ── */
+.glassify .bg-white:not([class*="rounded-full"]),
+html.dark .glassify [class*="dark:bg-gray-8"],
+html.dark .glassify [class*="dark:bg-gray-9"] {
+  background: var(--c-card-sheen), var(--c-card-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+}
+.glassify [class*="border-gray-"], html.dark .glassify [class*="dark:border-gray-"] { border-color: var(--c-border); }
+.glassify input, .glassify select, .glassify textarea {
+  background: var(--c-input-bg) !important;
+  border-color: var(--c-input-border) !important;
+  color: var(--c-text);
+}
+.glassify input:focus, .glassify select:focus, .glassify textarea:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.18);
+}
+.glassify [class*="bg-gray-100"], .glassify [class*="bg-gray-50"] { background: var(--c-hover); }
+html.dark .glassify [class*="dark:bg-gray-700"] { background: var(--c-hover); }

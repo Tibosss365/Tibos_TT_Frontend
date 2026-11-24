@@ -191,16 +191,16 @@ export function getSlaInfo(ticket) {
 }
 
 export const PRIORITY_COLORS = {
-  critical: { bg: 'bg-rose-500/20', text: 'text-rose-400', border: 'border-rose-500/30', dot: 'bg-rose-400' },
-  high:     { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', dot: 'bg-orange-400' },
-  medium:   { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-400' },
-  low:      { bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-400' },
+  critical: { bg: 'bg-rose-500/15',  text: 'text-rose-700 dark:text-rose-300',   border: 'border-rose-500/25',  dot: 'bg-rose-500' },
+  high:     { bg: 'bg-amber-600/15', text: 'text-amber-800 dark:text-amber-300', border: 'border-amber-600/25', dot: 'bg-amber-600' },
+  medium:   { bg: 'bg-slate-500/15', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-500/20', dot: 'bg-slate-500' },
+  low:      { bg: 'bg-slate-500/10', text: 'text-slate-600 dark:text-slate-400', border: 'border-slate-500/15', dot: 'bg-slate-400' },
 }
 
 export const STATUS_COLORS = {
-  'open':        { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', dot: 'bg-blue-400' },
-  'in-progress': { bg: 'bg-violet-500/20', text: 'text-violet-400', border: 'border-violet-500/30', dot: 'bg-violet-400' },
-  'on-hold':     { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', dot: 'bg-amber-400' },
-  'resolved':    { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
-  'closed':      { bg: 'bg-slate-500/20', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-400' },
+  'open':        { bg: 'bg-indigo-500/15',  text: 'text-indigo-700 dark:text-indigo-300',   border: 'border-indigo-500/25',  dot: 'bg-indigo-500' },
+  'in-progress': { bg: 'bg-violet-500/15',  text: 'text-violet-700 dark:text-violet-300',   border: 'border-violet-500/25',  dot: 'bg-violet-500' },
+  'on-hold':     { bg: 'bg-amber-600/15',   text: 'text-amber-800 dark:text-amber-300',     border: 'border-amber-600/25',   dot: 'bg-amber-600' },
+  'resolved':    { bg: 'bg-emerald-600/15', text: 'text-emerald-800 dark:text-emerald-300', border: 'border-emerald-600/25', dot: 'bg-emerald-600' },
+  'closed':      { bg: 'bg-slate-500/10',   text: 'text-slate-600 dark:text-slate-400',     border: 'border-slate-500/15',   dot: 'bg-slate-400' },
 }

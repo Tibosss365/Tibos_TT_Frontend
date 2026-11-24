@@ -170,8 +170,7 @@ export function Layout() {
 
   return (
     <div
-      className="flex h-screen overflow-hidden transition-colors duration-300 relative"
-      style={{ background: 'var(--c-app-bg)' }}
+      className="flex h-screen overflow-hidden transition-colors duration-300 relative lg:p-3 lg:gap-3"
     >
       {/* ── Mobile backdrop (closes sidebar on tap outside) ──────────────────── */}
       <div
@@ -196,7 +195,7 @@ export function Layout() {
       </div>
 
       {/* ── Main area ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden lg:gap-3">
         <Topbar />
         <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6">
           <Suspense fallback={<div className="py-8 text-center text-sm t-muted">Loading module…</div>}>

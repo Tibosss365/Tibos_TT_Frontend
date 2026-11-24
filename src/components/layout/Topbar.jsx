@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, X, Sun, Moon, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu, Settings, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react'
+import { Search, Bell, X, Sun, Moon, Layers, CheckCheck, AlertCircle, AlertTriangle, Info, CheckCircle2, ArrowRight, Menu, Settings, ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useTicketStore } from '../../stores/ticketStore'
 import { useUiStore } from '../../stores/uiStore'
@@ -27,7 +27,7 @@ export function Topbar() {
           pendingApprovals, fetchPendingApprovals, decideApproval } = useNotificationStore()
   const { tickets } = useTicketStore()
   const { setFilter } = useTicketStore()
-  const { isDark, toggleTheme, openModal, toggleSidebar } = useUiStore()
+  const { isDark, toggleTheme, reduceGlass, toggleReduceGlass, openModal, toggleSidebar } = useUiStore()
   const currentUser = useUserStore(s => s.currentUser)
   const [notifOpen, setNotifOpen] = useState(false)
   const [drawerTab, setDrawerTab] = useState('approvals')  // 'approvals' | 'notifications'
@@ -71,13 +71,7 @@ export function Topbar() {
   return (
     <>
       <header
-        className="h-16 flex items-center gap-4 px-6 flex-shrink-0"
-        style={{
-          borderBottom: '1px solid var(--c-border)',
-          background: 'var(--c-topbar-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-        }}
+        className="glass-panel lg:rounded-[1.75rem] h-16 flex items-center gap-4 px-6 flex-shrink-0"
       >
         {/* ── Mobile hamburger ── */}
         <button
@@ -114,19 +108,27 @@ export function Topbar() {
 
         {/* ─── Day / Night Toggle ─── */}
         <button
+          onClick={toggleReduceGlass}
+          title={reduceGlass ? 'Glass effect is reduced — click to turn it back on' : 'Reduce the glass effect (smoother on older PCs)'}
+          className="relative p-2.5 rounded-full transition-all duration-300"
+          style={{
+            background: reduceGlass ? 'rgba(var(--accent-rgb), 0.16)' : 'var(--c-input-bg)',
+            border: '1px solid var(--c-card-border)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45)',
+            color: reduceGlass ? 'var(--accent)' : 'var(--c-text-50)',
+          }}
+        >
+          <Layers size={18} />
+        </button>
+
+        <button
           onClick={toggleTheme}
           title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className="relative p-2.5 rounded-xl transition-all duration-300 group"
+          className="relative p-2.5 rounded-full transition-all duration-300 group"
           style={{
-            background: isDark
-              ? 'linear-gradient(135deg, rgba(14,165,233,0.15), rgba(37,99,235,0.12))'
-              : 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(249,115,22,0.1))',
-            border: isDark
-              ? '1px solid rgba(14,165,233,0.3)'
-              : '1px solid rgba(251,191,36,0.4)',
-            boxShadow: isDark
-              ? '0 0 14px rgba(14,165,233,0.18), inset 0 1px 0 rgba(255,255,255,0.06)'
-              : '0 0 14px rgba(251,191,36,0.22), inset 0 1px 0 rgba(255,255,255,0.4)',
+            background: 'var(--c-input-bg)',
+            border: '1px solid var(--c-card-border)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.45)',
           }}
         >
           <div className="relative w-[18px] h-[18px] overflow-hidden">
@@ -206,9 +208,9 @@ export function Topbar() {
         className="fixed top-0 right-0 h-full z-50 flex flex-col"
         style={{
           width: 'min(360px, 100vw)',
-          background: 'var(--c-card-bg)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          background: 'var(--c-card-sheen), var(--c-card-bg-strong)',
+          backdropFilter: 'blur(24px) saturate(1.6)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.6)',
           borderLeft: '1px solid var(--c-card-border)',
           boxShadow: '-8px 0 32px rgba(0,0,0,0.18)',
           transform: notifOpen ? 'translateX(0)' : 'translateX(100%)',

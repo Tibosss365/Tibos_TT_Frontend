@@ -22,7 +22,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeigh
   // Full-page variant: fills the whole viewport edge-to-edge, no floating card.
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 animate-fade-in flex flex-col" style={{ background: 'var(--c-body-bg)' }}>
+      <div className="fixed inset-0 z-50 animate-fade-in flex flex-col" style={{ background: 'var(--c-wallpaper), var(--c-app-bg)' }}>
         {/* Slim top bar — optional title (left) + close (right) */}
         <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 border-b border-glass flex-shrink-0">
           {title && <h2 className="text-base font-bold t-main">{title}</h2>}
@@ -43,15 +43,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', fillHeigh
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fade-in">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-900/35 backdrop-blur-md" onClick={onClose} />
 
       {/* Panel — full-width bottom sheet on mobile, centered dialog on sm+ */}
       <div className={`
         relative w-full ${sizes[size]}
-        glass-card shadow-glass-lg animate-slide-up
+        glass-card glass-strong animate-slide-up
         max-h-[92vh] sm:max-h-[90vh]
         flex flex-col
-        rounded-t-2xl sm:rounded-2xl
+        rounded-t-3xl sm:rounded-3xl
       `}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 sm:py-4 border-b border-glass flex-shrink-0">
