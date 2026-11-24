@@ -1,22 +1,18 @@
-// Each KPI card gets its own soft tint (calm, desaturated) so the cards are easy to tell apart
-// without the page turning into a rainbow. Numbers stay neutral.
-const TINTS = {
-  indigo:  '#6f86d8',   // blue
-  violet:  '#9482d4',   // lilac
-  rose:    '#cf7a8c',   // dusty rose
-  emerald: '#4fa89b',   // teal
-  amber:   '#d09a4f',   // sand
-  orange:  '#d49563',   // clay
-  cyan:    '#58a6c4',   // sky
-}
-
 export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend, onClick, disabled = false }) {
-  const tint = TINTS[color] || TINTS.indigo
+  const colorMap = {
+    indigo:  { bg: 'bg-indigo-500/10 dark:bg-indigo-500/15',  text: 'text-indigo-600 dark:text-indigo-400',  glow: 'shadow-glow-indigo',  val: 'text-indigo-700 dark:text-indigo-300' },
+    violet:  { bg: 'bg-violet-500/10 dark:bg-violet-500/15',  text: 'text-violet-600 dark:text-violet-400',  glow: 'shadow-glow-violet',  val: 'text-violet-700 dark:text-violet-300' },
+    rose:    { bg: 'bg-rose-500/10 dark:bg-rose-500/15',    text: 'text-rose-600 dark:text-rose-400',    glow: 'shadow-glow-rose',    val: 'text-rose-700 dark:text-rose-300' },
+    emerald: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-600 dark:text-emerald-400', glow: 'shadow-glow-emerald', val: 'text-emerald-700 dark:text-emerald-300' },
+    amber:   { bg: 'bg-amber-500/10 dark:bg-amber-500/15',   text: 'text-amber-600 dark:text-amber-400',   glow: '',                    val: 'text-amber-700 dark:text-amber-300' },
+    orange:  { bg: 'bg-orange-500/10 dark:bg-orange-500/15', text: 'text-orange-600 dark:text-orange-400', glow: '',                    val: 'text-orange-700 dark:text-orange-300' },
+    cyan:    { bg: 'bg-cyan-500/10 dark:bg-cyan-500/15',    text: 'text-cyan-600 dark:text-cyan-400',    glow: 'shadow-glow-cyan',    val: 'text-cyan-700 dark:text-cyan-300' },
+  }
+  const c = colorMap[color] || colorMap.indigo
 
   return (
     <div
-      className={`glass-card tint-card p-5 transition-all duration-300 group ring-1 ring-transparent ${onClick && !disabled ? 'cursor-pointer hover:ring-indigo-500/25 hover:-translate-y-0.5' : ''} ${disabled ? 'opacity-70' : ''}`}
-      style={{ '--tint': tint }}
+      className={`glass-card p-5 transition-all duration-300 group ring-1 ring-transparent ${onClick && !disabled ? `cursor-pointer hover:${c.glow} hover:ring-indigo-500/20 hover:-translate-y-0.5` : ''} ${disabled ? 'opacity-70' : ''}`}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick && !disabled ? 0 : undefined}
       aria-label={onClick ? `Show ${value} ${label.toLowerCase()}` : undefined}
@@ -29,19 +25,16 @@ export function StatsCard({ label, value, icon: Icon, color = 'indigo', trend, o
       } : undefined}
     >
       <div className="flex items-start justify-between mb-3">
-        <div
-          className="p-2.5 rounded-2xl group-hover:scale-110 transition-transform duration-300"
-          style={{ background: 'color-mix(in srgb, var(--tint) 22%, transparent)' }}
-        >
-          <Icon size={18} style={{ color: 'var(--tint)' }} />
+        <div className={`p-2.5 rounded-xl ${c.bg} ${c.glow} group-hover:scale-110 transition-transform duration-300`}>
+          <Icon size={18} className={c.text} />
         </div>
         {trend && (
-          <span className={`text-xs font-medium ${trend > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+          <span className={`text-xs font-medium ${trend > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
             {trend > 0 ? '↑' : '↓'} {Math.abs(trend)}%
           </span>
         )}
       </div>
-      <div className="text-2xl font-bold t-main mb-1 transition-colors">{value}</div>
+      <div className={`text-2xl font-bold ${c.text} mb-1 transition-colors`}>{value}</div>
       <div className="text-xs t-muted font-medium">{label}</div>
     </div>
   )

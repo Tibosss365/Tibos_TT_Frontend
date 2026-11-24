@@ -11,7 +11,6 @@ export const useUiStore = create(
     (set, get) => ({
       sidebarOpen: defaultSidebarOpen,
       isDark: false,
-      reduceGlass: false,   // turns the blur/transparency off for older PCs (also applied at start-up in main.jsx)
       toasts: [],
       activeModal: null,   // { type: 'ticket', data: ticketObj }
 
@@ -21,12 +20,6 @@ export const useUiStore = create(
         const next = !get().isDark
         document.documentElement.classList.toggle('dark', next)
         set({ isDark: next })
-      },
-
-      toggleReduceGlass: () => {
-        const next = !get().reduceGlass
-        document.documentElement.classList.toggle('reduce-glass', next)
-        set({ reduceGlass: next })
       },
 
       openModal: (type, data = null, options = {}) => set({ activeModal: { type, data, ...options } }),
@@ -44,7 +37,7 @@ export const useUiStore = create(
     }),
     {
       name: 'helpdesk-ui',
-      partialize: (state) => ({ sidebarOpen: state.sidebarOpen, isDark: state.isDark, reduceGlass: state.reduceGlass }),
+      partialize: (state) => ({ sidebarOpen: state.sidebarOpen, isDark: state.isDark }),
     }
   )
 )

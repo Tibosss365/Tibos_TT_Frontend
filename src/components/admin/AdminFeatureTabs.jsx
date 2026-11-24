@@ -1750,6 +1750,5 @@ const TAB_MAP = {
 }
 
 export default function AdminFeatureTabs({ activeTab }) {
-  // `glassify` re-skins this file's plain white/gray cards and inputs as frosted glass (see index.css)
-  return TAB_MAP[activeTab] ? <div className="glassify">{TAB_MAP[activeTab]}</div> : null
+  return TAB_MAP[activeTab] || null
 }

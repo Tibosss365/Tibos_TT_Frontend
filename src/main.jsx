@@ -4,11 +4,6 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 
-// Apply the saved "reduce glass effect" choice before the first paint.
-try {
-  if (JSON.parse(localStorage.getItem('helpdesk-ui') || '{}')?.state?.reduceGlass) document.documentElement.classList.add('reduce-glass')
-} catch { /* storage blocked — glass stays on */ }
-
 // After a deploy an open tab may ask for a script file that no longer exists.
 // Reload once to pick up the new version (guarded so it can never loop).
 window.addEventListener('vite:preloadError', () => {

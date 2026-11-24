@@ -5,22 +5,22 @@ const CONFIGS = {
   success: {
     icon:   <CheckCircle size={16} className="text-emerald-500 dark:text-emerald-400 flex-shrink-0" />,
     border: 'border-emerald-500/30',
-    bg:     'glass-card glass-strong',
+    bg:     'bg-white dark:bg-gray-900',
   },
   error: {
     icon:   <XCircle size={16} className="text-rose-500 dark:text-rose-400 flex-shrink-0" />,
     border: 'border-rose-500/30',
-    bg:     'glass-card glass-strong',
+    bg:     'bg-white dark:bg-gray-900',
   },
   warning: {
     icon:   <AlertTriangle size={16} className="text-amber-500 dark:text-amber-400 flex-shrink-0" />,
     border: 'border-amber-500/30',
-    bg:     'glass-card glass-strong',
+    bg:     'bg-white dark:bg-gray-900',
   },
   info: {
     icon:   <Info size={16} className="text-blue-500 dark:text-blue-400 flex-shrink-0" />,
     border: 'border-blue-500/30',
-    bg:     'glass-card glass-strong',
+    bg:     'bg-white dark:bg-gray-900',
   },
 }
 

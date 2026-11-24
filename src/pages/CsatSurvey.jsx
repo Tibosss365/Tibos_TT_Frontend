@@ -65,7 +65,7 @@ export default function CsatSurvey() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-gray-500">Loading survey…</div>
       </div>
     )
@@ -73,8 +73,8 @@ export default function CsatSurvey() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card glass-strong p-8 max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md text-center">
           <div className="text-4xl mb-4">😕</div>
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Survey Not Available</h2>
           <p className="text-gray-500">{error}</p>
@@ -85,8 +85,8 @@ export default function CsatSurvey() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-card glass-strong p-8 max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-md text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">Thank you for your feedback!</h2>
           <p className="text-gray-500">Your response has been recorded. We appreciate you taking the time.</p>
@@ -97,7 +97,7 @@ export default function CsatSurvey() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50 p-4">
-      <div className="glass-card glass-strong p-8 w-full max-w-lg">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-4xl mb-3">⭐</div>

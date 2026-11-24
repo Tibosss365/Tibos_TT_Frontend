@@ -53,9 +53,13 @@ export function Sidebar() {
     <aside
       // On mobile: always w-60 (overlay panel).
       // On desktop (lg+): w-60 when open, w-16 when collapsed.
-      className={`glass-panel lg:rounded-[1.75rem] flex flex-col h-full relative transition-all duration-300 ${
+      className={`flex flex-col h-full relative transition-all duration-300 ${
         sidebarOpen ? 'w-60' : 'w-60 lg:w-16'
       }`}
+      style={{
+        background: 'var(--c-sidebar-bg)',
+        borderRight: '1px solid var(--c-border)',
+      }}
     >
       {/* Logo */}
       <div

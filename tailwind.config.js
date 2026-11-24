@@ -4,17 +4,16 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
-      // softer, rounder corners everywhere (liquid-glass look)
-      borderRadius: { md: '0.625rem', lg: '0.875rem', xl: '1.25rem', '2xl': '1.75rem', '3xl': '2.25rem' },
       colors: {
         glass: 'rgba(255,255,255,0.05)',
-        // ── Brand accent ─────────────────────────────────────────────────────
-        // Liquid-glass theme: indigo is the single calm accent (same as --accent in
-        // index.css). violet/purple stay mapped to blue so older markup keeps one hue family.
+        // ── Brand accent remapped to OCEAN BLUE ──────────────────────────────
+        // The app historically used indigo/violet/purple as the brand color.
+        // These palettes are overridden so every existing `*-indigo-*`,
+        // `*-violet-*` and `*-purple-*` utility renders ocean blue instead.
         indigo: {
-          50:  '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
-          400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-          800: '#3730a3', 900: '#312e81', 950: '#1e1b4b',
+          50:  '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc',
+          400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1',
+          800: '#075985', 900: '#0c4a6e', 950: '#082f49',
         },
         violet: {
           50:  '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
