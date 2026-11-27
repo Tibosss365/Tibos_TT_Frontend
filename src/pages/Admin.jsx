@@ -1806,25 +1806,6 @@ const getReportStatItems = (reportType = 'daily') => {
   return items
 }
 
-function attachDashboardAgentSelection(rawReports) {
-  let selectedAgentIds = null
-  try {
-    const raw = localStorage.getItem('dashboard-visible-agent-ids')
-    const parsed = raw === null ? null : JSON.parse(raw)
-    if (Array.isArray(parsed)) selectedAgentIds = parsed.map(String)
-  } catch { /* keep the all-active-agents fallback */ }
-
-  const reports = { ...(rawReports || {}) }
-  for (const key of ['daily', 'weekly', 'monthly']) {
-    const report = reports[key] || {}
-    const template = { ...(report.template || {}) }
-    if (selectedAgentIds === null) delete template.selectedAgentIds
-    else template.selectedAgentIds = selectedAgentIds
-    reports[key] = { ...report, template }
-  }
-  return reports
-}
-
 function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [], tickets = [] }) {
   const [activeReport, setActiveReport] = useState('daily')
   const [combinedPreview, setCombinedPreview] = useState(null)
@@ -1835,9 +1816,7 @@ function ReportTemplatesCard({ alertEdits, setAlertEdits, inputCls, agents = [],
     setCombinedPreviewLoading(true)
     setCombinedPreviewError('')
     try {
-      const preview = await api.post('/admin/alerts/daily-monthly/preview', {
-        reports: attachDashboardAgentSelection(alertEdits.reports),
-      })
+      const preview = await api.post('/admin/alerts/daily-monthly/preview', { reports: alertEdits.reports })
       setCombinedPreview(preview)
     } catch (error) {
       setCombinedPreviewError(error?.message || 'Could not load the combined email preview')
@@ -2425,12 +2404,10 @@ function AlertsSection({ alertEdits, setAlertEdits, inputCls, onSave, onTest, sa
             : <><Save size={13} /> Save Alert Settings</>}
         </Button>
         <Button variant="ghost" size="md" onClick={onTest}>
-          <Send size={13} /> {alertEdits.reports?.daily?.template?.includeDailyMonthlyReport === false ? 'Send Daily Test' : 'Send Daily + Monthly Test'}
+          <Send size={13} /> Send Daily + Monthly Test
         </Button>
         <div className="text-xs t-muted hidden sm:block">
-          {alertEdits.reports?.daily?.template?.includeDailyMonthlyReport === false
-            ? 'Test sends the Daily report template to all configured recipients'
-            : 'Test sends the combined template to all configured recipients'}
+          Test sends the combined template to all configured recipients
         </div>
       </div>
     </div>
@@ -3643,7 +3620,21 @@ export default function Admin() {
   const handleSaveAlerts = async () => {
     setAlertSaving(true)
     try {
-      const reports = attachDashboardAgentSelection(alertEdits.reports)
+      let selectedAgentIds = null
+      try {
+        const raw = localStorage.getItem('dashboard-visible-agent-ids')
+        const parsed = raw === null ? null : JSON.parse(raw)
+        if (Array.isArray(parsed)) selectedAgentIds = parsed.map(String)
+      } catch { /* keep the all-active-agents fallback */ }
+
+      const reports = { ...alertEdits.reports }
+      for (const key of ['daily', 'weekly', 'monthly']) {
+        const report = reports[key] || {}
+        const template = { ...(report.template || {}) }
+        if (selectedAgentIds === null) delete template.selectedAgentIds
+        else template.selectedAgentIds = selectedAgentIds
+        reports[key] = { ...report, template }
+      }
       const settings = { ...alertEdits, reports }
       await saveAlertSettings(settings)
       setAlertEdits(settings)
@@ -3657,13 +3648,11 @@ export default function Admin() {
 
   const handleTestAlert = async () => {
     try {
-      const reports = attachDashboardAgentSelection(alertEdits.reports)
-      const result = await sendTestAlert(reports)
-      const label = result?.report === 'daily-monthly' ? 'Daily + Monthly report' : 'Daily report'
+      const result = await sendTestAlert(alertEdits.reports)
       addToast(
         result?.sent > 0
-          ? `${label} sent to ${result.sent} recipient${result.sent > 1 ? 's' : ''}`
-          : `${label} test email sent`,
+          ? `Daily + Monthly report sent to ${result.sent} recipient${result.sent > 1 ? 's' : ''}`
+          : 'Daily + Monthly test email sent',
         'success'
       )
     } catch (err) {
